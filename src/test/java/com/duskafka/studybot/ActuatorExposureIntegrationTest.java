@@ -31,6 +31,12 @@ class ActuatorExposureIntegrationTest {
 		assertThat(result).bodyText().doesNotContain("components").doesNotContain("details");
 	}
 
+	@Test
+	@DisplayName("S01: Actuator 링크 목록(/actuator)도 노출하지 않는다 (api.md 4.4: 외부 노출은 health만)")
+	void discoveryPageIsNotExposed() {
+		assertThat(mvc.get().uri("/actuator")).hasStatus(HttpStatus.NOT_FOUND);
+	}
+
 	@ParameterizedTest(name = "S01: /actuator/{0}는 노출되지 않는다 (404)")
 	@ValueSource(strings = { "env", "heapdump", "configprops", "beans", "mappings", "loggers", "info", "metrics",
 			"threaddump", "shutdown" })
