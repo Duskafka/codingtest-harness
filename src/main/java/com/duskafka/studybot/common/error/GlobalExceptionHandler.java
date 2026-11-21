@@ -1,5 +1,6 @@
 package com.duskafka.studybot.common.error;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -9,16 +10,26 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.core.MethodParameter;
+import org.springframework.core.annotation.MergedAnnotation;
+import org.springframework.core.annotation.MergedAnnotations;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.method.ParameterErrors;
 import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.MatrixVariable;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -31,7 +42,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  * <ul>
  * <li>Spring MVC 예외(없는 경로 404, 형식 오류 400, 405 등)와 {@link org.springframework.web.ErrorResponseException}
  * (이 패키지의 {@link NotFoundException} 등)은 {@link ResponseEntityExceptionHandler}가 처리한다.</li>
- * <li>검증 실패(400)에는 {@code errors: [{field, message}]}를 더한다.</li>
+ * <li>검증 실패(400)에는 {@code errors: [{field, message}]}를 더한다. 컨트롤러 반환값 검증 실패는 요청 오류가 아니라서
+ * 처리하지 못한 예외와 같이 500으로 답한다.</li>
  * <li>처리하지 못한 예외는 500으로 바꾸고, 응답에는 상태와 제목만 담는다. 예외 이름·메시지·스택은 서버 로그에만 남긴다.</li>
  * </ul>
  */
@@ -45,6 +57,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	/** 바인딩 실패에 맞는 메시지가 없을 때 쓰는 문장. 검증 메시지 언어는 아직 정하지 않았다 (PR 열린 질문). */
 	static final String INVALID_VALUE_MESSAGE = "Invalid value";
+
+	/** 요청에서 값을 읽는 이름을 정하는 애너테이션. 모두 {@code name}과 {@code value}가 서로 별칭이다. */
+	private static final List<Class<? extends Annotation>> REQUEST_BINDING_ANNOTATIONS = List.of(RequestParam.class,
+			PathVariable.class, RequestHeader.class, CookieValue.class, MatrixVariable.class, RequestPart.class);
 
 	@Override
 	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
@@ -65,6 +81,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	@Override
 	protected ResponseEntity<Object> handleHandlerMethodValidationException(HandlerMethodValidationException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		if (ex.isForReturnValue()) {
+			// 반환값 검증 실패는 서버 쪽 버그다. 검증 내용은 로그에만 남기고 응답에는 싣지 않는다 (security.md 9.7).
+			return handleUnexpected(ex, request);
+		}
 		Locale locale = request.getLocale();
 		List<InvalidField> errors = new ArrayList<>();
 		for (ParameterValidationResult result : ex.getParameterValidationResults()) {
@@ -72,8 +92,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 				for (FieldError error : parameterErrors.getFieldErrors()) {
 					errors.add(new InvalidField(error.getField(), resolveFieldError(error, locale)));
 				}
+				// 객체 전체 오류는 특정 필드가 아니다. handleMethodArgumentNotValid와 같이 field를 비운다.
 				parameterErrors.getGlobalErrors()
-					.forEach(error -> errors.add(new InvalidField(parameterName(result), resolve(error, locale))));
+					.forEach(error -> errors.add(new InvalidField(null, resolve(error, locale))));
 			}
 			else {
 				for (MessageSourceResolvable error : result.getResolvableErrors()) {
@@ -117,9 +138,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return message != null ? message : "";
 	}
 
+	/**
+	 * 클라이언트가 보낸 이름. 바인딩 애너테이션에 적은 이름(예: {@code @RequestParam("page_size")})이 있으면 그걸 쓰고,
+	 * 없으면 Java 파라미터 이름, 그것도 없으면 {@code argN}을 쓴다.
+	 */
 	private static String parameterName(ParameterValidationResult result) {
-		String name = result.getMethodParameter().getParameterName();
-		String base = name != null ? name : "arg" + result.getMethodParameter().getParameterIndex();
+		MethodParameter parameter = result.getMethodParameter();
+		String name = requestName(parameter);
+		if (name == null) {
+			name = parameter.getParameterName();
+		}
+		String base = name != null ? name : "arg" + parameter.getParameterIndex();
 		if (result.getContainerIndex() != null) {
 			return base + "[" + result.getContainerIndex() + "]";
 		}
@@ -127,6 +156,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			return base + "[" + result.getContainerKey() + "]";
 		}
 		return base;
+	}
+
+	private static @Nullable String requestName(MethodParameter parameter) {
+		MergedAnnotations annotations = MergedAnnotations.from(parameter.getParameterAnnotations());
+		for (Class<? extends Annotation> type : REQUEST_BINDING_ANNOTATIONS) {
+			MergedAnnotation<? extends Annotation> annotation = annotations.get(type);
+			if (annotation.isPresent()) {
+				String name = annotation.getString("name");
+				return StringUtils.hasText(name) ? name : null;
+			}
+		}
+		return null;
 	}
 
 	/**

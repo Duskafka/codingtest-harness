@@ -3,9 +3,18 @@ package com.duskafka.studybot.common.error;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.duskafka.studybot.IntegrationTest;
+import jakarta.validation.Constraint;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
+import jakarta.validation.Payload;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -138,6 +147,52 @@ class ErrorResponseIntegrationTest {
 		assertNoInternals(result);
 	}
 
+	@Test
+	@DisplayName("S01: 컨트롤러 반환값 검증 실패 → 500 problem+json, 요청 오류 목록(errors)과 서버 쪽 검증 내용이 없다")
+	void returnValueValidationFailureReturns500WithoutErrors() {
+		MvcTestResult result = mvc.get().uri("/test/errors/return-value").exchange();
+
+		assertThat(result).hasStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+			.hasContentType(MediaType.APPLICATION_PROBLEM_JSON);
+		assertThat(result).bodyJson().extractingPath("$.title").isEqualTo("Internal Server Error");
+		assertThat(result).bodyJson().doesNotHavePath("$.errors");
+		assertThat(result).bodyText().doesNotContain("arg-").doesNotContain("must not be null");
+		assertNoInternals(result);
+	}
+
+	@Test
+	@DisplayName("S01: 메서드 검증 경로의 객체 전체 오류 → field는 null, 파라미터 오류는 파라미터 이름")
+	void objectLevelErrorInMethodValidationHasNullField() {
+		MvcTestResult result = mvc.post()
+			.uri("/test/errors/object-and-param?page=0")
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("""
+					{"min": 5, "max": 1}
+					""")
+			.exchange();
+
+		assertThat(result).hasStatus(HttpStatus.BAD_REQUEST).hasContentType(MediaType.APPLICATION_PROBLEM_JSON);
+		assertThat(result).bodyJson()
+			.extractingPath("$.errors[*].field")
+			.asArray()
+			.containsExactlyInAnyOrder(null, "page");
+		assertThat(result).bodyJson()
+			.extractingPath("$.errors[*].message")
+			.asArray()
+			.contains(ErrorTestController.RANGE_MESSAGE);
+		assertNoInternals(result);
+	}
+
+	@Test
+	@DisplayName("S01: 요청 파라미터 이름을 따로 정했으면 field는 요청에 쓴 이름이다 (Java 변수 이름이 아님)")
+	void explicitlyNamedParameterUsesRequestName() {
+		MvcTestResult result = mvc.get().uri("/test/errors/named-param?page_size=0").exchange();
+
+		assertThat(result).hasStatus(HttpStatus.BAD_REQUEST).hasContentType(MediaType.APPLICATION_PROBLEM_JSON);
+		assertThat(result).bodyJson().extractingPath("$.errors[0].field").isEqualTo("page_size");
+		assertNoInternals(result);
+	}
+
 	@ParameterizedTest(name = "S01: {0} → {1} problem+json, detail은 던진 문장 그대로")
 	@CsvSource({ "unauthorized, 401, 로그인이 필요해요.", "forbidden, 403, 이 스터디의 방장만 할 수 있어요.",
 			"not-found, 404, 스터디를 찾을 수 없어요.", "conflict, 409, 이미 처리된 요청이에요." })
@@ -172,6 +227,35 @@ class ErrorResponseIntegrationTest {
 		record PageQuery(@Min(1) int page) {
 		}
 
+		static final String RANGE_MESSAGE = "min must not be greater than max";
+
+		/** 객체 전체(클래스 수준) 제약. 필드 하나가 아니라 두 필드의 관계를 본다. */
+		@Target(ElementType.TYPE)
+		@Retention(RetentionPolicy.RUNTIME)
+		@Constraint(validatedBy = ValidRangeValidator.class)
+		@interface ValidRange {
+
+			String message() default RANGE_MESSAGE;
+
+			Class<?>[] groups() default {};
+
+			Class<? extends Payload>[] payload() default {};
+
+		}
+
+		public static final class ValidRangeValidator implements ConstraintValidator<ValidRange, RangeRequest> {
+
+			@Override
+			public boolean isValid(RangeRequest value, ConstraintValidatorContext context) {
+				return value == null || value.min() <= value.max();
+			}
+
+		}
+
+		@ValidRange
+		record RangeRequest(int min, int max) {
+		}
+
 		@GetMapping("/query")
 		String query(@Valid @ModelAttribute PageQuery query) {
 			return "page " + query.page();
@@ -184,6 +268,23 @@ class ErrorResponseIntegrationTest {
 		@GetMapping("/param")
 		String param(@RequestParam @Min(1) int page) {
 			return "page " + page;
+		}
+
+		/** 파라미터에 제약이 있어 메서드 검증이 적용된다. 본문의 객체 전체 오류도 같은 예외로 온다. */
+		@PostMapping("/object-and-param")
+		void objectAndParam(@Valid @RequestBody RangeRequest request, @RequestParam @Min(1) int page) {
+		}
+
+		@GetMapping("/named-param")
+		String namedParam(@RequestParam("page_size") @Min(1) int pageSize) {
+			return "page size " + pageSize;
+		}
+
+		/** 반환값 제약을 어기는 서버 쪽 버그. 요청 오류가 아니다. */
+		@GetMapping("/return-value")
+		@NotNull
+		String returnValue() {
+			return null;
 		}
 
 		@GetMapping("/unhandled")
