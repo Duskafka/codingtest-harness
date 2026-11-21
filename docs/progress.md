@@ -3,9 +3,9 @@
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
 ## 2026-11-21 S01 공통 기반 리뷰 반영 (세션 2)
-- 한 일: PR #1 CodeRabbit 리뷰 4건 반영. 반환값 검증 실패는 `errors` 없이 500, 객체 전체 오류의 `field`는 `null`, `field`는 요청에 쓴 이름(`@RequestParam("page_size")`), 세션 준비 스크립트의 `docker info`에 시간 제한. H-00 완료 확인(master `protected: true`)
+- 한 일: PR #1 CodeRabbit 리뷰 4건 반영. 반환값 검증 실패는 `errors` 없이 500, 객체 전체 오류의 `field`는 `null`, `field`는 요청에 쓴 이름(`@RequestParam("page_size")`), 세션 준비 스크립트의 `docker info`에 시간 제한. H-00 완료 확인(master `protected: true`). 결정 001 확정 기록(사람이 ① A·② A·③ A 선택, 요청에 따라 에이전트가 받아 적음)
 - 상태: 빌드 통과 (테스트 64개)
-- 다음: 결정 제안서 001 결정과 PR 병합 → 새 세션에서 S02 시간 계산(`StudyCalendar`)
+- 다음: PR #1 병합 → 사람이 결정 대장의 '결정 제안서 목록'과 스펙 변경 제안(architecture 4.2) 반영 → 새 세션에서 S02 시간 계산(`StudyCalendar`)
 - 막힌 것: 없음. H-09는 새 컨테이너에서 확인 필요 (이번 재시작은 같은 컨테이너를 이어 써서 설정 스크립트가 돌지 않음)
 - PR: #1
 
