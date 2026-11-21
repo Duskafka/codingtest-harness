@@ -4,3 +4,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+  web:
+    resources:
+      # API 서버는 정적 파일을 주지 않는다. 프론트 정적 파일은 Nginx가 준다 (docs/spec/architecture.md 4.1).
+      # 없는 경로는 정적 리소스 탐색 없이 404 problem+json이 된다.
+      add-mappings: false
