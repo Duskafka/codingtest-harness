@@ -15,11 +15,13 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
 fi
 
 wait_seconds=30
+ready_timeout_seconds=5
 log_file="${TMPDIR:-/tmp}/studybot-dockerd.log"
 lock_file="${TMPDIR:-/tmp}/studybot-cloud-session-setup.lock"
 
 # 동시에 여러 번 실행돼도 dockerd를 하나만 띄우도록 순서대로 실행한다.
 # 세션 시작을 붙잡지 않도록 잠금은 최대 wait_seconds*2초만 기다린다.
+# 한 번의 실행은 잠금을 길어야 wait_seconds + ready_timeout_seconds*2초쯤 쥐고 있다.
 if command -v flock >/dev/null 2>&1; then
   exec 9>"$lock_file"
   if ! flock -w $((wait_seconds * 2)) 9; then
@@ -28,8 +30,14 @@ if command -v flock >/dev/null 2>&1; then
   fi
 fi
 
+# 데몬이 연결만 받고 응답하지 않으면 docker info가 끝나지 않는다. 그래서 호출마다 시간 제한을 둔다.
+# timeout(coreutils)이 없는 환경에서는 제한 없이 확인한다. 명령이 없다고 준비 확인이 늘 실패하면 안 된다.
 docker_ready() {
-  docker info >/dev/null 2>&1
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$ready_timeout_seconds" docker info >/dev/null 2>&1
+  else
+    docker info >/dev/null 2>&1
+  fi
 }
 
 if docker_ready; then
@@ -50,7 +58,9 @@ else
   nohup dockerd >"$log_file" 2>&1 9>&- &
 fi
 
-for _ in $(seq 1 "$wait_seconds"); do
+# 횟수가 아니라 시각으로 끊는다. 확인 한 번이 오래 걸려도 전체 대기는 wait_seconds 안팎이다.
+deadline=$((SECONDS + wait_seconds))
+while [ "$SECONDS" -lt "$deadline" ]; do
   if docker_ready; then
     echo "cloud-session-setup: Docker가 준비됐어요."
     exit 0
