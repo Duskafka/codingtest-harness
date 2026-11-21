@@ -1,6 +1,7 @@
 package com.duskafka.studybot.architecture;
 
 import static com.duskafka.studybot.architecture.ModuleRules.BASE_PACKAGE;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -14,6 +15,9 @@ import org.junit.jupiter.api.Test;
  * 규칙 자체가 실제로 걸린다는 것은 {@link ArchitectureRulesSelfTest}가 보인다.
  */
 class ArchitectureTest {
+
+	/** 시스템 시계를 만들어도 되는 유일한 클래스. */
+	private static final String CLOCK_CONFIGURATION = BASE_PACKAGE + ".common.time.ClockConfiguration";
 
 	private static JavaClasses mainClasses;
 
@@ -52,6 +56,15 @@ class ArchitectureTest {
 	@DisplayName("S01: main 클래스는 루트 패키지나 모듈 패키지에만 있다")
 	void everyClassBelongsToAModule() {
 		ModuleRules.everyClassBelongsToAModule(BASE_PACKAGE).check(mainClasses);
+	}
+
+	@Test
+	@DisplayName("S01: main 코드는 현재 시각을 직접 읽지 않는다 (Clock 설정 클래스만 예외)")
+	void noDirectCurrentTime() {
+		assertThat(mainClasses.contain(CLOCK_CONFIGURATION))
+			.as("예외로 둔 Clock 설정 클래스가 실제로 있어야 한다: " + CLOCK_CONFIGURATION)
+			.isTrue();
+		TimeRules.noDirectCurrentTime(BASE_PACKAGE, CLOCK_CONFIGURATION).check(mainClasses);
 	}
 
 }
