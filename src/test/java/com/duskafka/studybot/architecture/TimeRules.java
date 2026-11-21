@@ -7,6 +7,10 @@ import com.tngtech.archunit.core.domain.AccessTarget.CodeUnitAccessTarget;
 import com.tngtech.archunit.core.domain.JavaAccess;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchRule;
+import java.time.Clock;
+import java.time.InstantSource;
+import java.time.chrono.Chronology;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
 
@@ -63,21 +67,30 @@ final class TimeRules {
 		if (!(access.getTarget() instanceof CodeUnitAccessTarget target)) {
 			return false;
 		}
-		String owner = target.getOwner().getName();
+		// 바이트코드의 소유 클래스는 호출에 쓴 이름이다. GregorianCalendar.getInstance()의 소유 클래스는
+		// GregorianCalendar이고, Clock 하위 클래스 안의 systemUTC()는 그 하위 클래스다.
+		// 그래서 정적 팩터리는 이름이 같은지가 아니라 상위 타입에 할당 가능한지로 본다.
+		JavaClass owner = target.getOwner();
 		String name = target.getName();
 		List<String> parameterTypes = target.getRawParameterTypes().stream().map(JavaClass::getName).toList();
 		boolean takesClock = parameterTypes.contains("java.time.Clock");
-		if (TIME_TYPES.contains(owner) && name.equals("now")) {
+		if (TIME_TYPES.contains(owner.getName()) && name.equals("now")) {
 			return !takesClock;
 		}
-		if (owner.startsWith("java.time.chrono.") && name.equals("dateNow")) {
+		if (owner.isAssignableTo(Chronology.class) && name.equals("dateNow")) {
 			return !takesClock;
 		}
-		return switch (owner) {
-			case "java.time.Clock" -> SYSTEM_CLOCK_FACTORIES.contains(name);
-			case "java.time.InstantSource" -> name.equals("system");
+		if (owner.isAssignableTo(Clock.class) && SYSTEM_CLOCK_FACTORIES.contains(name)) {
+			return true;
+		}
+		if (owner.isAssignableTo(InstantSource.class) && name.equals("system")) {
+			return true;
+		}
+		if (owner.isAssignableTo(Calendar.class) && name.equals("getInstance")) {
+			return true;
+		}
+		return switch (owner.getName()) {
 			case "java.lang.System" -> name.equals("currentTimeMillis");
-			case "java.util.Calendar" -> name.equals("getInstance");
 			case "java.util.Date" -> name.equals("<init>") && parameterTypes.isEmpty();
 			case "java.util.GregorianCalendar" ->
 				name.equals("<init>") && CURRENT_TIME_CALENDAR_PARAMETERS.containsAll(parameterTypes);

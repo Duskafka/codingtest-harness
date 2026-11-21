@@ -34,7 +34,7 @@ class TimeRulesSelfTest {
 	@ValueSource(strings = { "CallsLocalDateNow", "CallsZonedNowWithZone", "ReferencesInstantNow",
 			"CallsCurrentTimeMillis", "CreatesDate", "CallsCalendarGetInstance", "CallsClockSystemDefaultZone",
 			"CallsChronoDateNow", "CallsChronologyDateNow", "CallsClockTickSeconds", "CallsInstantSourceSystem",
-			"CreatesGregorianCalendar" })
+			"CreatesGregorianCalendar", "CallsGregorianGetInstance", "SubclassedClockSystemUtc" })
 	@DisplayName("S01: 현재 시각을 직접 읽는 예제가 규칙에 걸린다")
 	void directCurrentTimeIsDetected(String fixture) {
 		assertThat(violations).anySatisfy(detail -> assertThat(detail).contains(FIXTURES + "." + fixture));
