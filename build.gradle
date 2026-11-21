@@ -31,6 +31,8 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
 	testImplementation 'org.testcontainers:testcontainers-postgresql'
+	// Boot BOM 밖. 1.4.1부터 Java 25 클래스 파일 지원, 1.5.1이 최신 (S01 PR 판단 기록)
+	testImplementation 'com.tngtech.archunit:archunit:1.5.1'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
