@@ -17,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -115,6 +116,28 @@ class ErrorResponseIntegrationTest {
 		assertNoInternals(result);
 	}
 
+	@Test
+	@DisplayName("S01: 쿼리 객체(@ModelAttribute)의 타입이 틀림 → 400, 필드는 담고 Java 타입 이름·변환 예외 메시지는 없다")
+	void typeMismatchInQueryObjectReturns400WithoutInternals() {
+		MvcTestResult result = mvc.get().uri("/test/errors/query?page=abc").exchange();
+
+		assertThat(result).hasStatus(HttpStatus.BAD_REQUEST).hasContentType(MediaType.APPLICATION_PROBLEM_JSON);
+		assertThat(result).bodyJson().extractingPath("$.errors[0].field").isEqualTo("page");
+		assertThat(result).bodyJson().extractingPath("$.errors[0].message").asString().isNotBlank();
+		assertThat(result).bodyText().doesNotContain("java.").doesNotContain("For input string");
+		assertNoInternals(result);
+	}
+
+	@Test
+	@DisplayName("S01: 요청 파라미터의 타입이 틀림 → 400, Java 타입 이름이 없다")
+	void typeMismatchInParameterReturns400WithoutInternals() {
+		MvcTestResult result = mvc.get().uri("/test/errors/param?page=abc").exchange();
+
+		assertThat(result).hasStatus(HttpStatus.BAD_REQUEST).hasContentType(MediaType.APPLICATION_PROBLEM_JSON);
+		assertThat(result).bodyText().doesNotContain("java.").doesNotContain("For input string");
+		assertNoInternals(result);
+	}
+
 	@ParameterizedTest(name = "S01: {0} → {1} problem+json, detail은 던진 문장 그대로")
 	@CsvSource({ "unauthorized, 401, 로그인이 필요해요.", "forbidden, 403, 이 스터디의 방장만 할 수 있어요.",
 			"not-found, 404, 스터디를 찾을 수 없어요.", "conflict, 409, 이미 처리된 요청이에요." })
@@ -144,6 +167,14 @@ class ErrorResponseIntegrationTest {
 	static class ErrorTestController {
 
 		record CreateRequest(@NotBlank String name, @Min(1) int count) {
+		}
+
+		record PageQuery(@Min(1) int page) {
+		}
+
+		@GetMapping("/query")
+		String query(@Valid @ModelAttribute PageQuery query) {
+			return "page " + query.page();
 		}
 
 		@PostMapping("/body")

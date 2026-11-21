@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.MessageSourceResolvable;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -42,6 +43,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	/** 검증 실패 항목 목록을 담는 ProblemDetail 확장 속성 이름. */
 	static final String ERRORS_PROPERTY = "errors";
 
+	/** 바인딩 실패에 맞는 메시지가 없을 때 쓰는 문장. 검증 메시지 언어는 아직 정하지 않았다 (PR 열린 질문). */
+	static final String INVALID_VALUE_MESSAGE = "Invalid value";
+
 	@Override
 	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
@@ -49,7 +53,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		List<InvalidField> errors = new ArrayList<>();
 		ex.getBindingResult()
 			.getFieldErrors()
-			.forEach(error -> errors.add(new InvalidField(error.getField(), resolve(error, locale))));
+			.forEach(error -> errors.add(new InvalidField(error.getField(), resolveFieldError(error, locale))));
 		ex.getBindingResult()
 			.getGlobalErrors()
 			.forEach(error -> errors.add(new InvalidField(null, resolve(error, locale))));
@@ -66,7 +70,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		for (ParameterValidationResult result : ex.getParameterValidationResults()) {
 			if (result instanceof ParameterErrors parameterErrors) {
 				for (FieldError error : parameterErrors.getFieldErrors()) {
-					errors.add(new InvalidField(error.getField(), resolve(error, locale)));
+					errors.add(new InvalidField(error.getField(), resolveFieldError(error, locale)));
 				}
 				parameterErrors.getGlobalErrors()
 					.forEach(error -> errors.add(new InvalidField(parameterName(result), resolve(error, locale))));
@@ -90,6 +94,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		log.error("처리하지 못한 예외: {}", request.getDescription(false), ex);
 		ProblemDetail body = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
 		return handleExceptionInternal(ex, body, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR, request);
+	}
+
+	/**
+	 * 바인딩 실패(타입 변환 실패 등)의 기본 메시지에는 Java 타입 이름과 변환 예외 메시지가 들어 있다
+	 * (예: "Failed to convert value of type 'java.lang.String' to required type 'int'; For input string: ...").
+	 * 그래서 오류 코드({@code typeMismatch} 등)로 메시지를 찾고, 없으면 일반 문장을 쓴다.
+	 */
+	private String resolveFieldError(FieldError error, Locale locale) {
+		if (!error.isBindingFailure()) {
+			return resolve(error, locale);
+		}
+		return resolve(new DefaultMessageSourceResolvable(error.getCodes(), INVALID_VALUE_MESSAGE), locale);
 	}
 
 	private String resolve(MessageSourceResolvable error, Locale locale) {
