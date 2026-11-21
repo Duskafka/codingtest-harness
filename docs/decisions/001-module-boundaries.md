@@ -95,9 +95,9 @@ S01은 이 규칙을 ArchUnit 테스트로 만들어야 하는데, 세 가지가
 
 - `docs/spec/architecture.md` 4.2 (모듈 구조와 규칙), 알려진 충돌과 빈 곳 1번·2번·3번
 - Spring Modulith 레퍼런스 2.2.0, Fundamentals: https://docs.spring.io/spring-modulith/reference/fundamentals.html
-    - "By default, each direct sub-package of the main package is considered an application module package."
-    - "an application module's base package is considered the API package and thus is the only package to allow incoming dependencies from other modules."
-    - 하위 패키지를 공개하려면 `@NamedInterface`를 쓰고, 허용 의존은 `@ApplicationModule(allowedDependencies = ...)`로 적어요. 이 PR의 `EXPOSED_SUBPACKAGES`와 `ALLOWED_DEPENDENCIES`가 같은 역할이에요.
+  - "By default, each direct sub-package of the main package is considered an application module package."
+  - "an application module's base package is considered the API package and thus is the only package to allow incoming dependencies from other modules."
+  - 하위 패키지를 공개하려면 `@NamedInterface`를 쓰고, 허용 의존은 `@ApplicationModule(allowedDependencies = ...)`로 적어요. 이 PR의 `EXPOSED_SUBPACKAGES`와 `ALLOWED_DEPENDENCIES`가 같은 역할이에요.
 - ArchUnit 1.5.1 사용자 가이드 (https://www.archunit.org/userguide/html/000_Index.html): 빈 클래스 집합에 대한 규칙은 기본적으로 실패해요(`failOnEmptyShould`). 모듈이 아직 비어 있어서 모듈 규칙에는 `allowEmptyShould(true)`를 쓰고, 규칙이 실제로 걸리는지는 예제로 따로 검증해요.
 - **추측:** Spring Modulith의 Boot 4.1 지원 버전. 레퍼런스의 호환 표는 "2.0 (snapshot) / 4.0 SNAPSHOT"에서 멈춰 있어서 확인하지 못했어요. D안을 다시 볼 때 GitHub 릴리스 노트로 확인해야 해요.
 
@@ -105,8 +105,8 @@ S01은 이 규칙을 ArchUnit 테스트로 만들어야 하는데, 세 가지가
 
 - `ArchitectureTest`: main 코드에 위 규칙을 적용해요 (CI의 `./gradlew build`에 포함).
 - `ArchitectureRulesSelfTest`: 테스트 소스의 `com.duskafka.archfixtures` 아래에 규칙을 어기는 예제와 지키는 예제를 두고, 같은 규칙이 각각 걸리는지, 통과하는지 확인해요.
-    - 걸려야 하는 예제: study → github, common → auth, 다른 모듈의 내부 패키지 접근, 루트 패키지의 엔티티·저장소, 순환, 모듈 밖 최상위 패키지
-    - 통과해야 하는 예제: 허용된 방향, common 하위 패키지, auth 공개 API, 같은 모듈 안의 내부 패키지
+  - 걸려야 하는 예제: study → github, common → auth, 다른 모듈의 내부 패키지 접근, 루트 패키지의 엔티티·저장소, 순환, 모듈 밖 최상위 패키지
+  - 통과해야 하는 예제: 허용된 방향, common 하위 패키지, auth 공개 API, 같은 모듈 안의 내부 패키지
 - 이후 단계에서 허용 목록에 없는 의존이 필요해지면, 그 단계 PR의 '스펙 변경 제안'으로 드러나요. 그 빈도로 ② A가 지나치게 엄격한지 판단할 수 있어요.
 
 <!-- 여기부터 사람이 써요. 에이전트는 비워 둬요 -->
@@ -118,13 +118,13 @@ S01은 이 규칙을 ArchUnit 테스트로 만들어야 하는데, 세 가지가
 **① A, ② A, ③ A (추천안 그대로).**
 
 - 고른 것
-    - ① A: 모듈 루트 패키지가 공개 API이고, 하위 패키지는 내부다.
-    - ② A: 4.2 그래프에 직접 그려진 화살표만 허용한다.
-    - ③ A: 모든 모듈이 `common`과 `auth`의 공개 API를 쓸 수 있다. `common`은 다른 모듈에 의존하지 않고, `auth`는 `common`에만 의존한다.
+  - ① A: 모듈 루트 패키지가 공개 API이고, 하위 패키지는 내부다.
+  - ② A: 4.2 그래프에 직접 그려진 화살표만 허용한다.
+  - ③ A: 모든 모듈이 `common`과 `auth`의 공개 API를 쓸 수 있다. `common`은 다른 모듈에 의존하지 않고, `auth`는 `common`에만 의존한다.
 - 포기한 것
-    - ① B(`<모듈>.api` 패키지), C(애너테이션 표시), D(Spring Modulith 지금 도입)
-    - ② B(화살표를 따라 닿는 모듈은 모두 허용)
-    - ③ B(사용자 ID 같은 타입만 `common`에 두기), C(필요한 모듈마다 `auth` 화살표를 하나씩 더하기)
+  - ① B(`<모듈>.api` 패키지), C(애너테이션 표시), D(Spring Modulith 지금 도입)
+  - ② B(화살표를 따라 닿는 모듈은 모두 허용)
+  - ③ B(사용자 ID 같은 타입만 `common`에 두기), C(필요한 모듈마다 `auth` 화살표를 하나씩 더하기)
 
 ## 검토 메모
 
