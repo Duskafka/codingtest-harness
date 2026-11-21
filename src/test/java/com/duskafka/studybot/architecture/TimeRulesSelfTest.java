@@ -32,16 +32,27 @@ class TimeRulesSelfTest {
 
 	@ParameterizedTest(name = "S01: {0}가 규칙에 걸린다")
 	@ValueSource(strings = { "CallsLocalDateNow", "CallsZonedNowWithZone", "ReferencesInstantNow",
-			"CallsCurrentTimeMillis", "CreatesDate", "CallsCalendarGetInstance", "CallsClockSystemDefaultZone" })
+			"CallsCurrentTimeMillis", "CreatesDate", "CallsCalendarGetInstance", "CallsClockSystemDefaultZone",
+			"CallsChronoDateNow", "CallsChronologyDateNow", "CallsClockTickSeconds", "CallsInstantSourceSystem",
+			"CreatesGregorianCalendar" })
 	@DisplayName("S01: 현재 시각을 직접 읽는 예제가 규칙에 걸린다")
 	void directCurrentTimeIsDetected(String fixture) {
 		assertThat(violations).anySatisfy(detail -> assertThat(detail).contains(FIXTURES + "." + fixture));
 	}
 
 	@Test
-	@DisplayName("S01: now(Clock), System.nanoTime(), new Date(long)은 통과한다")
+	@DisplayName("S01: now(Clock)·dateNow(Clock)·Clock.tick(Clock, ..), System.nanoTime(), 시각을 넘기는 생성자는 통과한다")
 	void injectedClockPasses() {
 		assertThat(violations).noneSatisfy(detail -> assertThat(detail).contains("UsesInjectedClock"));
+	}
+
+	@Test
+	@DisplayName("S01: new GregorianCalendar(TimeZone)처럼 시간대만 넘기는 생성자도 걸린다")
+	void gregorianCalendarWithZoneIsDetected() {
+		assertThat(violations)
+			.filteredOn(detail -> detail.contains("CreatesGregorianCalendar"))
+			.as("인자 없는 생성자와 TimeZone 생성자 둘 다")
+			.hasSize(2);
 	}
 
 	@Test
