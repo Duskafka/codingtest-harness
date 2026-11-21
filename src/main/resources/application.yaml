@@ -9,3 +9,22 @@ spring:
       # API 서버는 정적 파일을 주지 않는다. 프론트 정적 파일은 Nginx가 준다 (docs/spec/architecture.md 4.1).
       # 없는 경로는 정적 리소스 탐색 없이 404 problem+json이 된다.
       add-mappings: false
+
+# Actuator는 health만 켜고 노출한다 (docs/spec/security.md 9.7).
+# access.default=none이면 접근할 수 없는 엔드포인트는 컨텍스트에서 아예 빠진다.
+management:
+  endpoints:
+    access:
+      default: none
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      access: read-only
+
+# API 명세(/v3/api-docs)는 기본으로 끈다. 로컬 개발이나 명세 생성 때만
+# springdoc.api-docs.enabled=true로 켠다 (알려진 충돌 8번, S01 PR 판단 기록).
+springdoc:
+  api-docs:
+    enabled: false
