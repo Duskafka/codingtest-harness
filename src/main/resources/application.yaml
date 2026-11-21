@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: studybot
+  jpa:
+    hibernate:
+      ddl-auto: validate
