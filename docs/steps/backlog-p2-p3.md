@@ -37,6 +37,6 @@
 
 운영하면서 에이전트가 같은 실수를 반복하면 그때 더해요.
 
-- CI에서 보호 경로(`CLAUDE.md`, `.claude/`, `docs/harness-log.md`)를 바꾼 PR, `docs/` 브랜치가 아닌 PR에서 `docs/spec/`·결정 대장을 바꾼 PR, `docs/` 브랜치에서 `docs/` 밖을 바꾼 PR을 막는 검사 (라벨로 예외)
+- CI에서 보호 경로(`CLAUDE.md`, `.claude/`, `docs/harness-log.md`)를 바꾼 PR, `docs/` 브랜치가 아닌 PR에서 `docs/spec/`·결정 대장을 바꾼 PR, `docs/` 브랜치에서 `docs/`·루트 `README.md` 밖을 바꾼 PR을 막는 검사 (라벨로 예외)
 - T번호 테스트가 단계 문서의 목록과 맞는지 보는 스크립트
 - 마이그레이션 파일 수정 감지를 CI에서도 하기
