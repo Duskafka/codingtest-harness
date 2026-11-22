@@ -162,7 +162,7 @@ sequenceDiagram
 | DB 비밀번호 (앱·마이그레이션·백업 계정) | 서버 `.env` (권한 600)                 | Supabase에서 변경                                                       |
 | GitHub App private key (운영)           | 서버 파일 (권한 400, 읽기 전용 마운트) | 새 키 발급 후 기존 키 삭제                                              |
 | GitHub 웹훅 시크릿                      | `.env`                                 | App 설정에서 교체. 교체하는 동안은 옛 값과 새 값을 모두 받아들이게 구현 |
-| GitHub OAuth client secret              | `.env`                                 | 재발급                                                                  |
+| GitHub App client secret (로그인)       | `.env`                                 | 재발급                                                                  |
 | VAPID 개인키                            | `.env`                                 | 교체하면 모든 푸시 구독이 무효 → 재구독 안내 (5.8)                      |
 | 디스코드 웹훅 URL 암호화 키             | `.env`                                 | 키 교체 후 저장된 URL 재암호화                                          |
 | (P3) 디스코드 봇 토큰                   | `.env`                                 | 재발급                                                                  |

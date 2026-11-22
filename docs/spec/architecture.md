@@ -105,7 +105,7 @@ flowchart TD
 | 빌드 | Gradle 9.9.2, Groovy DSL (`build.gradle`) | 확정 |
 | 테스트 | JUnit 5, AssertJ, Spring Boot Test, Testcontainers 2 (`postgres:17`, `@ServiceConnection`), MockMvc | 확정 |
 | 테스트 (추가 예정) | ArchUnit (S01), WireMock (외부 API 단계), Awaitility (비동기 단계) | 필요한 단계에서 추가 |
-| 로그인 | Spring Security OAuth2 Client (GitHub) | 확정. 세부 방식은 OD-02 |
+| 로그인 | Spring Security OAuth2 Client (GitHub App의 사용자 인증) | 확정 (OD-02, 결정 제안서 005) |
 | 세션 | Spring Session JDBC (D22) | 확정 (OD-01, 결정 제안서 002) |
 | 스케줄러 잠금 | ShedLock (JDBC) | 확정 (4.1). 첫 스케줄러 단계(S12)에서 추가 |
 | API 명세 | springdoc-openapi (Boot 4 지원 계열) | 확정 (4.4) |
