@@ -7,7 +7,7 @@
 - 상태: 빌드 통과 (테스트 189개, 문서만 바꿈). 첫 시도는 Maven Central 429로 실패했고, 다시 돌려 통과
 - 다음: 사람이 OD-02 결정 → docs PR로 결정 대장·스펙·S04·H-03 반영(005의 '받아들이면 고칠 문서' 표) → S04 '만들 것' 2부터 (새 브랜치 `feat/S04-login-session`)
 - 막힌 것: 결정 대기 OD-02
-- 참고: 사람이 이번 세션에서 답한 것 — 추천 기준은 보안·운영 단순성(OD-01과 같음), 브랜치는 `docs/OD-02-github-login`. 어느 쪽을 골라도 S04에서 정할 것: 토큰을 남기지 않는 구성(Boot 기본 `InMemoryOAuth2AuthorizedClientService`가 토큰을 메모리에 둠), PKCE(`requireProofKey`), 신원 확인 직후 토큰 취소 여부. 세션 시작 때 로컬 `origin/master`가 오래돼 PR #7 병합을 늦게 봤음. 시작할 때 `git fetch origin master`부터 하기
+- 참고: 사람이 이번 세션에서 답한 것 — 추천 기준은 보안·운영 단순성(OD-01과 같음), 브랜치는 `docs/OD-02-github-login`. 어느 쪽을 골라도 S04에서 정할 것: 토큰을 남기지 않는 구성(Boot 기본 `InMemoryOAuth2AuthorizedClientService`가 토큰을 메모리에 둠), PKCE가 붙는지 테스트(Spring Security 7.x는 `requireProofKey` 기본값이 `true`), 신원 확인 직후 토큰 취소 여부. 세션 시작 때 로컬 `origin/master`가 오래돼 PR #7 병합을 늦게 봤음. 시작할 때 `git fetch origin master`부터 하기
 - PR: #
 
 ## 2026-11-22 OD-01·OD-05·OD-06 결정 반영 (docs PR, 단계 진행 아님)

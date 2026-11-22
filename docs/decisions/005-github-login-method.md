@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 상태 | 제안 |
-| 관련 | OD-02, S04, `docs/spec/api.md` 4.5, `docs/spec/processes/5.02-github-connection.md` '주의할 것', `docs/spec/external-systems.md` 4.6 마지막 항목, `docs/spec/infra.md` 9.6 비밀 표('GitHub OAuth client secret' 행), `docs/spec/data-model.md` 4.3(`users`), H-02·H-03, 계획서 ADR-002의 나머지 |
+| 관련 | OD-02, S04, `docs/spec/api.md` 4.5, `docs/spec/processes/5.02-github-connection.md` '주의할 것', `docs/spec/external-systems.md` 4.6 마지막 항목, `docs/spec/infra.md` 9.6 비밀 표('GitHub OAuth client secret' 행), `docs/spec/data-model.md` 4.3(`users`), `docs/spec/product.md` 2.5(랜딩의 '받는 정보' 표시), H-02·H-03, 계획서 ADR-002의 나머지 |
 | 제안 | 에이전트, PR # |
 | 날짜 | 제안 2026-11-22 |
 
@@ -21,12 +21,16 @@ S04 단계 문서가 비교하라는 기준은 넷이에요. 받는 권한 범�
 **스펙의 제약**
 
 - Spring Security OAuth2 Client로 로그인해요. GitHub access token은 신원 확인에만 쓰고 저장하지 않아요 (api.md 4.5, S04 수용 기준 "DB와 로그 어디에도 남지 않는다").
-- 로그인에서 받는 건 `GET /user`의 id·login·avatar뿐이에요 (4.5 그림). `users`도 `github_id`, `github_login`, `avatar_url`만 있고 이메일은 없어요 (data-model 4.3).
+- 로그인에서 받는 건 `GET /user`의 id·login·avatar뿐이에요 (4.5 그림). `users`에서 GitHub에서 받아 저장하는 컬럼도 `github_id`, `github_login`, `avatar_url`이에요 (data-model 4.3). 이메일은 받지 않아요 (security.md 9.8 '최소 수집').
+- 랜딩에 "받는 정보: GitHub ID·이름·프로필 사진뿐"을 보여 줘서 GitHub 로그인 거부감을 줄이기로 했어요 (product.md 2.5 '전환 깔때기' 표와 화면 목록 1번).
 - 설치는 서명된 `installation` 웹훅의 `sender.id`와 `github_id`가 같은 사용자에게만 연결해요. Setup URL의 `installation_id`는 믿지 않아요 (5.2, T21). 5.2 '주의할 것'은 "설치자 확인용 사용자 토큰을 따로 받는 방법도 있어요 (ADR-002)"라고 이 결정을 가리켜요.
 - GitHub App 권한은 Repository → Contents 읽기, Metadata 읽기예요 (4.6). 개발용 앱과 운영용 앱을 따로 등록해요 (external-systems '개발 중에 외부 시스템 다루기', 4.6).
 - 같은 출처 구성이고 Nginx가 `/oauth2/*`·`/login/*`을 Spring으로 넘겨요 (architecture 4.1). 세션은 DB 세션, 쿠키는 SameSite=Lax + `__Host-Http-`예요 (002).
 - 비밀값은 서버 `.env`나 파일에만 두고, 에이전트는 어느 키도 받지 않아요 (infra 9.6, external-systems).
-- Android·iOS 앱은 P1 이후 계획이에요 (002 배경, 사람의 답). 이 결정이 앱을 막지 않아야 해요.
+
+**앞선 결정에서 이어 온 조건**
+
+- Android·iOS 앱을 P1 이후에 만들 계획이 있어요. OD-01 때 사람이 답한 조건이에요 (결정 제안서 002 배경). 이 결정도 앱을 막지 않는 쪽이 좋다고 보고 이어 적용했어요. 다만 스펙은 아직 바뀌지 않았어요. product.md 2.4 '하지 않는 것'에는 "모바일 네이티브 앱 (PWA로 충분)"이 그대로 있어요 (002 PR의 스펙 변경 제안).
 
 **사람이 이번 세션에서 답한 조건 (2026-11-22)**
 
@@ -60,7 +64,7 @@ S04 단계 문서가 비교하라는 기준은 넷이에요. 받는 권한 범�
 | 콜백 URL | 10개까지 | 10개까지 |
 | 웹훅 | 영향 없음 | 사용자가 인증을 취소하면 `github_app_authorization` 이벤트가 와요 (구독을 끌 수 없음). S06은 모르는 이벤트를 204로 넘기므로 바꿀 게 없어요 |
 | Spring 구현 | `CommonOAuth2Provider.GITHUB`. scope를 비우는 설정이 필요해요 | `CommonOAuth2Provider.GITHUB`. scope는 GitHub App에서 무시돼요 ("No other scopes are supported for GitHub Apps") |
-| 앱 (P1 이후) | 웹 흐름 + PKCE | 같음 |
+| 앱 (P1 이후) | 웹 흐름의 토큰 교환에 client secret이 필요해요 (두 앱 모두 "Required"). 그래서 앱 혼자서는 로그인을 끝낼 수 없고 서버를 거쳐 교환해야 할 것으로 보여요 (추측). 앱 로그인 방식은 002대로 앱을 시작할 때 별도 제안서로 정해요 | A와 같음 |
 
 ## 추천과 이유
 
@@ -68,7 +72,7 @@ S04 단계 문서가 비교하라는 기준은 넷이에요. 받는 권한 범�
 
 사람이 답한 기준(보안과 운영 단순성)으로 보면 이래요.
 
-- **운영 단순성:** 웹훅 때문에 GitHub App은 어차피 환경마다 등록해요. B는 그 앱에 콜백 URL과 client secret만 더하면 돼서, 등록할 앱이 넷에서 둘로 줄어요. 비밀값 개수는 같지만 모두 한 앱 설정 화면에서 관리하고 교체해요. 사용자도 GitHub 설정에서 이 서비스를 한 곳에서 봐요. 사람 할 일 H-03(로그인용 OAuth 설정)이 H-02(개발용 GitHub App 등록)에 합쳐져요.
+- **운영 단순성:** 웹훅 때문에 GitHub App은 어차피 환경마다 등록해요. B는 그 앱에 콜백 URL과 client secret만 더하면 돼서, 등록할 앱이 넷에서 둘로 줄어요. 비밀값 개수는 같지만 모두 한 앱 설정 화면에서 관리하고 교체해요. 사용자도 GitHub 설정에서 이 서비스를 한 곳에서 봐요. 사람 할 일 H-03(로그인용 OAuth 설정)이 'OAuth App을 따로 등록하는 일'에서 '개발용 GitHub App에 콜백 URL과 client secret을 더하는 일'로 줄어요 (H-02와 합칠지는 사람이 정해요. 아래 표).
 - **보안:** 두 선택지 모두 토큰을 저장하지 않고 신원 확인 직후 버려요. 그러면 토큰이 새는 길은 '처리 중 메모리'와 '실수로 남긴 로그' 정도예요. 그 상황을 가정하면 이래요.
     - **A:** 닿는 범위는 좁아요 (공개 정보). 대신 만료가 없어서 사용자가 취소할 때까지 유효해요.
     - **B:** 닿는 범위는 넓어요 (설치한 레포 읽기). 대신 8시간 뒤 스스로 만료돼요.
@@ -81,13 +85,13 @@ S04 단계 문서가 비교하라는 기준은 넷이에요. 받는 권한 범�
 **B의 남는 위험과 줄이는 방법**
 
 - 토큰 범위가 A보다 넓어요 → 저장·로그 금지(S04 수용 기준), 8시간 만료 유지, 필요하면 즉시 취소 (아래).
-- 동의 화면의 '대신 행동' 문구가 사용자를 놀라게 할 수 있어요 → 로그인 버튼 근처에 '읽기 권한만 받는다'는 안내를 두는 걸 프론트(S16)에서 검토해요. 문구는 H-02 실제 확인 때 봐요.
+- 동의 화면의 '대신 행동' 문구가 사용자를 놀라게 할 수 있어요. 스펙은 랜딩에 "받는 정보: GitHub ID·이름·프로필 사진뿐"을 보여 주기로 했는데(product.md 2.5), B에서는 이 안내와 동의 화면의 인상이 다를 수 있어요. 서비스가 받아 저장하는 건 B에서도 그대로 ID·이름·프로필 사진뿐이에요. 하지만 동의 화면에는 앱 권한과 '대신 행동' 문구가 뜨고, 설치한 뒤에는 토큰이 레포 내용 읽기까지 닿아요. 랜딩 문구를 그대로 둘지, '읽기 권한만, 토큰은 저장하지 않음' 같은 설명을 더할지는 사람이 정할 일이에요 (아래 표의 product.md 행). 실제 동의 화면 문구는 H-02 실제 확인 때 봐요.
 - 로그인과 설치가 한 앱에 묶여요 → GitHub App 권한을 늘리는 변경은 설치 승인과 함께 로그인 동의 화면에도 영향을 준다는 점을 권한 변경 때 확인해요 (권한은 4.6의 최소 권한이 기본이에요).
 
 **양쪽 공통 (어느 쪽을 골라도 S04에서 판단 기록으로 정할 것)**
 
 - **토큰을 남기지 않는 구성:** Spring Boot는 `InMemoryOAuth2AuthorizedClientService`를 자동 구성하고, 이건 받은 토큰을 메모리에 들고 있어요 (Boot 4.1 문서는 개발 환경용이라고 해요). 스펙의 '저장하지 않음'을 지키려면 로그인 뒤 인가된 클라이언트(토큰)를 보관하지 않는 구성이 필요해요. `JdbcOAuth2AuthorizedClientService`나 세션에 넣는 저장소는 쓰지 않아요.
-- **PKCE:** GitHub은 두 앱 모두 `code_challenge`(S256만)를 "Strongly recommended"로 둬요. Spring Security 7.1은 client secret이 있는 클라이언트에는 PKCE를 기본으로 붙이지 않고, `ClientRegistration.clientSettings.requireProofKey`가 `true`일 때 붙여요. 켜는 걸 권해요.
+- **PKCE:** GitHub은 두 앱 모두 `code_challenge`(S256만)를 "Strongly recommended"로 둬요. Spring Security 7.x는 `authorization_code` 클라이언트의 `ClientRegistration.clientSettings.requireProofKey` 기본값이 `true`라, client secret이 있어도 PKCE를 붙여요. 6.5까지는 기본값이 `false`였어요. 공식 문서도 제공자가 confidential client의 PKCE를 지원하지 않을 때만 `false`로 끄라고 해요. GitHub은 지원하므로 끄지 않고, S04에서 인가 요청에 PKCE가 붙는지 테스트로 확인해요.
 - **즉시 취소 (선택):** `DELETE /applications/{client_id}/token`(client ID·secret으로 Basic 인증)은 OAuth App 토큰(`gho_`)과 GitHub App 사용자 토큰(`ghu_`) 모두에 써요. `GET /user` 직후 부르면 토큰 수명이 사실상 로그인 요청 하나로 줄어요. 실패해도 로그인은 실패시키지 않는 쪽이 맞아 보여요. 요청이 하나 늘어나는 비용과 함께 S04에서 정해요.
 - **사용자 식별:** `CommonOAuth2Provider.GITHUB`의 `userNameAttributeName`은 `id`예요. 그래서 인증 주체 이름이 GitHub 숫자 ID가 되고, `github_id`와 바로 맞아요.
 - **콜백 URL:** Spring 기본은 `{baseUrl}/{action}/oauth2/code/{registrationId}`라 `/login/oauth2/code/github`이 돼요. Nginx가 넘기는 `/login/*`(architecture 4.1)과 맞아요.
@@ -102,8 +106,9 @@ S04 단계 문서가 비교하라는 기준은 넷이에요. 받는 권한 범�
 | `docs/spec/architecture.md` 기술 스택 '로그인' 행 | "세부 방식은 OD-02" → 확정 |
 | `docs/spec/api.md` 머리 안내 | "OD-02가 정해지기 전에는 4.5를 구현하지 않아요" 정리 |
 | `docs/spec/processes/5.02-github-connection.md` '주의할 것' | "(ADR-002)" → 결정 제안서 005 |
-| `docs/steps/README.md` 사람 할 일 | H-03을 H-02에 합치거나, H-03을 '개발용 GitHub App에 콜백 URL·client secret 설정'으로 바꿈. 그러면 개발용 App 등록이 S07보다 앞인 S04의 실제 로그인 확인 때 필요해요 |
-| `docs/steps/S04-login-session.md` | 머리 안내, '사람 할 일', '만들 것' 2(어느 앱의 client ID를 쓰는지) |
+| `docs/steps/README.md` | '사람 할 일' 표: H-03을 H-02에 합치거나, H-03을 '개발용 GitHub App에 콜백 URL·client secret 설정'으로 바꿈 (어느 쪽인지는 사람이 정함). 어느 쪽이든 개발용 App 등록이 S07보다 앞인 S04의 실제 로그인 확인 때 필요해져서, H-02의 '필요한 때' 칸에 S04를 더함. 합치면 로드맵 S04 행의 '사람 할 일' 칸(H-03)도 바뀜 |
+| `docs/steps/S04-login-session.md` | 머리 안내, '사람 할 일', '만들 것' 2(어느 앱의 client ID를 쓰는지), '읽을 문서'에 005 '결정'(과 '양쪽 공통'), '판단 기록이 필요한 곳'에 '양쪽 공통' 항목(토큰을 남기지 않는 구성, PKCE가 붙는지 확인, 즉시 취소 여부) |
+| `docs/spec/product.md` 2.5 (검토 대상) | 랜딩의 "받는 정보: GitHub ID·이름·프로필 사진뿐"을 그대로 둘지, 동의 화면에 뜨는 권한 설명을 더할지 사람이 정함. 정한 경우에만 고침 |
 
 **다른 선택지를 고르면 바뀌는 것**
 
@@ -132,7 +137,8 @@ S04 단계 문서가 비교하라는 기준은 넷이에요. 받는 권한 범�
 - [GitHub REST — OAuth authorizations: Delete an app token](https://docs.github.com/en/rest/apps/oauth-applications#delete-an-app-token): `gho_`·`ghu_` 두 종류 모두, client ID·secret으로 Basic 인증.
 - [GitHub REST — List app installations accessible to the user access token](https://docs.github.com/en/rest/apps/installations#list-app-installations-accessible-to-the-user-access-token), [Get the authenticated user](https://docs.github.com/en/rest/users/users#get-the-authenticated-user): `id`·`login`·`avatar_url`은 공개 응답에도 있음.
 - [Spring Security 7.1 — OAuth 2.0 Login Core Configuration](https://docs.spring.io/spring-security/reference/7.1/servlet/oauth2/login/core.html): `CommonOAuth2Provider`가 GitHub 기본값을 미리 정함, 기본 리다이렉트 URI 템플릿.
-- [Spring Security 7.1 — Authorization Grant Support (PKCE)](https://docs.spring.io/spring-security/reference/7.1/servlet/oauth2/client/authorization-grants.html): PKCE는 공개 클라이언트이거나 `requireProofKey`가 `true`일 때 자동 적용. [7.0 What's New](https://docs.spring.io/spring-security/reference/7.0/whats-new.html)의 'PKCE 기본'은 Authorization Server 쪽이에요.
+- [Spring Security 7.1 — Authorization Grant Support (PKCE)](https://docs.spring.io/spring-security/reference/7.1/servlet/oauth2/client/authorization-grants.html): PKCE는 공개 클라이언트이거나 `requireProofKey`가 `true`일 때 적용. 제공자가 confidential client의 PKCE를 지원하지 않으면 `requireProofKey`를 `false`로 끄라고 함.
+- [Spring Security `ClientRegistration` 소스 (태그 7.1.3)](https://github.com/spring-projects/spring-security/blob/7.1.3/oauth2/oauth2-client/src/main/java/org/springframework/security/oauth2/client/registration/ClientRegistration.java): `ClientSettings.Builder`의 `requireProofKey` 기본값 `true`. `authorization_code`가 아닌 grant에서만 `false`로 바꿈. 6.5.0 태그는 기본값 `false`. [`DefaultOAuth2AuthorizationRequestResolver` (7.1.3)](https://github.com/spring-projects/spring-security/blob/7.1.3/oauth2/oauth2-client/src/main/java/org/springframework/security/oauth2/client/web/DefaultOAuth2AuthorizationRequestResolver.java)는 `isRequireProofKey()`면 PKCE를 붙임.
 - [Spring Security `CommonOAuth2Provider` 소스 (7.1.x 브랜치)](https://github.com/spring-projects/spring-security/blob/7.1.x/config/src/main/java/org/springframework/security/config/oauth2/client/CommonOAuth2Provider.java): GITHUB는 scope `read:user`, `userNameAttributeName` `id`, `client_secret_basic`.
 - [Spring Security 7.1 — OAuth 2.0 Testing (MockMvc)](https://docs.spring.io/spring-security/reference/7.1/servlet/test/mockmvc/oauth2.html): `oauth2Login()`으로 로그인한 사용자를 흉내 냄.
 - [Spring Boot 4.1 — OAuth2](https://docs.spring.io/spring-boot/4.1/reference/security/oauth2.html): `spring.security.oauth2.client.registration.github.*`, `InMemoryOAuth2AuthorizedClientService` 자동 구성(개발 환경용이라고 함).
@@ -144,13 +150,13 @@ S04 단계 문서가 비교하라는 기준은 넷이에요. 받는 권한 범�
 - OAuth App을 scope 없이 쓸 때의 동의 화면 문구, 조직 접근 제한이 로그인에 영향을 주지 않는지
 - OAuth 토큰으로 GitHub App 설치(`GET /user/installations`)를 확인할 수 없는지
 - C에서 콜백에 오는 쿼리 파라미터(`state`, `installation_id`, `setup_action`)와, Spring 기본 로그인 처리가 받지 못하는지
-- Spring Boot 속성으로 scope를 비우거나 `requireProofKey`를 켤 수 있는지, 아니면 `ClientRegistrationRepository`를 직접 만들어야 하는지
+- (A일 때) Spring Boot 속성으로 scope를 비울 수 있는지, 아니면 `ClientRegistrationRepository`를 직접 만들어야 하는지
 - GitHub에 이미 로그인되어 있고 인증한 적이 있을 때 동의 화면 없이 바로 돌아오는지
 
 ## 검증 방법
 
 - **S04 테스트 (어느 쪽이든):** 콜백을 거치면 `users`가 `github_id` 기준으로 생기거나 갱신됨(수용 기준). 인가 요청 리다이렉트에 `code_challenge`와 `code_challenge_method=S256`이 붙는지. 토큰이 DB(`users`, 세션 테이블)와 로그에 없는지(수용 기준). 실제 GitHub에는 접속하지 않고, 콜백 흐름은 토큰·사용자 엔드포인트를 WireMock으로 흉내 내는 방식을 S04에서 검토해요.
-- **'추측' 항목:** scope 비우기·`requireProofKey` 설정 방법은 S04 구현에서 확인해 판단 기록에 적어요.
+- **'추측' 항목:** (A일 때) scope 비우는 설정 방법은 S04 구현에서 확인해 판단 기록에 적어요. PKCE는 기본값으로 붙는지 위 테스트로 확인해요.
 - **실제 확인 (사람, H-02·H-03):** 개발용 앱으로 로그인해서 동의 화면 문구, 토큰 응답의 `expires_in`(B면 28800), 두 번째 로그인 때 동의 화면이 다시 뜨는지를 봐요.
 - **다시 열 조건:** GitHub이 GitHub App 사용자 인증의 동작(만료, 권한 모델)을 바꿀 때. 동의 화면 때문에 가입이 줄어드는 게 운영 데이터로 보일 때. 앱(P1 이후) 로그인을 정할 때.
 
