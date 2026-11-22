@@ -22,8 +22,8 @@ GitHub로 로그인하고, 로그인 상태를 유지하고, `/api/me`로 내 �
 - `docs/spec/processes/5.02-github-connection.md`: '주의할 것' (OD-02 제안서를 쓸 때)
 - `docs/spec/external-systems.md`: 4.6 마지막 항목
 - `docs/decisions/002-login-persistence.md`: '결정' (세션·만료·쿠키)
-- `docs/decisions/003-lombok.md`: '결정', B의 허용 목록과 강제 방법 (이 단계가 첫 엔티티면)
-- `docs/decisions/004-db-schema-name.md`: '결정', '적용 방법' (이 단계가 첫 마이그레이션이면)
+- `docs/decisions/003-lombok.md`: '결정', B의 허용 목록과 강제 방법
+- `docs/decisions/004-db-schema-name.md`: '결정', '적용 방법' (Spring Session JDBC 항목 포함)
 
 ## 만들 것
 
@@ -34,7 +34,10 @@ GitHub로 로그인하고, 로그인 상태를 유지하고, `/api/me`로 내 �
 5. **엔드포인트:** `GET /api/me`, `POST /logout`. 4.4의 나머지 계정 엔드포인트는 그 단계에서 만든다.
 6. **경로별 보안:** `/webhooks/**`는 CSRF와 세션에서 빼고 서명으로만 인증한다는 자리를 만든다 (서명 검증은 S06). `/actuator/health`는 공개.
 7. **인증 실패 응답:** 401과 403을 `application/problem+json`으로 (S01 형식).
-8. **Lombok·스키마 (이 단계가 첫 엔티티·첫 마이그레이션이면):** `build.gradle`에 Lombok(`compileOnly`·`annotationProcessor`, 버전은 Boot BOM)과 레포 루트 `lombok.config`(허용 목록 밖 기능은 `flagUsage = error`)를 더한다 (결정 제안서 003). 앱 테이블은 `studybot` 스키마에 두고, 설정 방법(Flyway·Hibernate·Spring Session·search_path)은 판단 기록으로 정한다 (결정 제안서 004).
+8. **Lombok·스키마:** 엔티티는 결정 제안서 003의 허용 목록만 쓰고, `users`·`spring_session` 테이블은 `studybot` 스키마에 둔다 (결정 제안서 004).
+    - 이 단계가 첫 엔티티면: `build.gradle`에 Lombok(`compileOnly`·`annotationProcessor`·`testCompileOnly`·`testAnnotationProcessor`, 버전은 Boot BOM)과 레포 루트 `lombok.config`(`config.stopBubbling = true`, 허용 목록 밖 기능은 `flagUsage = error`)를 더한다.
+    - 이 단계가 첫 마이그레이션이면: 설정 방법(Flyway·Hibernate·Spring Session·search_path)을 판단 기록으로 정한다.
+    - 앞 단계(예: S06)가 이미 더했으면 그 설정과 판단 기록을 따르고, Spring Session JDBC 테이블도 같은 방식으로 `studybot`에 둔다.
 
 ## 만들지 않을 것
 
@@ -61,4 +64,4 @@ GitHub로 로그인하고, 로그인 상태를 유지하고, `/api/me`로 내 �
 ## 판단 기록이 필요한 곳
 
 - **결정 제안서:** OD-02 (위 1번)
-- **판단 기록:** 세션 30일 롤링 구현 방식과 트레이드오프 (4.5가 근거를 남기라고 함), `users` 갱신 항목
+- **판단 기록:** 세션 30일 롤링 구현 방식 (만료 정책은 결정 제안서 002에서 정함), `users` 갱신 항목, (첫 엔티티면) `@Builder` 쓰는 방식 (결정 제안서 003), (첫 마이그레이션이면) 스키마 설정 방법 (결정 제안서 004)
