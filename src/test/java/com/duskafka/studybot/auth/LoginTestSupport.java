@@ -53,6 +53,9 @@ abstract class LoginTestSupport {
 
 	static final long THIRTY_DAYS_SECONDS = 30L * 24 * 60 * 60;
 
+	/** 로그인 요청을 보내는 브라우저의 주소. 문서용 대역(RFC 5737 TEST-NET-3)이라 실제 주소가 아니다. */
+	static final String CLIENT_IP = "203.0.113.45";
+
 	@Autowired
 	protected MockMvcTester mvc;
 
@@ -91,6 +94,10 @@ abstract class LoginTestSupport {
 		MvcTestResult callback = mvc.get()
 			.uri(CALLBACK_PATH + "?code={code}&state={state}", "s04-test-code", state)
 			.cookie(new Cookie(SESSION_COOKIE, preLoginSession))
+			.with(request -> {
+				request.setRemoteAddr(CLIENT_IP);
+				return request;
+			})
 			.exchange();
 		String session = cookieValue(callback, SESSION_COOKIE).orElse(preLoginSession);
 		return new Login(authorization, callback, preLoginSession, session,

@@ -107,13 +107,15 @@ class SessionCookieIntegrationTest extends LoginTestSupport {
 		assertThat(withSession(mvc.get().uri("/api/me"), login.session())).hasStatus(HttpStatus.UNAUTHORIZED);
 	}
 
-	/** 이 사용자의 세션이 마지막 요청 뒤 이만큼 지난 것처럼 마지막 접근 시각과 만료 시각을 DB 시각 기준으로 돌린다. */
+	/**
+	 * 이 사용자의 세션이 마지막 요청 뒤 이만큼 지난 것처럼 마지막 접근 시각과 만료 시각을 과거로 민다. 기준은 Spring Session이
+	 * 방금 적은 값(앱 JVM의 시각)이다. DB의 now()를 쓰면 DB와 JVM의 시계가 어긋날 때 경계 테스트가 흔들린다.
+	 */
 	private void pretendIdleFor(String principalName, long idleMillis) {
 		int updated = jdbc.sql("""
 				update studybot.spring_session
-				set last_access_time = cast(extract(epoch from now()) * 1000 as bigint) - :idle,
-					expiry_time = cast(extract(epoch from now()) * 1000 as bigint) - :idle
-						+ cast(max_inactive_interval as bigint) * 1000
+				set last_access_time = last_access_time - :idle,
+					expiry_time = expiry_time - :idle
 				where principal_name = :name
 				""").param("idle", idleMillis).param("name", principalName).update();
 		assertThat(updated).isEqualTo(1);
@@ -141,6 +143,8 @@ class SessionCookieIntegrationTest extends LoginTestSupport {
 		assertThat(logout).hasStatus(HttpStatus.NO_CONTENT);
 		assertThat(setCookieHeader(logout, SESSION_COOKIE)).hasValueSatisfying(
 				header -> assertThat(attributesOf(header)).contains("Max-Age=0"));
+		assertThat(setCookieHeader(logout, XSRF_COOKIE)).as("로그아웃하면 CSRF 토큰 쿠키도 지운다")
+			.hasValueSatisfying(header -> assertThat(attributesOf(header)).contains("Max-Age=0"));
 		assertThat(jdbc.sql("select count(*) from studybot.spring_session where principal_name = :name")
 			.param("name", principalName)
 			.query(Long.class)

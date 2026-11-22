@@ -42,8 +42,9 @@ class PathSecurityIntegrationTest extends LoginTestSupport {
 	/**
 	 * S01의 {@code ActuatorExposureIntegrationTest}는 CSRF 토큰 없이 POST를 보내 4xx를 확인한다. S04부터는 그 요청이
 	 * CSRF 검사(403)에서 먼저 막혀서 엔드포인트가 노출됐는지 알 수 없다. 그래서 CSRF 토큰을 붙여 한 번 더 본다.
+	 * 404로 좁힌다. GET만 받는 엔드포인트가 노출되면 POST는 405가 되므로, '4xx'로는 노출을 가려내지 못한다.
 	 */
-	@ParameterizedTest(name = "S04: CSRF 토큰을 붙여도 POST /actuator/{0}는 노출되지 않는다 (403이 아닌 4xx)")
+	@ParameterizedTest(name = "S04: CSRF 토큰을 붙여도 POST /actuator/{0}는 노출되지 않는다 (404)")
 	@ValueSource(strings = { "env", "heapdump", "configprops", "beans", "mappings", "loggers", "info", "metrics",
 			"threaddump", "shutdown" })
 	void actuatorPostIsNotExposedEvenWithCsrfToken(String endpoint) {
@@ -55,8 +56,7 @@ class PathSecurityIntegrationTest extends LoginTestSupport {
 			.header(XSRF_HEADER, csrf)
 			.exchange();
 
-		assertThat(result).hasStatus4xxClientError();
-		assertThat(result.getResponse().getStatus()).isNotEqualTo(HttpStatus.FORBIDDEN.value());
+		assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
 	}
 
 	@Test

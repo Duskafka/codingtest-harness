@@ -23,4 +23,9 @@ public class ProtectedEntity {
 		this.name = newName;
 	}
 
+	/** 이름이 set으로 시작하지만 setter가 아닌 도메인 메서드 (정산의 settle 같은 것). 규칙에 걸리면 안 된다. */
+	public void settle() {
+		this.name = this.name + " (settled)";
+	}
+
 }

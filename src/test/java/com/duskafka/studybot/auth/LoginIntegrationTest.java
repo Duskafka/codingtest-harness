@@ -152,6 +152,19 @@ class LoginIntegrationTest extends LoginTestSupport {
 		assertThat(rowsContainingInAppTables(GithubOAuthStub.PROFILE_EMAIL)).isZero();
 	}
 
+	/**
+	 * Spring Security는 로그인 결과에 요청 정보(접속 IP, 로그인 전 세션 ID)를 붙여 세션에 함께 저장한다. 세션은 30일 롤링이라
+	 * 끝없이 이어질 수 있어서, 접속 기록을 짧게 두는 9.8과 맞지 않는다.
+	 */
+	@Test
+	@DisplayName("S04: 세션에는 로그인한 브라우저의 접속 IP를 저장하지 않는다")
+	void sessionDoesNotStoreClientIp() {
+		login(4801L, "octo-ip", "https://avatars.example.com/u/4801");
+
+		assertThat(sessionAttributesContaining(CLIENT_IP)).isZero();
+		assertThat(rowsContainingInAppTables(CLIENT_IP)).isZero();
+	}
+
 	private Map<String, Object> userRow(long githubId) {
 		return jdbc.sql("select github_login, avatar_url, created_at, deleted_at from studybot.users where github_id = :id")
 			.param("id", githubId)

@@ -50,7 +50,8 @@ final class EntityRules {
 			.areDeclaredInClassesThat()
 			.areAnnotatedWith(Entity.class)
 			.and()
-			.haveNameStartingWith("set")
+			// setName처럼 set 뒤가 대문자인 것만 setter로 본다. settle·setup 같은 도메인 메서드는 걸리지 않는다.
+			.haveNameMatching("set[A-Z].*")
 			.should()
 			.notBePublic()
 			.because("엔티티 값은 의미 있는 메서드로만 바꾼다 (결정 제안서 003)")

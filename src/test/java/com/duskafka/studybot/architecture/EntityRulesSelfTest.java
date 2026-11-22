@@ -30,7 +30,7 @@ class EntityRulesSelfTest {
 	}
 
 	@Test
-	@DisplayName("S04: 엔티티의 public setter는 걸리고, 엔티티가 아닌 클래스의 setter는 걸리지 않는다")
+	@DisplayName("S04: 엔티티의 public setter는 걸리고, 엔티티가 아닌 클래스의 setter와 set으로 시작하는 도메인 메서드(settle)는 걸리지 않는다")
 	void publicSetterIsDetected() {
 		EvaluationResult result = EntityRules.noPublicSetters(FIXTURES).evaluate(CLASSES);
 

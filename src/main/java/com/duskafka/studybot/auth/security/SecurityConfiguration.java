@@ -65,6 +65,9 @@ public class SecurityConfiguration {
 				.loginPage(LOGIN_SUCCESS_URL)
 				.authorizedClientRepository(authorizedClientRepository)
 				.userInfoEndpoint(userInfo -> userInfo.userService(githubOAuth2UserService))
+				// 기본값은 로그인 결과에 요청 정보(접속 IP, 로그인 전 세션 ID)를 붙여 세션과 함께 DB에 저장한다.
+				// 세션은 30일 롤링이라 접속 기록이 끝없이 남을 수 있어서 붙이지 않는다 (security.md 9.8).
+				.authenticationDetailsSource(request -> null)
 				.defaultSuccessUrl(LOGIN_SUCCESS_URL, true)
 				.failureUrl(LOGIN_FAILURE_URL))
 			.csrf(csrf -> csrf.spa())
