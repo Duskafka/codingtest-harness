@@ -15,7 +15,7 @@
 
 **스펙의 요구:** infra.md 9.4는 Supabase에서 "Data API 끄기 + 앱 테이블은 `public`이 아닌 별도 스키마"를 쓰라고 해요. 9.10 운영 시작 전 점검표에도 "Data API 꺼짐"이 있어요. 이름은 정해져 있지 않아요.
 
-**왜 `public`이 아닌가 (Supabase 문서):** Supabase는 `public` 스키마를 Data API(자동 REST·GraphQL 엔드포인트)에 기본으로 노출해요. 별도 스키마는 'Exposed schemas'에 넣고 권한을 줘야 노출돼요. Data API를 끄면 권한과 상관없이 어떤 자동 엔드포인트도 응답하지 않아요. 그래서 9.4의 두 가지는 서로를 받쳐 주는 이중 방어예요. 이 서비스는 Spring만 DB에 접근하므로(D11) Data API가 필요 없어요.
+**왜 `public`이 아닌가 (Supabase 문서):** Supabase는 `public` 스키마를 Data API(자동 REST·GraphQL 엔드포인트)에 기본으로 노출해요. 별도 스키마는 'Exposed schemas'에 넣고 권한을 줘야 노출돼요. Data API를 끄면 권한·RLS와 상관없이 자동 REST 엔드포인트가 응답하지 않아요 (GraphQL 쪽은 문서에서 따로 확인하지 않았어요). 그래서 9.4의 두 가지는 서로를 받쳐 주는 이중 방어예요. 이 서비스는 Spring만 DB에 접근하므로(D11) Data API가 필요 없어요.
 
 **제약**
 
@@ -44,20 +44,24 @@
 
 이름만 정하면 되고, 설정 방법은 첫 마이그레이션을 만드는 단계에서 정하는 걸 제안해요. 그때 볼 것을 적어 둬요.
 
-- **Flyway:** `spring.flyway.default-schema`, `spring.flyway.schemas`. `spring.flyway.create-schemas`는 기본이 `true`라 스키마가 없으면 만들어요. 운영에서 스키마를 마이그레이션 역할이 만들게 할지, 미리 만들어 둘지는 9.4 역할 분리와 함께 정해요.
-- **JPA(Hibernate):** `spring.jpa.properties.hibernate.default_schema`로 기본 스키마를 지정하거나, 연결의 search_path로 맞춰요.
+- **Flyway:** `spring.flyway.default-schema`, `spring.flyway.schemas`. `spring.flyway.create-schemas`는 기본이 `true`이고, `spring.flyway.schemas`에 적은 스키마가 없으면 만들어요 (`default-schema`만 적었을 때도 만드는지는 확인하지 못했어요). 운영에서 스키마를 마이그레이션 역할이 만들게 할지, 미리 만들어 둘지는 9.4 역할 분리와 함께 정해요.
+- **JPA(Hibernate):** `spring.jpa.properties.hibernate.default_schema`(Hibernate 설정 `hibernate.default_schema`)로 기본 스키마를 지정하거나, 연결의 search_path로 맞춰요.
 - **Spring Session JDBC:** 테이블 이름 기본값은 `SPRING_SESSION`이에요 (`spring.session.jdbc.table-name`). search_path에 맡길지, 스키마를 붙인 이름을 쓸지 정해요.
 - **ShedLock(S12):** 잠금 테이블도 같은 스키마에 둬요.
 - **search_path 지정:** PostgreSQL JDBC의 `currentSchema` 연결 속성으로 지정할 수 있어요. 다만 Supabase의 Session pooler가 연결할 때 이 값을 넘겨주는지는 확인하지 못했어요 (추측). 안 되면 역할에 기본 search_path를 거는 방법(`ALTER ROLE … SET search_path`)이나, 위처럼 설정마다 스키마를 적는 방법이 있어요.
-- **역할과 권한:** 마이그레이션 역할이 스키마를 소유하고, 앱 역할에는 스키마 사용 권한과 테이블 권한만 줘요 (9.4). 운영 DB에 역할을 만드는 건 사람 할 일(H-07)이에요.
+- **역할과 권한:** 마이그레이션 역할이 스키마를 소유하고, 앱 역할에는 스키마 사용 권한과 테이블 권한만, 백업 역할에는 스키마 사용 권한과 읽기 권한만 줘요 (9.4의 세 역할). 운영 DB에 역할을 만드는 건 사람 할 일(H-07)이에요.
+- **백업과 복구(S17):** 백업 스크립트(`pg_dump`, 백업 전용 계정, 9.6)는 `studybot` 스키마를 대상으로 하고, 복구 런북도 이 스키마 기준으로 써요. 백업 역할이 새로 생기는 테이블도 읽을 수 있게 기본 권한을 정해야 해요.
 
 **A를 받아들이면 바뀌는 것**
 
 | 문서 | 바뀌는 곳 | 누가 |
 |---|---|---|
+| `docs/decisions/README.md` | OD-06 행의 '상태'·'결정', '결정 제안서 목록'에 004 | 사람 |
 | `docs/spec/infra.md` 9.4 | "`public`이 아닌 별도 스키마" → 이름 `studybot`을 적음 | 사람 |
 | `docs/spec/data-model.md` 머리 안내 | "첫 마이그레이션 전에 스키마 이름(OD-06)이 정해져야" → 정해졌다고 정리 | 사람 |
 | `docs/spec/infra.md` 9.10 점검표 | (선택) "앱 테이블이 `studybot` 스키마에 있고 `public`에 없음" 추가 | 사람 |
+| 첫 마이그레이션을 만드는 단계의 단계 문서 (S04·S05·S06 중 먼저 하는 것) | '읽을 문서'에 결정 제안서 004(또는 infra.md 9.4), '만들 것'에 스키마 설정 추가. 단계 문서에 없으면 그 단계의 에이전트가 이 결정을 읽지 않아요 | 사람 |
+| `docs/steps/S17-deploy-artifacts.md` | '만들 것' 6(백업 스크립트)·7(복구 런북)에 대상 스키마 `studybot` | 사람 |
 | 첫 마이그레이션 단계 | 위 '적용 방법'을 판단 기록으로 정하고 설정에 반영 | 에이전트 |
 
 **다른 선택지를 고르면 바뀌는 것**
@@ -72,7 +76,8 @@
 - [Supabase Docs — Using Custom Schemas](https://supabase.com/docs/guides/api/using-custom-schemas) (2026-09-03 갱신): `public`은 Data API에 기본 노출, 별도 스키마는 'Exposed schemas'에 넣고 권한을 줘야 노출.
 - [Supabase Docs — Securing your API](https://supabase.com/docs/guides/database/hardening-data-api) (2026-11-19 갱신): Data API를 끄면 권한·RLS와 상관없이 자동 REST 엔드포인트가 응답하지 않음. 노출하지 않을 테이블은 노출하지 않는 스키마에.
 - [Supabase Docs — Managing User Data](https://supabase.com/docs/guides/auth/managing-user-data): Supabase Auth가 `auth.users`(`auth` 스키마)를 씀.
-- [Spring Boot 4.1 — Application Properties](https://docs.spring.io/spring-boot/4.1/appendix/application-properties/index.html): `spring.flyway.schemas`, `spring.flyway.default-schema`, `spring.flyway.create-schemas`(기본 `true`), `spring.session.jdbc.table-name`(기본 `SPRING_SESSION`), `spring.jpa.properties.*`.
+- [Spring Boot 4.1 — Application Properties](https://docs.spring.io/spring-boot/4.1/appendix/application-properties/index.html): `spring.flyway.schemas`, `spring.flyway.default-schema`, `spring.flyway.create-schemas`(기본 `true`, "create the schemas specified in the schemas property"), `spring.session.jdbc.table-name`(기본 `SPRING_SESSION`), `spring.jpa.properties.*`.
+- [Hibernate ORM 7.4 Introduction](https://docs.hibernate.org/orm/7.4/introduction/html_single/) 표 2.10: `hibernate.default_schema`는 스키마를 밝히지 않은 엔티티의 기본 스키마.
 - [PostgreSQL JDBC — Connection parameters](https://jdbc.postgresql.org/documentation/use/): `currentSchema`는 연결의 search_path에 들어갈 스키마.
 - 버전: [spring-boot-dependencies 4.1.3 POM](https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies/4.1.3/spring-boot-dependencies-4.1.3.pom)이 Flyway 12.4.0, PostgreSQL JDBC 42.7.14, Hibernate 7.4.15를 관리.
 
@@ -80,6 +85,8 @@
 
 - Supabase가 프로젝트에 만드는 스키마 이름 전체 목록 (`studybot`이 겹치지 않는지는 대시보드에서 확인)
 - Supabase Session pooler가 `currentSchema`(연결 시작 시 search_path)를 넘겨주는지
+- `spring.flyway.schemas` 없이 `default-schema`만 적었을 때 Flyway가 스키마를 만드는지
+- Data API를 껐을 때 GraphQL 엔드포인트도 응답하지 않는지 (인용한 문서는 REST만 말해요)
 - `app` 같은 흔한 이름을 다른 도구가 쓸 가능성
 
 ## 검증 방법
