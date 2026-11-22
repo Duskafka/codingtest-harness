@@ -80,7 +80,7 @@ sequenceDiagram
 **만들 것**
 
 - Spring Security OAuth2 Client로 GitHub 로그인. GitHub의 access token은 신원 확인에만 쓰고 저장하지 않아요.
-- Spring Session JDBC로 세션을 DB에 저장 (D22). 쿠키는 HttpOnly, Secure, SameSite=Lax
+- Spring Session JDBC로 세션을 DB에 저장 (D22). 쿠키는 HttpOnly, Secure, SameSite=Lax, __Host-Http-
 - CSRF: 토큰을 쿠키로 내려주고, SPA가 `X-XSRF-TOKEN` 헤더로 돌려보내는 방식
 - 권한 검사는 한 곳 (`StudyAccess`)에 모으고 모든 API에 적용
 - 관리자 기능 (`/admin/**`)은 Cloudflare Access (무료, 50명까지) 뒤에 두고 앱에서도 역할 확인
