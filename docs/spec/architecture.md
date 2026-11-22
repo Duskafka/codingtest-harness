@@ -106,14 +106,14 @@ flowchart TD
 | 테스트 | JUnit 5, AssertJ, Spring Boot Test, Testcontainers 2 (`postgres:17`, `@ServiceConnection`), MockMvc | 확정 |
 | 테스트 (추가 예정) | ArchUnit (S01), WireMock (외부 API 단계), Awaitility (비동기 단계) | 필요한 단계에서 추가 |
 | 로그인 | Spring Security OAuth2 Client (GitHub) | 확정. 세부 방식은 OD-02 |
-| 세션 | Spring Session JDBC (계획서 기본안, D22) | OD-01 |
+| 세션 | Spring Session JDBC (D22) | 확정 (OD-01, 결정 제안서 002) |
 | 스케줄러 잠금 | ShedLock (JDBC) | 확정 (4.1). 첫 스케줄러 단계(S12)에서 추가 |
 | API 명세 | springdoc-openapi (Boot 4 지원 계열) | 확정 (4.4) |
 | 요청 수 제한 | Bucket4j 등 (9.7) | 구현 단계에서 판단 기록 |
 | 웹 푸시 | 라이브러리 미정 | OD-11 |
 | Redis | 쓰지 않음 (계획서) | OD-03 |
 | QueryDSL | 쓰지 않음, 조회 전용 DTO 쿼리 (계획서) | OD-04 |
-| Lombok | 미정 | OD-05 |
+| Lombok | 허용 목록: `@Getter`, `@NoArgsConstructor(access = PROTECTED)`, `@RequiredArgsConstructor`, `@Slf4j`, `@Builder`. 나머지는 `lombok.config`로 막음. 값 객체·DTO는 record | 확정 (OD-05, 결정 제안서 003). 첫 엔티티 단계에서 추가 |
 
 **Boot 4에서 자주 틀리는 것.** 인터넷 예제와 AI가 만드는 코드는 Spring Boot 3.x 기준이 많아요. 아래는 공식 마이그레이션 가이드로 확인하고 써요.
 

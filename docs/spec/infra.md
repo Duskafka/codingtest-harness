@@ -96,7 +96,7 @@ sequenceDiagram
 - 연결: Session pooler (IPv4, 5432). Transaction mode (6543)는 prepared statement를 지원하지 않아서 쓰지 않음 [S43]
 - SSL 강제 + 앱은 `sslmode=verify-full`로 인증서까지 검증 [S46]
 - Network Restrictions: Lightsail 고정 IP만 허용 [S45]. 내 PC에서 볼 일이 있으면 잠깐 추가했다가 지우기
-- Data API 끄기 + 앱 테이블은 `public`이 아닌 별도 스키마
+- Data API 끄기 + 앱 테이블은 `public`이 아닌 별도 스키마 `studybot` (OD-06, 결정 제안서 004)
 - DB 역할 분리: 마이그레이션용 (소유자) / 앱 실행용 (조회·쓰기) / 백업용 (읽기). 원장 테이블은 앱 역할에서 UPDATE·DELETE 회수
 - 커넥션 풀은 작게 (최대 5~10). 세션 테이블 (D22)도 같은 DB라 요청마다 조회가 생기니 실제 사용량을 확인
 - 1주일 비활성 시 일시정지 [S42] → 판정 배치가 매일 돌면 해당 없음. 서버가 오래 죽으면 DB도 멈출 수 있으니 헬스체크 알림 필수
