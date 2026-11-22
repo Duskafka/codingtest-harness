@@ -8,7 +8,7 @@
 - 다음: 사람이 002의 '결정'을 채우고 결정 대장 OD-01 행·제안서 목록을 고침 → OD-05·OD-06도 정해지면 S04 시작 (S04는 OD-02 제안서부터)
 - 막힌 것: 결정 대기 OD-01. 사람이 정할 값: 절대 만료 기간
 - 참고: 이번 세션에서 사람이 답한 조건 — Android·iOS 앱은 P1 이후 계획(스펙 2.4와 달라 스펙 변경 제안), 로그아웃·탈퇴는 즉시 무효화, 추천 기준은 보안·운영 단순성
-- PR: (열면 채움)
+- PR: #4
 
 ## 2026-11-22 S03 문제 식별 파서 (세션 1/1)
 - 한 일: `verification`에 `ProblemParser.parse(message, paths) → ParsedCommit`(식별한 문제 + 확인 대기 후보), `ProblemRef`, `Platform`(BOJ·PROGRAMMERS·LEETCODE), 파서 버전 1. 커밋 샘플 18개(`src/test/resources/commit-samples/`, 형식은 그 폴더 README)
