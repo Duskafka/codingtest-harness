@@ -4,7 +4,7 @@
 |---|---|
 | 상태 | 제안 |
 | 관련 | OD-02, S04, `docs/spec/api.md` 4.5, `docs/spec/processes/5.02-github-connection.md` '주의할 것', `docs/spec/external-systems.md` 4.6 마지막 항목, `docs/spec/infra.md` 9.6 비밀 표('GitHub OAuth client secret' 행), `docs/spec/data-model.md` 4.3(`users`), `docs/spec/product.md` 2.5(랜딩의 '받는 정보' 표시), H-02·H-03, 계획서 ADR-002의 나머지 |
-| 제안 | 에이전트, PR # |
+| 제안 | 에이전트, PR #8 |
 | 날짜 | 제안 2026-11-22 |
 
 <!-- 여기부터 '검증 방법'까지 에이전트가 써요 -->
