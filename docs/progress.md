@@ -2,6 +2,14 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-22 OD-05·OD-06 결정 제안서 (S04·S05·S06 게이트 준비, 단계 진행 아님)
+- 한 일: 사람 요청으로 결정 제안서 003(Lombok, 추천 B: 범위를 정해 허용 — `@Getter`, 보호된 기본 생성자, `@RequiredArgsConstructor`, `@Slf4j`만, `@Data`·`@Value`·엔티티 `@Setter`·`@EqualsAndHashCode`·`@ToString` 금지)과 004(DB 스키마 이름, 추천 `studybot` 하나) 초안
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 다음: 사람이 003·004의 '결정'을 채우고 결정 대장 OD-05·OD-06 행·제안서 목록, architecture.md 'Lombok' 행, infra 9.4·data-model 머리 안내를 고침 → OD-01(PR #4)까지 병합되면 S06 또는 S04 시작 (S04는 OD-02 제안서부터)
+- 막힌 것: 결정 대기 OD-05·OD-06. 사람이 정할 것: `@Builder` 허용 여부
+- 참고: 이번 세션에서 사람이 답한 것 — OD-05 기준은 읽기 쉬움, OD-06 이름은 `studybot`. Lombok 애너테이션은 SOURCE 보존이라 ArchUnit으로 검사할 수 없음(jar에서 확인). PR #4와 이 기록 위치가 겹쳐 나중에 병합되는 쪽에서 충돌을 풀어야 함
+- PR: (열면 채움)
+
 ## 2026-11-22 S03 문제 식별 파서 (세션 1/1)
 - 한 일: `verification`에 `ProblemParser.parse(message, paths) → ParsedCommit`(식별한 문제 + 확인 대기 후보), `ProblemRef`, `Platform`(BOJ·PROGRAMMERS·LEETCODE), 파서 버전 1. 커밋 샘플 18개(`src/test/resources/commit-samples/`, 형식은 그 폴더 README)
 - 상태: 빌드 통과 (테스트 189개)
