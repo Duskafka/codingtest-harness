@@ -1,0 +1,13 @@
+{
+  "provenance": "추측",
+  "origin": "BaekjoonHub master (manifest 1.4.29, 2026-11-22 확인). https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/baekjoon/uploadfunctions.js (uploadExamplesFromProblemPage)",
+  "description": "문제 페이지에서 예제 입출력만 올린 커밋 → 풀이가 아니므로 결과 없음",
+  "message": "[Silver I] Title: 미로 탐색 - 예제 입출력 -BaekjoonHub",
+  "paths": [
+    "백준/Silver/2178. 미로\u2005탐색/input1.txt",
+    "백준/Silver/2178. 미로\u2005탐색/output1.txt",
+    "백준/Silver/2178. 미로\u2005탐색/input2.txt",
+    "백준/Silver/2178. 미로\u2005탐색/output2.txt"
+  ],
+  "expected": []
+}

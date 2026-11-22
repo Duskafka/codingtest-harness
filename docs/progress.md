@@ -2,6 +2,14 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-22 S03 문제 식별 파서 (세션 1/1)
+- 한 일: `verification`에 `ProblemParser.parse(message, paths) → ParsedCommit`(식별한 문제 + 확인 대기 후보), `ProblemRef`, `Platform`(BOJ·PROGRAMMERS·LEETCODE), 파서 버전 1. 커밋 샘플 18개(`src/test/resources/commit-samples/`, 형식은 그 폴더 README)
+- 상태: 빌드 통과 (테스트 189개)
+- 다음: PR 검토와 병합. 판단 기록 '입출력 모양'·'Platform 값'·'ProblemRef 위치'(꼭 봐 주세요), 스펙 변경 제안(5.4 표), data-model에 파서 버전 컬럼 없음 확인 → 다음 단계 S06(OD-05·OD-06 결정 뒤) 또는 S04
+- 막힌 것: 사람 할 일 H-01. 샘플이 모두 '추측'(백준허브 manifest 1.4.29·LeetHub 공개 소스로 만듦). 실제 커밋을 받으면 `"실제"` 샘플로 더한다
+- 참고: 백준허브 일괄 업로드(`전체 코드 업로드 -BaekjoonHub`)는 결과 없음 — 세션 중 사람이 정함. 경로 접두사로 확인 대기를 정하는 건 S08 몫이고, `progress`가 `ProblemRef`를 써야 하면 S09에서 `common`으로 옮길지 판단
+- PR: #3
+
 ## 2026-11-22 S02 시간 계산 (세션 1/1)
 - 한 일: `common.time`에 `StudyTimeRule`(R1 범위 검증)과 `StudyCalendar`(`studyDayOf`, `boundaryOf`, `isInGrace`, `reminderAt`, `judgeAt`, `isRestDay`). 서머타임 경계는 뉴욕·산티아고·로드하우 2026년 전환일로 테스트
 - 상태: 빌드 통과 (테스트 113개)

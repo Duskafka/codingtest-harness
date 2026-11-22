@@ -1,0 +1,10 @@
+{
+  "provenance": "추측",
+  "origin": "S03 수용 기준 'README만 고친 커밋 → 결과 없음'",
+  "description": "레포 루트의 README만 고친 커밋",
+  "message": "Update README.md",
+  "paths": [
+    "README.md"
+  ],
+  "expected": []
+}

@@ -1,0 +1,15 @@
+{
+  "provenance": "추측",
+  "origin": "LeetHub-3.0 v0.0.16: https://github.com/raphaelheinz/LeetHub-3.0/blob/v0.0.16/src/js/leetcode.js (constructGitHubPath: useDifficultyFolder 옵션)",
+  "description": "난이도 폴더 옵션: LeetCode/Easy/ 아래",
+  "message": "Time: 3 ms (98.10%), Space: 17.2 MB (45.00%) - LeetHub",
+  "paths": [
+    "LeetCode/Easy/0001-two-sum/0001-two-sum.py"
+  ],
+  "expected": [
+    {
+      "platform": "LEETCODE",
+      "problemNo": "1"
+    }
+  ]
+}

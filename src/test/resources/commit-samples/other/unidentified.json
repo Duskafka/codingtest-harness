@@ -1,0 +1,14 @@
+{
+  "provenance": "추측",
+  "origin": "5.4 흐름도의 '확인 대기' (접두사 판단은 호출하는 쪽, S08)",
+  "description": "직접 커밋한 풀이: 식별하지 못한 풀이 파일은 확인 대기 후보로, README는 무시",
+  "message": "3일차 풀이",
+  "paths": [
+    "algorithms/day3/Main.java",
+    "algorithms/README.md"
+  ],
+  "expected": [],
+  "expectedUnidentified": [
+    "algorithms/day3/Main.java"
+  ]
+}
