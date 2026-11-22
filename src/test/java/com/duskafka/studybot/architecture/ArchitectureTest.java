@@ -53,6 +53,18 @@ class ArchitectureTest {
 	}
 
 	@Test
+	@DisplayName("S04: 엔티티 기본 생성자는 protected다 (결정 제안서 003)")
+	void entityNoArgConstructorsAreProtected() {
+		EntityRules.noArgConstructorsAreProtected(BASE_PACKAGE).check(mainClasses);
+	}
+
+	@Test
+	@DisplayName("S04: 엔티티에 public setter가 없다 (결정 제안서 003)")
+	void entitiesHaveNoPublicSetters() {
+		EntityRules.noPublicSetters(BASE_PACKAGE).check(mainClasses);
+	}
+
+	@Test
 	@DisplayName("S01: main 클래스는 루트 패키지나 모듈 패키지에만 있다")
 	void everyClassBelongsToAModule() {
 		ModuleRules.everyClassBelongsToAModule(BASE_PACKAGE).check(mainClasses);

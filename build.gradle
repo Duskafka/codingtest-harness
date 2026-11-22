@@ -22,7 +22,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
 	// GitHub App의 사용자 인증으로 로그인 (결정 제안서 005), 세션은 DB에 (D22, 결정 제안서 002)
-	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+	// Boot 4.1에서 spring-boot-starter-oauth2-client는 이 이름으로 바뀌었다 (옛 이름은 deprecated)
+	implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
 	implementation 'org.springframework.boot:spring-boot-starter-session-jdbc'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
@@ -38,6 +39,7 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-session-jdbc-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'

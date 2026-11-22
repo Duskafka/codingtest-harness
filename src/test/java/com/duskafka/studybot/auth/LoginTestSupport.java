@@ -32,6 +32,10 @@ import org.springframework.web.util.UriComponentsBuilder;
  *
  * <p>S04 테스트 클래스는 이 클래스를 상속해 Spring 컨텍스트(와 DB 컨테이너) 하나를 함께 쓴다.
  * 테스트끼리 DB를 공유하므로 사용자는 테스트마다 다른 github_id를 쓴다.
+ *
+ * <p>이 컨텍스트에서는 Spring Security 테스트의 {@code csrf()} 후처리기를 쓰지 않는다. 그 후처리기는 공유 CsrfFilter의 토큰
+ * 저장소를 세션 저장소로 바꿔 끼워서, 뒤에 도는 테스트에서 XSRF-TOKEN 쿠키가 사라진다. CSRF 토큰은 SPA처럼 쿠키로 받아
+ * 헤더로 돌려보낸다 ({@link #csrfTokenFor}, {@link #anonymousCsrfToken}).
  */
 @IntegrationTest
 @Import(LoginTestSupport.TestEndpoints.class)
@@ -105,6 +109,14 @@ abstract class LoginTestSupport {
 			return login.xsrfToken();
 		}
 		MvcTestResult result = withSession(mvc.get().uri("/api/me"), login.session()).exchange();
+		return cookieValue(result, XSRF_COOKIE).orElseThrow(() -> new AssertionError("XSRF-TOKEN 쿠키가 없다. 콜백 "
+				+ login.callback().getResponse().getHeaders("Set-Cookie") + ", 다음 요청 " + result.getResponse().getStatus()
+				+ " " + result.getResponse().getHeaders("Set-Cookie")));
+	}
+
+	/** 로그인하지 않은 브라우저가 받는 CSRF 토큰. 아무 GET 요청에나 XSRF-TOKEN 쿠키가 실려 온다. */
+	protected String anonymousCsrfToken() {
+		MvcTestResult result = mvc.get().uri("/actuator/health").exchange();
 		return cookieValue(result, XSRF_COOKIE).orElseThrow(() -> new AssertionError("XSRF-TOKEN 쿠키가 없다"));
 	}
 

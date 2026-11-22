@@ -1,11 +1,13 @@
 package com.duskafka.studybot;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
@@ -29,6 +31,23 @@ class DatabaseSchemaIntegrationTest {
 	@DisplayName("S04: public 스키마에는 테이블이 없다 (Supabase Data API에 노출되지 않게)")
 	void publicSchemaHasNoTables() {
 		assertThat(tablesIn("public")).isEmpty();
+	}
+
+	@Test
+	@DisplayName("S04: 탈퇴하지 않은 사용자는 github_id가 있어야 한다 (탈퇴하면 5.16대로 지울 수 있다)")
+	void activeUserRequiresGithubId() {
+		assertThatThrownBy(() -> insertUser(null, null)).isInstanceOf(DataIntegrityViolationException.class);
+
+		insertUser(null, "2026-11-22T00:00:00Z");
+		insertUser(9001L, null);
+	}
+
+	private void insertUser(Long githubId, String deletedAt) {
+		jdbc.sql("insert into studybot.users (github_id, github_login, created_at, deleted_at) "
+				+ "values (:githubId, 'schema-test', now(), cast(:deletedAt as timestamptz))")
+			.param("githubId", githubId, java.sql.Types.BIGINT)
+			.param("deletedAt", deletedAt, java.sql.Types.VARCHAR)
+			.update();
 	}
 
 	private List<String> tablesIn(String schema) {

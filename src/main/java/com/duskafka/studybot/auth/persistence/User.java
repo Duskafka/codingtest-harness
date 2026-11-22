@@ -27,8 +27,9 @@ public class User {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(name = "github_id", nullable = false, unique = true)
-	private long githubId;
+	/** GitHub 사용자 ID. 탈퇴(익명화)하면 지운다 (5.16). 탈퇴하지 않은 사용자는 늘 있다 (DB CHECK 제약). */
+	@Column(name = "github_id", unique = true)
+	private @Nullable Long githubId;
 
 	@Column(name = "github_login", nullable = false)
 	private String githubLogin;
