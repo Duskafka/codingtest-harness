@@ -99,4 +99,4 @@ flowchart LR
 
 ## P1 다음
 
-P2·P3는 [backlog-p2-p3.md](backlog-p2-p3.md)에 개요만 있어요. P1이 끝나면 에이전트가 개요를 단계 문서(S18~)로 펼치는 docs PR을 올리고, 사람이 고쳐서 병합해요.
+P2·P3는 [backlog-p2-p3.md](backlog-p2-p3.md)에 개요만 있어요. P1이 끝나면 에이전트가 개요를 단계 문서(S18~) 초안으로 펼치는 docs PR을 올리고, 사람이 고쳐서 병합해요 (초안 작업, `docs/workflow.md` 4장).
