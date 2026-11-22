@@ -1,6 +1,6 @@
 # 의사코드
 
-> 스펙 문서예요. 에이전트는 고치지 않아요.
+> 스펙 문서예요. 사람이 정한 내용만 담아요. 에이전트는 사람이 정한 결정을 `docs/` 브랜치의 문서 전용 PR로 반영하고, 그 밖에 바꿀 게 있으면 PR의 '스펙 변경 제안'에 적어요 (`docs/workflow.md` 4장).
 >
 > - 설계 의도를 보여 주는 의사코드예요. 그대로 옮기지 말고, 부딪히면 규칙(`domain-rules.md`)과 모듈 의존 규칙(`architecture.md` 4.2)을 우선해요.
 > - 알려진 충돌: '판정 배치'의 `createNotification(DAILY_RESULT, ...)`은 judgment → notification 의존이라 4.2 그래프에 없어요. 의존 규칙이 우선이에요 (`architecture.md` '알려진 충돌과 빈 곳' 2번).

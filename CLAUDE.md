@@ -20,7 +20,8 @@
 - 한 세션에 단계 하나, 단계 하나에 PR 하나. master에 직접 push하지 않는다.
 - 수용 기준을 먼저 테스트로 옮기고, 실패를 본 뒤 구현한다. 테스트 이름에 T번호를 붙인다.
 - 기존 테스트의 기대값을 바꾸거나, 지우거나, 끄지 않는다. 필요하면 PR에서 요청한다.
-- `docs/spec/`, `docs/decisions/README.md`, `docs/harness-log.md`, `CLAUDE.md`, `.claude/`, master에 들어간 Flyway 마이그레이션은 고치지 않는다. 훅이 막고, Bash로 우회하지 않는다. 스펙이 틀렸다고 보면 PR의 '스펙 변경 제안'에 쓴다.
+- `docs/harness-log.md`, `CLAUDE.md`, `.claude/`, master에 들어간 Flyway 마이그레이션은 고치지 않는다. 훅이 막고, Bash로 우회하지 않는다.
+- `docs/spec/`, `docs/decisions/README.md`, 단계 문서의 내용은 사람이 정한 결정을 반영할 때만 고친다. `docs/` 브랜치의 문서 전용 PR(`docs/` 아래와 루트 `README.md`만 바꿈)에서 하고, PR 본문의 '반영하는 결정'에 OD 번호·결정 제안서·사람의 지시(원문과 날짜)를 적는다. 단계·구현 PR에서 스펙이 틀렸다고 보면 고치지 말고 '스펙 변경 제안'에 쓰고, 브랜치를 바꿔 피하지 않는다. 훅이 브랜치를 보고 막고, Bash로 우회하지 않는다. 자세한 규칙은 `docs/workflow.md` 4장.
 - 스펙에 없거나 스펙끼리 부딪히는 동작을 추측으로 채우지 않는다. 작은 판단은 PR의 판단 기록에, 되돌리기 어려운 판단은 결정 제안서(`docs/decisions/`)에 남긴다.
 - 모듈 의존 방향은 `docs/spec/architecture.md` 4.2를 따른다. ArchUnit이 검사한다.
 - 시간은 주입된 `Clock`으로만 다룬다. `now()`를 직접 부르지 않는다.
