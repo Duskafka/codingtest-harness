@@ -43,15 +43,15 @@
 
 ## 수용 기준
 
-- [ ] 4.2에 없는 방향으로 의존하는 테스트용 예제가 ArchUnit 규칙에 걸린다
-- [ ] main 코드에 `now()` 직접 호출이 있으면 ArchUnit 테스트가 실패한다 (`Clock` 설정 클래스는 통과)
-- [ ] 없는 경로 요청 → 404 `application/problem+json`, 본문에 스택 트레이스와 예외 클래스 이름이 없다
-- [ ] 요청 본문 검증 실패 → 400 `application/problem+json`, 어느 필드가 왜 틀렸는지 담긴다
-- [ ] 처리하지 못한 예외 → 500 `application/problem+json`, 내부 정보가 없다
-- [ ] `/actuator/health`는 200, `/actuator/env`와 `/actuator/heapdump`는 노출되지 않는다
-- [ ] OpenAPI 명세가 생성된다
-- [ ] 통합 테스트에서 시각을 정하고 옮기는 예제 테스트가 있다
-- [ ] `scripts/cloud-session-setup.sh`를 두 번 연달아 실행해도 문제가 없다 (PR 실행 기록에 결과)
+- [x] 4.2에 없는 방향으로 의존하는 테스트용 예제가 ArchUnit 규칙에 걸린다
+- [x] main 코드에 `now()` 직접 호출이 있으면 ArchUnit 테스트가 실패한다 (`Clock` 설정 클래스는 통과)
+- [x] 없는 경로 요청 → 404 `application/problem+json`, 본문에 스택 트레이스와 예외 클래스 이름이 없다
+- [x] 요청 본문 검증 실패 → 400 `application/problem+json`, 어느 필드가 왜 틀렸는지 담긴다
+- [x] 처리하지 못한 예외 → 500 `application/problem+json`, 내부 정보가 없다
+- [x] `/actuator/health`는 200, `/actuator/env`와 `/actuator/heapdump`는 노출되지 않는다
+- [x] OpenAPI 명세가 생성된다
+- [x] 통합 테스트에서 시각을 정하고 옮기는 예제 테스트가 있다
+- [x] `scripts/cloud-session-setup.sh`를 두 번 연달아 실행해도 문제가 없다 (PR 실행 기록에 결과)
 
 ## 주의할 것
 

@@ -2,6 +2,21 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-21 S01 공통 기반 리뷰 반영 (세션 2)
+- 한 일: PR #1 CodeRabbit 리뷰 4건 반영. 반환값 검증 실패는 `errors` 없이 500, 객체 전체 오류의 `field`는 `null`, `field`는 요청에 쓴 이름(`@RequestParam("page_size")`), 세션 준비 스크립트의 `docker info`에 시간 제한. H-00 완료 확인(master `protected: true`). 결정 001 확정 기록(사람이 ① A·② A·③ A 선택, 요청에 따라 에이전트가 받아 적음)
+- 상태: 빌드 통과 (테스트 64개)
+- 다음: PR #1 병합 → 사람이 결정 대장의 '결정 제안서 목록'과 스펙 변경 제안(architecture 4.2) 반영 → 새 세션에서 S02 시간 계산(`StudyCalendar`)
+- 막힌 것: 없음. H-09는 새 컨테이너에서 확인 필요 (이번 재시작은 같은 컨테이너를 이어 써서 설정 스크립트가 돌지 않음)
+- PR: #1
+
+## 2026-11-21 S01 공통 기반 (세션 1/1)
+- 한 일: 모듈 패키지와 ArchUnit 규칙(예제로 자체 검증), `Clock` 주입과 `now()` 금지 규칙, 테스트용 시계(`@IntegrationTest`, `MutableClock`), problem+json 오류 형식, Actuator health만, springdoc(기본 꺼짐), `scripts/cloud-session-setup.sh`, 결정 제안서 001
+- 상태: 빌드 통과 (테스트 61개)
+- 다음: 결정 제안서 001 검토와 PR 병합 → S02 시간 계산(`StudyCalendar`). S03도 선행이 충족됨
+- 막힌 것: 사람 할 일 H-00(master 보호 규칙 꺼져 있음). H-09는 설정 스크립트에 저장했지만, 새 컨테이너에서 실행되는지는 아직 확인 못 함
+- 참고: 통합 테스트는 `@IntegrationTest`를 붙이고 시각은 `MutableClock`으로 정한다. 테스트 전용 엔드포인트는 테스트 클래스 안의 클래스로 두고 `@Import`한다
+- PR: #1
+
 ## 2026-11-21 하네스 문서 추가 (사람)
 - 한 일: CLAUDE.md, docs/(spec, steps, decisions, workflow), .claude/(훅, spec-reviewer), PR 템플릿
 - 다음: 사람 할 일 H-00, H-09를 마치고 S01 시작
