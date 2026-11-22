@@ -1,0 +1,16 @@
+{
+  "provenance": "추측",
+  "origin": "BaekjoonHub master (manifest 1.4.29, 2026-11-22 확인). https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/programmers/parsing.js (makeData: 경로·메시지·파일명), https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/programmers/uploadfunctions.js (upload), https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/utils/pathNormalize.js (removeProgrammersRank: lvN·Lv.N 레벨 폴더도 다룸)",
+  "description": "레벨 폴더가 lvN 형식인 경로",
+  "message": "[level 2] Title: JadenCase 문자열 만들기, Time: 0.05 ms, Memory: 33.4 MB -BaekjoonHub",
+  "paths": [
+    "프로그래머스/lv2/12951. JadenCase\u2005문자열\u2005만들기/JadenCase\u2005문자열\u2005만들기.js"
+  ],
+  "expected": [
+    {
+      "platform": "PROGRAMMERS",
+      "problemNo": "12951",
+      "title": "JadenCase 문자열 만들기"
+    }
+  ]
+}

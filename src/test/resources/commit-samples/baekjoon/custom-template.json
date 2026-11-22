@@ -1,0 +1,17 @@
+{
+  "provenance": "추측",
+  "origin": "BaekjoonHub master (manifest 1.4.29, 2026-11-22 확인). https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/util.js (buildDirectory, applyDirectoryTemplate: 경로 템플릿 옵션)",
+  "description": "경로 템플릿을 ${platform}/${id}로 바꾼 경우: 경로 규칙에 맞지 않아 메시지 규칙 + 폴더 번호로 식별",
+  "message": "[Silver I] Title: 미로 탐색, Time: 76 ms, Memory: 14532 KB -BaekjoonHub",
+  "paths": [
+    "백준/2178/미로\u2005탐색.java",
+    "백준/2178/README.md"
+  ],
+  "expected": [
+    {
+      "platform": "BOJ",
+      "problemNo": "2178",
+      "title": "미로 탐색"
+    }
+  ]
+}

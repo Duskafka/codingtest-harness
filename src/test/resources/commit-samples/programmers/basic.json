@@ -1,0 +1,17 @@
+{
+  "provenance": "추측",
+  "origin": "BaekjoonHub master (manifest 1.4.29, 2026-11-22 확인). https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/programmers/parsing.js (makeData: 경로·메시지·파일명), https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/programmers/uploadfunctions.js (upload)",
+  "description": "백준허브 프로그래머스 기본 형식: 풀이 파일과 README.md",
+  "message": "[level 1] Title: 문자열 내 p와 y의 개수, Time: 0.03 ms, Memory: 77.8 MB -BaekjoonHub",
+  "paths": [
+    "프로그래머스/1/12916. 문자열\u2005내\u2005p와\u2005y의\u2005개수/문자열\u2005내\u2005p와\u2005y의\u2005개수.java",
+    "프로그래머스/1/12916. 문자열\u2005내\u2005p와\u2005y의\u2005개수/README.md"
+  ],
+  "expected": [
+    {
+      "platform": "PROGRAMMERS",
+      "problemNo": "12916",
+      "title": "문자열 내 p와 y의 개수"
+    }
+  ]
+}

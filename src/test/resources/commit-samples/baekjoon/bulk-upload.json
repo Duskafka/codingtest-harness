@@ -1,0 +1,13 @@
+{
+  "provenance": "추측",
+  "origin": "BaekjoonHub master (manifest 1.4.29, 2026-11-22 확인). https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/baekjoon/uploadfunctions.js (uploadAllSolvedProblem: 맞은 문제 전체를 커밋 하나로)",
+  "description": "전체 코드 업로드 커밋 → 예전에 푼 문제라 결과 없음, 확인 대기 후보도 없음 (2026-11-22 사람 결정)",
+  "message": "전체 코드 업로드 -BaekjoonHub",
+  "paths": [
+    "백준/Silver/2178. 미로\u2005탐색/미로\u2005탐색.java",
+    "백준/Silver/2178. 미로\u2005탐색/README.md",
+    "백준/Bronze/1000. A＋B/A＋B.java",
+    "백준/Bronze/1000. A＋B/README.md"
+  ],
+  "expected": []
+}

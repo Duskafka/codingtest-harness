@@ -1,0 +1,17 @@
+{
+  "provenance": "추측",
+  "origin": "BaekjoonHub master (manifest 1.4.29, 2026-11-22 확인). https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/baekjoon/parsing.js (makeDetailMessageAndReadme: 경로·메시지·파일명), https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/baekjoon/uploadfunctions.js (upload: 풀이 파일 + README.md를 커밋 하나로), https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/util.js (convertSingleCharToDoubleChar: 제목의 기호 → 전각, 공백 → U+2005)",
+  "description": "서브태스크 문제의 Score가 붙은 메시지 (번호·제목은 예시)",
+  "message": "[Gold III] Title: 서브태스크 예시, Time: 4 ms, Memory: 2020 KB, Score: 37 point -BaekjoonHub",
+  "paths": [
+    "백준/Gold/12345. 서브태스크\u2005예시/서브태스크\u2005예시.cc",
+    "백준/Gold/12345. 서브태스크\u2005예시/README.md"
+  ],
+  "expected": [
+    {
+      "platform": "BOJ",
+      "problemNo": "12345",
+      "title": "서브태스크 예시"
+    }
+  ]
+}

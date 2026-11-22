@@ -1,0 +1,21 @@
+{
+  "provenance": "추측",
+  "origin": "BaekjoonHub master (manifest 1.4.29, 2026-11-22 확인). https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/baekjoon/parsing.js (makeDetailMessageAndReadme: 경로·메시지·파일명), https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/baekjoon/uploadfunctions.js (upload: 풀이 파일 + README.md를 커밋 하나로), https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/util.js (convertSingleCharToDoubleChar: 제목의 기호 → 전각, 공백 → U+2005), https://github.com/BaekjoonHub/BaekjoonHub/blob/master/scripts/baekjoon/parsing.js (samplesToFileEntries: 예제 입출력 저장 옵션)",
+  "description": "예제 입출력 저장 옵션을 켠 커밋: 같은 문제의 파일 여러 개 → 결과 하나",
+  "message": "[Silver I] Title: 미로 탐색, Time: 76 ms, Memory: 14532 KB -BaekjoonHub",
+  "paths": [
+    "백준/Silver/2178. 미로\u2005탐색/미로\u2005탐색.java",
+    "백준/Silver/2178. 미로\u2005탐색/README.md",
+    "백준/Silver/2178. 미로\u2005탐색/input1.txt",
+    "백준/Silver/2178. 미로\u2005탐색/output1.txt",
+    "백준/Silver/2178. 미로\u2005탐색/input2.txt",
+    "백준/Silver/2178. 미로\u2005탐색/output2.txt"
+  ],
+  "expected": [
+    {
+      "platform": "BOJ",
+      "problemNo": "2178",
+      "title": "미로 탐색"
+    }
+  ]
+}

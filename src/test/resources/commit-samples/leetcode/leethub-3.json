@@ -1,0 +1,15 @@
+{
+  "provenance": "추측",
+  "origin": "LeetHub-3.0 v0.0.16: https://github.com/raphaelheinz/LeetHub-3.0/blob/v0.0.16/src/js/leetcode.js (constructGitHubPath, addLeadingZeros, formatStats)",
+  "description": "LeetHub 3.0 기본 형식: 번호-slug 폴더 아래 같은 이름의 풀이 파일",
+  "message": "Time: 0 ms (100.00%), Space: 44.9 MB (60.12%) - LeetHub",
+  "paths": [
+    "0001-two-sum/0001-two-sum.java"
+  ],
+  "expected": [
+    {
+      "platform": "LEETCODE",
+      "problemNo": "1"
+    }
+  ]
+}

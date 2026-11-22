@@ -1,0 +1,15 @@
+{
+  "provenance": "추측",
+  "origin": "docs/spec/processes/5.04-problem-identification.md '알려진 형식' 표의 경로 예, 메시지는 https://github.com/QasimWani/LeetHub/blob/master/scripts/leetcode.js (formatStats)",
+  "description": "스펙 표의 LeetHub 경로 예",
+  "message": "Time: 52 ms (82.35%), Space: 15.1 MB (55.77%) - LeetHub",
+  "paths": [
+    "0001-two-sum/two-sum.java"
+  ],
+  "expected": [
+    {
+      "platform": "LEETCODE",
+      "problemNo": "1"
+    }
+  ]
+}
