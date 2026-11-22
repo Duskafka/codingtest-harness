@@ -3,6 +3,7 @@
 > 스펙 문서예요. 사람이 정한 내용만 담아요. 에이전트는 사람이 정한 결정을 `docs/` 브랜치의 문서 전용 PR로 반영하고, 그 밖에 바꿀 게 있으면 PR의 '스펙 변경 제안'에 적어요 (`docs/workflow.md` 4장).
 >
 > - 4.4의 '단계' 열은 P1~P3예요. 어느 작업 단계(S번호)에서 만드는지는 `docs/steps/README.md`에 있어요.
+> - 4.5의 로그인 유지 방식은 OD-01로 확정됐어요 (결정 제안서 002). GitHub 로그인 방식(OD-02)이 정해지기 전에는 4.5를 구현하지 않아요.
 > - 응답 본문의 모양은 표에 없어요. 엔드포인트를 만드는 단계에서 정하고, PR 판단 기록에 '꼭 봐 주세요'로 남겨요. 프론트가 이 계약을 써요.
 
 ## 4.4 API
@@ -74,13 +75,13 @@ sequenceDiagram
     S ->> G: code를 access token으로 교환
     S ->> G: GET /user (id, login, avatar)
     S ->> S: users 저장 또는 갱신 (github_id 기준), 세션 생성 (DB)
-    S -->> B: 302 홈 (__Host-Http- 쿠키 + XSRF-TOKEN 쿠키)
+    S -->> B: 302 홈 (세션 쿠키 __Host-Http-… + XSRF-TOKEN 쿠키)
 ```
 
 **만들 것**
 
 - Spring Security OAuth2 Client로 GitHub 로그인. GitHub의 access token은 신원 확인에만 쓰고 저장하지 않아요.
-- Spring Session JDBC로 세션을 DB에 저장 (D22). 쿠키는 HttpOnly, Secure, SameSite=Lax, __Host-Http-
+- Spring Session JDBC로 세션을 DB에 저장 (D22). 세션 쿠키는 HttpOnly, Secure, SameSite=Lax이고 이름은 `__Host-Http-` 접두사로 시작해요 (로컬 개발·브라우저 지원이 안 되면 `__Host-`, 결정 제안서 002)
 - CSRF: 토큰을 쿠키로 내려주고, SPA가 `X-XSRF-TOKEN` 헤더로 돌려보내는 방식
 - 권한 검사는 한 곳 (`StudyAccess`)에 모으고 모든 API에 적용
 - 관리자 기능 (`/admin/**`)은 Cloudflare Access (무료, 50명까지) 뒤에 두고 앱에서도 역할 확인
@@ -90,7 +91,7 @@ sequenceDiagram
 - Spring Security 6부터 CSRF 토큰 처리 방식이 바뀌었어요. SPA는 공식 문서의 'Single-Page Applications' 설정을 그대로 따르세요. 대충 하면 POST가 전부 403이 나요.
 - 웹훅 경로 (`/webhooks/**`)는 CSRF와 세션에서 빼고, 서명으로만 인증해요.
 - **조회 쿼리도 스터디 ID로 범위를 묶어요.** 권한 검사를 통과해도 쿼리가 `id`만으로 찾으면 다른 스터디 데이터가 섞일 수 있어요 (IDOR).
-- 세션 만료는 30일 롤링으로 해요. 길수록 편하지만 탈취 위험이 커지는 트레이드오프라 ADR-002에 근거를 남겨요.
+- 세션 만료는 30일 롤링으로 해요. 길수록 편하지만 탈취 위험이 커지는 트레이드오프예요. 선택지 비교와 결정은 결정 제안서 002에 있어요.
 
 **권한 표**
 

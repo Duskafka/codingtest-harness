@@ -20,6 +20,8 @@ GitHub 웹훅을 위조 없이 받고, 같은 전달은 한 번만 기록한다.
 - `docs/spec/infra.md`: 9.6 비밀 관리 표의 '웹훅 시크릿' 행
 - `docs/spec/data-model.md`: `webhook_inbox`
 - `docs/spec/external-systems.md`: GitHub 행
+- `docs/decisions/003-lombok.md`: '결정', B의 허용 목록과 강제 방법
+- `docs/decisions/004-db-schema-name.md`: '결정', '적용 방법'
 
 ## 만들 것
 
@@ -30,6 +32,10 @@ GitHub 웹훅을 위조 없이 받고, 같은 전달은 한 번만 기록한다.
 5. **처리기 연결:** 이벤트 종류 → 처리기 인터페이스. 같은 요청 안에서 새 트랜잭션으로 처리하고, 성공하면 `PROCESSED`(또는 `IGNORED`), 실패하면 `FAILED`와 오류를 남긴다. 처리가 실패해도 응답은 202다.
 6. **응답 코드:** 5.3의 응답 코드 규칙 표대로.
 7. **본문 크기 제한:** 큰 본문은 거절한다 (5.3, 예: 5MB).
+8. **Lombok·스키마:** 엔티티는 결정 제안서 003의 허용 목록만 쓰고, `webhook_inbox`는 `studybot` 스키마에 둔다 (결정 제안서 004).
+    - 이 단계가 첫 엔티티면: `build.gradle`에 Lombok(`compileOnly`·`annotationProcessor`·`testCompileOnly`·`testAnnotationProcessor`, 버전은 Boot BOM)과 레포 루트 `lombok.config`(`config.stopBubbling = true`, 허용 목록 밖 기능은 `flagUsage = error`)를 더한다.
+    - 이 단계가 첫 마이그레이션이면: 설정 방법(Flyway·Hibernate·Spring Session·search_path)을 판단 기록으로 정한다. Spring Session은 S04에서 쓰므로, S04가 같은 방식으로 따를 수 있게 정한다.
+    - 앞 단계가 이미 더했으면 그 설정과 판단 기록을 따른다.
 
 ## 만들지 않을 것
 
@@ -59,3 +65,4 @@ GitHub 웹훅을 위조 없이 받고, 같은 전달은 한 번만 기록한다.
 
 - 처리기 인터페이스 모양 (S07·S08·P2 워커가 쓴다, '꼭 봐 주세요')
 - 수신함 저장과 처리의 트랜잭션 경계
+- (첫 엔티티면) `@Builder` 쓰는 방식 (결정 제안서 003), (첫 마이그레이션이면) 스키마 설정 방법 (결정 제안서 004)

@@ -18,6 +18,7 @@
 - `docs/spec/architecture.md`: 4.1 구성도
 - `docs/spec/security.md`: 9.7 '운영 엔드포인트와 오류'의 보안 헤더 항목
 - `docs/decisions/README.md`: D10~D16
+- `docs/decisions/004-db-schema-name.md`: '적용 방법'의 역할과 권한, 백업과 복구
 
 ## 만들 것
 
@@ -26,8 +27,8 @@
 3. **Nginx 설정:** `/`는 정적 파일, `/api/*`·`/oauth2/*`·`/login/*`·`/webhooks/*`는 Spring으로 (4.1). 보안 헤더(CSP에 카카오 SDK 도메인만 추가, `frame-ancestors 'none'`, `X-Content-Type-Options`, `Referrer-Policy`), `client_max_body_size`, `sw.js`·`index.html`은 캐시하지 않음.
 4. **CI 확장:** 테스트 → 이미지 빌드 → Trivy 검사 → GHCR에 sha 태그 push → 통과하면 `prod` 태그 이동. 이미지 push 잡만 `packages: write`. 서드파티 액션은 커밋 SHA로 고정.
 5. **서버 배포 타이머 스크립트:** 1분마다 `prod` 다이제스트 확인 → 바뀌면 새 컨테이너 기동 → `/actuator/health` 확인 → 실패하면 직전 다이제스트로 복귀 → 운영 채널에 알림 (9.2). systemd 유닛 파일 포함.
-6. **백업 스크립트:** 매일 04시 `pg_dump`(백업 전용 계정) → age 암호화(서버에는 공개키만) → R2 업로드, 실패하면 운영 채널 알림 (9.6). systemd 타이머 포함.
-7. **런북:** `docs/ops/runbooks/`에 secret-rotation, restore, webhook-replay, rejudge.
+6. **백업 스크립트:** 매일 04시 `pg_dump`(백업 전용 계정, 대상 스키마 `studybot`) → age 암호화(서버에는 공개키만) → R2 업로드, 실패하면 운영 채널 알림 (9.6, 결정 제안서 004). systemd 타이머 포함.
+7. **런북:** `docs/ops/runbooks/`에 secret-rotation, restore(`studybot` 스키마 기준), webhook-replay, rejudge.
 8. **Dependabot:** Gradle, Docker, GitHub Actions.
 9. **결정 제안서 (기록용):** 배포 구성. 계획서 ADR-001 주제로, 9.2의 선택지 비교를 근거와 함께 남긴다.
 
