@@ -221,6 +221,31 @@ class ProblemParserTest {
 	}
 
 	@Test
+	@DisplayName("S03: 제목이 전각 마침표(．)로 시작해도 숨김 파일로 보지 않는다. 문서·예제 판단도 전각을 접기 전 이름으로 한다")
+	void fullWidthDotIsNotHiddenFile() {
+		String dir = "백준/Bronze/1234. ．NET";
+
+		ParsedCommit dotTitle = parse("[Bronze V] Title: .NET, Time: 0 ms, Memory: 2020 KB -BaekjoonHub",
+				dir + "/．NET.java", dir + "/README.md");
+		ParsedCommit mdTitle = parse("커밋", "백준/Bronze/1235. 노트．md/노트．md");
+
+		assertThat(dotTitle.problems()).containsExactly(new IdentifiedProblem(ref(BOJ, "1234"), ".NET", dir + "/．NET.java"));
+		assertThat(mdTitle.refs()).containsExactly(ref(BOJ, "1235"));
+	}
+
+	@Test
+	@DisplayName("S03 [추측]: LeetCode 풀이 파일 이름은 문제 폴더 이름으로 시작하거나 slug와 같아야 한다 (번호-영문 폴더 오탐 방지)")
+	void leetCodeFileMustMatchFolder() {
+		assertThat(parse("커밋", "0001-two-sum/0001-two-sum-11-22-2026-10--30--00.java").refs())
+			.as("LeetHub 3.0 타임스탬프 파일 이름 옵션")
+			.containsExactly(ref(LEETCODE, "1"));
+		ParsedCommit winter = parse("2024 겨울 풀이", "2024-winter/Main.java");
+		assertThat(winter.refs()).isEmpty();
+		assertThat(winter.unidentifiedPaths()).containsExactly("2024-winter/Main.java");
+		assertThat(parse("커밋", "0001-two-sum/Solution.java").refs()).isEmpty();
+	}
+
+	@Test
 	@DisplayName("S03 [추측]: LeetCode 폴더는 4자리 이상 번호-slug이고, slug에 영문자가 있어야 한다")
 	void leetCodeFolderRule() {
 		assertThat(parse("커밋", "0042-trapping-rain-water/0042-trapping-rain-water.py").refs())

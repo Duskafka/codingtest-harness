@@ -1,7 +1,6 @@
 package com.duskafka.studybot.verification;
 
 import java.text.Normalizer;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -12,10 +11,14 @@ import org.jspecify.annotations.Nullable;
  * <p>정규화는 조각을 나눈 뒤에 한다. 백준허브는 제목의 {@code /}를 전각 {@code ／}로 바꿔 쓰는데, 나누기 전에 전각을 접으면
  * 제목 안의 빗금이 경로 구분자가 되기 때문이다.
  *
+ * <p>숨김 경로나 문서 파일인지는 정규화하기 전 조각({@link #rawSegments()})으로 판단한다. 백준허브는 제목의 {@code .}을 전각
+ * {@code ．}으로 쓰므로, 접은 뒤에 보면 제목이 {@code .}으로 시작하는 문제가 숨김 파일로 보인다.
+ *
  * @param raw 원본 경로
+ * @param rawSegments 원본 경로를 {@code /}로 나눈 조각
  * @param segments 정규화한 조각. 마지막이 파일 이름
  */
-record PathSegments(String raw, List<String> segments) {
+record PathSegments(String raw, List<String> rawSegments, List<String> segments) {
 
 	private static final int FULL_WIDTH_FIRST = 0xFF01;
 
@@ -26,12 +29,18 @@ record PathSegments(String raw, List<String> segments) {
 
 	static PathSegments of(String rawPath) {
 		Objects.requireNonNull(rawPath, "path");
-		List<String> segments = Arrays.stream(rawPath.split("/", -1)).map(PathSegments::normalize).toList();
-		return new PathSegments(rawPath, segments);
+		List<String> rawSegments = List.of(rawPath.split("/", -1));
+		return new PathSegments(rawPath, rawSegments, rawSegments.stream().map(PathSegments::normalize).toList());
 	}
 
+	/** 정규화한 파일 이름. */
 	String fileName() {
 		return segments.getLast();
+	}
+
+	/** 정규화하기 전 파일 이름. */
+	String rawFileName() {
+		return rawSegments.getLast();
 	}
 
 	/** 끝에서 {@code offset}번째 조각. 0은 파일 이름, 1은 바로 위 폴더다. 없으면 {@code null}. */

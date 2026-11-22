@@ -21,12 +21,12 @@ import org.jspecify.annotations.Nullable;
  * <li>백준허브 일괄 업로드({@value #BULK_UPLOAD_MESSAGE}) 커밋은 예전에 푼 문제를 한꺼번에 올리는 것이라 결과 없음.</li>
  * <li>경로를 조각마다 정규화한다 ({@link PathSegments}).</li>
  * <li>풀이 파일이 아닌 파일(문서 {@code .md}, 백준허브 예제 입출력 {@code input*.txt}·{@code output*.txt}, 숨김 경로)은
- * 무시한다. 식별하지도, 확인 대기 후보로 돌려주지도 않는다.</li>
+ * 무시한다. 식별하지도, 확인 대기 후보로 돌려주지도 않는다. 이 판단은 정규화하기 전 이름으로 한다.</li>
  * <li>경로 규칙: 파일 바로 위 폴더가 문제 폴더다. 앞에 어떤 접두사가 있어도 된다.
  * <ul>
  * <li>백준: {@code …/백준/{티어}/{번호}. {제목}/파일}</li>
  * <li>프로그래머스: {@code …/프로그래머스/{레벨}/{번호}. {제목}/파일}</li>
- * <li>LeetCode: {@code …/{4자리 이상 번호}-{slug}/파일}</li>
+ * <li>LeetCode: {@code …/{4자리 이상 번호}-{slug}/파일}. 파일 이름은 폴더 이름으로 시작하거나 {@code {slug}.확장자}</li>
  * </ul></li>
  * <li>메시지 규칙: 경로 규칙으로 하나도 찾지 못했고 메시지가 백준허브의 백준·프로그래머스 형식이면, 플랫폼과 제목은 메시지에서,
  * 번호는 파일 바로 위 폴더({@code {번호}} 또는 {@code {번호}. …})에서 보완한다. 번호가 정확히 하나일 때만 식별한다.</li>
@@ -115,11 +115,12 @@ public final class ProblemParser {
 		return new ParsedCommit(List.copyOf(identified.values()), List.copyOf(unidentified));
 	}
 
+	/** 풀이 파일 후보인지. 전각을 접기 전 이름으로 본다 ({@link PathSegments} 참고). */
 	private static boolean isSolutionCandidate(PathSegments path) {
-		if (path.segments().stream().anyMatch(segment -> segment.startsWith("."))) {
+		if (path.rawSegments().stream().anyMatch(segment -> segment.startsWith("."))) {
 			return false;
 		}
-		String fileName = path.fileName();
+		String fileName = path.rawFileName();
 		return !fileName.toLowerCase(Locale.ROOT).endsWith(".md") && !SAMPLE_IO_FILE.matcher(fileName).matches();
 	}
 
@@ -158,7 +159,14 @@ public final class ProblemParser {
 			return Optional.empty();
 		}
 		Matcher problemFolder = LEETCODE_FOLDER.matcher(folder);
-		if (!problemFolder.matches() || problemFolder.group(2).chars().noneMatch(c -> c >= 'a' && c <= 'z')) {
+		if (!problemFolder.matches()) {
+			return Optional.empty();
+		}
+		String slug = problemFolder.group(2);
+		String stem = fileStem(path.fileName());
+		// 번호-영문 모양의 폴더(예: 2024-winter)를 LeetCode로 잘못 확정하지 않도록 LeetHub의 파일 이름까지 본다.
+		// LeetHub는 폴더 이름으로 시작하는 파일 이름을 쓰고(접미사·타임스탬프 옵션 포함), 5.4 표의 예는 slug.확장자다.
+		if (slug.chars().noneMatch(c -> c >= 'a' && c <= 'z') || !(stem.startsWith(folder) || stem.equals(slug))) {
 			return Optional.empty();
 		}
 		// slug는 제목이 아니라서 제목은 비워 둔다.
@@ -202,6 +210,12 @@ public final class ProblemParser {
 		}
 		Matcher matcher = NUMBER_FOLDER.matcher(folder);
 		return matcher.matches() ? canonicalNumber(matcher.group(1)) : Optional.empty();
+	}
+
+	/** 마지막 확장자를 뗀 파일 이름. */
+	private static String fileStem(String fileName) {
+		int dot = fileName.lastIndexOf('.');
+		return dot > 0 ? fileName.substring(0, dot) : fileName;
 	}
 
 	/** 앞자리 0을 뗀다. 0뿐이면 문제 번호가 아니다. */
