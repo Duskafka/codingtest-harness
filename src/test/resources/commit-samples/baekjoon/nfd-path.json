@@ -1,8 +1,8 @@
 {
   "provenance": "추측",
   "origin": "basic.json의 경로를 NFD로 바꾼 것 (macOS에서 직접 커밋한 경우, 5.4 '주의할 것')",
-  "description": "NFD로 온 한글 경로",
-  "message": "[Silver I] Title: 미로 탐색, Time: 76 ms, Memory: 14532 KB -BaekjoonHub",
+  "description": "NFD로 온 한글 경로: 직접 커밋해 메시지가 백준허브 형식이 아니라 경로 규칙만으로 식별",
+  "message": "미로 탐색 풀이",
   "paths": [
     "\u1107\u1162\u11a8\u110c\u116e\u11ab/Silver/2178. \u1106\u1175\u1105\u1169\u2005\u1110\u1161\u11b7\u1109\u1162\u11a8/\u1106\u1175\u1105\u1169\u2005\u1110\u1161\u11b7\u1109\u1162\u11a8.java",
     "\u1107\u1162\u11a8\u110c\u116e\u11ab/Silver/2178. \u1106\u1175\u1105\u1169\u2005\u1110\u1161\u11b7\u1109\u1162\u11a8/README.md"
