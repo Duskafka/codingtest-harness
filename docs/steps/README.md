@@ -18,7 +18,7 @@
 |---|---|---|---|---|---|---|
 | S00 | 첫 커밋: 빌드·테스트·CI 골격 | P1 | — | — | — | 완료 |
 | [S01](S01-foundation.md) | 공통 기반 | P1 | S00 | — | H-00, H-09 | 완료 |
-| [S02](S02-study-calendar.md) | 시간 계산 (`StudyCalendar`) | P1 | S01 | OD-08 (규칙 전환일만) | — | 대기 |
+| [S02](S02-study-calendar.md) | 시간 계산 (`StudyCalendar`) | P1 | S01 | OD-08 (규칙 전환일만) | — | 완료 |
 | [S03](S03-problem-parser.md) | 문제 식별 파서 | P1 | S01 | — | H-01 | 대기 |
 | [S04](S04-login-session.md) | 로그인과 세션 | P1 | S01 | OD-01, OD-02, OD-05, OD-06 | H-03 | 대기 |
 | [S05](S05-study-membership.md) | 스터디·규칙·기수·초대·멤버십 | P1 | S02, S04 | OD-07, OD-08 | — | 대기 |
