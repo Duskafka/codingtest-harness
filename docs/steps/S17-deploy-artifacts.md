@@ -24,7 +24,7 @@
 
 1. **Dockerfile:** root가 아닌 사용자로 실행, JVM이 컨테이너 메모리를 인식, 베이스 이미지는 다이제스트로 고정.
 2. **Docker Compose:** cloudflared + Nginx + Spring. 내부 Docker 네트워크로만 연결하고 호스트 포트를 공개하지 않는다. `docker.sock`을 어떤 컨테이너에도 마운트하지 않는다. 비밀값은 `.env`에서 읽고, `.env`는 레포에 없다 (`.env.example`만).
-3. **Nginx 설정:** `/`는 정적 파일, `/api/*`·`/oauth2/*`·`/login/*`·`/webhooks/*`는 Spring으로 (4.1). 보안 헤더(CSP에 카카오 SDK 도메인만 추가, `frame-ancestors 'none'`, `X-Content-Type-Options`, `Referrer-Policy`), `client_max_body_size`, `sw.js`·`index.html`은 캐시하지 않음.
+3. **Nginx 설정:** `/`는 정적 파일, `/api/*`·`/oauth2/*`·`/login/*`·`/logout`·`/webhooks/*`·`/github/setup`·`/actuator/health`는 Spring으로 (4.1). 보안 헤더(CSP에 카카오 SDK 도메인만 추가, `frame-ancestors 'none'`, `X-Content-Type-Options`, `Referrer-Policy`), `client_max_body_size`, `sw.js`·`index.html`은 캐시하지 않음.
 4. **CI 확장:** 테스트 → 이미지 빌드 → Trivy 검사 → GHCR에 sha 태그 push → 통과하면 `prod` 태그 이동. 이미지 push 잡만 `packages: write`. 서드파티 액션은 커밋 SHA로 고정.
 5. **서버 배포 타이머 스크립트:** 1분마다 `prod` 다이제스트 확인 → 바뀌면 새 컨테이너 기동 → `/actuator/health` 확인 → 실패하면 직전 다이제스트로 복귀 → 운영 채널에 알림 (9.2). systemd 유닛 파일 포함.
 6. **백업 스크립트:** 매일 04시 `pg_dump`(백업 전용 계정, 대상 스키마 `studybot`) → age 암호화(서버에는 공개키만) → R2 업로드, 실패하면 운영 채널 알림 (9.6, 결정 제안서 004). systemd 타이머 포함.

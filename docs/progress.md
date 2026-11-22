@@ -2,6 +2,16 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-22 S04 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
+- 한 일: PR #9의 '스펙 변경 제안' 두 건을 사람이 받아들여 문서 전용 PR로 반영했다
+    - architecture 4.1 Nginx 경로 목록에 `/logout`·`/github/setup`·`/actuator/health`를 더했다. 같은 목록이 있는 S17 '만들 것' 3도 함께 고쳤다
+    - data-model 4.3 `users` 제약 칸을 "github_id UNIQUE, 탈퇴 전 필수 (CHECK). 탈퇴 시 익명화·deleted_at 채움 (5.16)"으로 바꿨다. S15 '만들 것' 1의 익명화에도 `deleted_at`을 함께 채운다고 적었다 (사람이 고른 답의 설명 문장)
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎). 확정된 결정 제안서 002의 같은 목록(24행)은 기록이라 그대로 둠. `/admin/**`이 Nginx 목록에 없는 것은 PR '열린 질문'에 올림
+- 다음: 이 PR 병합 → S05(스터디·멤버십, OD-07·OD-08 결정 필요) 또는 S06(웹훅 수신)
+- 막힌 것: 없음
+- 참고: 훅은 `docs/S[0-9]*` 브랜치를 단계 브랜치로 봐서 스펙 수정을 막는다. 문서 전용 PR 브랜치 이름은 `docs/S`로 시작하지 않게 한다
+- PR: #
+
 ## 2026-11-22 S04 로그인과 세션 구현 (세션 1, 이어서)
 - 한 일: '만들 것' 2~8. GitHub App 사용자 인증 로그인(`/user`에서 id·login·avatar만, users native upsert), DB 세션(`studybot.SPRING_SESSION`), 세션 쿠키 `__Host-Http-SESSION` 빈 설정과 30일 롤링 필터, `csrf.spa()`, `/webhooks/**` 별도 체인, 401·403 problem+json, `GET /api/me`, `POST /logout` 204, 토큰 미저장 저장소. 첫 엔티티·마이그레이션이라 Lombok(`lombok.config`)·`studybot` 스키마 설정도 함
 - 상태: 빌드 통과 (테스트 238개). 구현 전 새 테스트 27개 중 25개 실패 확인. spec-reviewer 1차 지적 8건 반영(스타터 이름, github_id NULL 허용 + CHECK, 만료 경계·비로그인 로그아웃·Actuator POST 테스트, 엔티티 ArchUnit 규칙). 2차 지적 6건 반영(세션에 접속 IP를 남기지 않음, setter 규칙을 `set[A-Z].*`로, Actuator POST 검사를 404로, 만료 테스트를 JVM 시각 기준으로, data-model CHECK를 스펙 변경 제안 2번으로). Chromium 157로 `http://localhost`·`127.0.0.1`에서 `__Host-Http-` 쿠키 저장 확인
