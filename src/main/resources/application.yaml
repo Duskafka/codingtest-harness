@@ -1,14 +1,44 @@
 spring:
   application:
     name: studybot
+  # 앱 테이블은 모두 studybot 스키마에 둔다 (결정 제안서 004). search_path에 맡기지 않고 Flyway·Hibernate·Spring Session에
+  # 스키마를 직접 적는다. Supabase Session pooler가 연결의 search_path를 넘겨주는지 확인하지 못했기 때문이다 (S04 PR 판단 기록).
+  flyway:
+    # schemas의 첫 스키마가 기본 스키마가 되고, 없으면 Flyway가 만든다 (create-schemas 기본 true). 이력 테이블도 여기에 생긴다.
+    schemas: studybot
+    default-schema: studybot
   jpa:
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: studybot
+  session:
+    # 30일 롤링 (결정 제안서 002 ② a). 요청마다 마지막 접근 시각이 갱신되고, 30일 동안 요청이 없으면 만료된다.
+    # 쿠키 Max-Age도 이 값을 쓰고, 브라우저 쪽 쿠키도 같이 굴러가게 auth.session.RollingSessionCookieFilter가 쿠키를 다시 쓴다.
+    timeout: 30d
+    jdbc:
+      table-name: studybot.SPRING_SESSION
+      # 세션 테이블은 Flyway 마이그레이션(V2)으로 만든다 (data-model.md 마이그레이션 원칙).
+      initialize-schema: never
+  security:
+    oauth2:
+      client:
+        registration:
+          # 로그인은 웹훅용 GitHub App의 사용자 인증으로 한다 (OD-02, 결정 제안서 005). 등록 ID가 github라
+          # Spring Security의 CommonOAuth2Provider.GITHUB 기본값(엔드포인트, user-name-attribute=id)을 쓴다.
+          # 값은 서버 .env에서 받는다 (infra.md 9.6 'GitHub App client secret'). 기본값을 두지 않아 없으면 기동이 실패한다.
+          github:
+            client-id: ${GITHUB_APP_CLIENT_ID}
+            client-secret: ${GITHUB_APP_CLIENT_SECRET}
   web:
     resources:
       # API 서버는 정적 파일을 주지 않는다. 프론트 정적 파일은 Nginx가 준다 (docs/spec/architecture.md 4.1).
       # 없는 경로는 정적 리소스 탐색 없이 404 problem+json이 된다.
       add-mappings: false
+
+# 세션 쿠키(이름 __Host-Http-SESSION, HttpOnly, Secure, SameSite=Lax, Max-Age 30일)는
+# server.servlet.session.cookie.*가 아니라 auth.session.SessionCookieConfiguration에 있다. 이유는 그 클래스 주석.
 
 # Actuator는 health만 켜고 노출한다 (docs/spec/security.md 9.7).
 # access.default=none이면 접근할 수 없는 엔드포인트는 컨텍스트에서 아예 빠진다.
