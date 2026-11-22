@@ -250,7 +250,8 @@ class StudyCalendarTest {
 		}
 
 		// from 정오부터 to 정오 직전까지 5분 간격으로 훑는다. 정오는 기준 시각(00:00~06:00) 뒤이고 전환 구간과 겹치지 않는다.
-		// 스터디 일은 줄지 않고, 바뀔 때는 하루씩만 바뀌며, 늘 [D 기준 시각, D+1 기준 시각) 안에 있다
+		// 스터디 일은 줄지 않고, 바뀔 때는 하루씩만 바뀌며, 늘 [D 기준 시각, D+1 기준 시각) 안에 있다.
+		// from에서 시작해 to에서 끝나니, 그 사이의 날을 하루도 건너뛰거나 되풀이하지 않는다
 		Instant t = ZonedDateTime.of(from, LocalTime.NOON, zone).toInstant();
 		Instant last = ZonedDateTime.of(to, LocalTime.NOON, zone).toInstant();
 		LocalDate previous = calendar.studyDayOf(t);
@@ -264,7 +265,7 @@ class StudyCalendarTest {
 			previous = studyDay;
 			t = t.plus(Duration.ofMinutes(5));
 		}
-		assertThat(previous).isEqualTo(to.minusDays(1));
+		assertThat(previous).isEqualTo(to);
 	}
 
 	@Test
