@@ -8,7 +8,7 @@
 - 다음: 사람이 003·004의 '결정'을 채우고 결정 대장 OD-05·OD-06 행·제안서 목록, architecture.md 'Lombok' 행, infra 9.4·data-model 머리 안내, 첫 엔티티·마이그레이션 단계 문서('읽을 문서'·'만들 것'), S17 백업·복구 항목을 고침 → OD-01(PR #4)까지 병합되면 S06 또는 S04 시작 (S04는 OD-02 제안서부터)
 - 막힌 것: 결정 대기 OD-05·OD-06. 사람이 정할 것: `@Builder` 허용 여부
 - 참고: 이번 세션에서 사람이 답한 것 — OD-05 기준은 읽기 쉬움, OD-06 이름은 `studybot`. Lombok 애너테이션은 SOURCE 보존이라 ArchUnit으로 검사할 수 없음(jar에서 확인). PR #4와 이 기록 위치가 겹쳐 나중에 병합되는 쪽에서 충돌을 풀어야 함
-- PR: (열면 채움)
+- PR: #5
 
 ## 2026-11-22 S03 문제 식별 파서 (세션 1/1)
 - 한 일: `verification`에 `ProblemParser.parse(message, paths) → ParsedCommit`(식별한 문제 + 확인 대기 후보), `ProblemRef`, `Platform`(BOJ·PROGRAMMERS·LEETCODE), 파서 버전 1. 커밋 샘플 18개(`src/test/resources/commit-samples/`, 형식은 그 폴더 README)
