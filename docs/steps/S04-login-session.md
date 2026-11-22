@@ -26,7 +26,7 @@ GitHub로 로그인하고, 로그인 상태를 유지하고, `/api/me`로 내 �
 
 1. **OD-02 결정 제안서 (먼저):** 별도 OAuth App과 GitHub App 사용자 인증을 비교한다. 받는 권한 범위, 설치와 로그인의 연결(5.2), 토큰 저장 여부, 운영 부담을 본다. 사람이 정하기 전에는 2번부터 하지 않는다.
 2. **GitHub 로그인:** Spring Security OAuth2 Client. GitHub access token은 신원 확인에만 쓰고 저장하지 않는다. `users`를 `github_id` 기준으로 저장하거나 갱신한다.
-3. **세션:** Spring Session JDBC로 DB에 저장한다 (D22). 쿠키는 HttpOnly, Secure, SameSite=Lax. 만료는 30일 롤링 (4.5).
+3. **세션:** Spring Session JDBC로 DB에 저장한다 (D22). 쿠키는 __Host-Http-, HttpOnly, Secure, SameSite=Lax. 만료는 30일 롤링 (4.5).
 4. **CSRF:** SPA용 공식 설정. 토큰을 쿠키로 내려 주고 SPA가 `X-XSRF-TOKEN` 헤더로 돌려보낸다.
 5. **엔드포인트:** `GET /api/me`, `POST /logout`. 4.4의 나머지 계정 엔드포인트는 그 단계에서 만든다.
 6. **경로별 보안:** `/webhooks/**`는 CSRF와 세션에서 빼고 서명으로만 인증한다는 자리를 만든다 (서명 검증은 S06). `/actuator/health`는 공개.
