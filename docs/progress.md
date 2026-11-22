@@ -2,6 +2,14 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-22 S04 로그인과 세션 구현 (세션 1, 이어서)
+- 한 일: '만들 것' 2~8. GitHub App 사용자 인증 로그인(`/user`에서 id·login·avatar만, users native upsert), DB 세션(`studybot.SPRING_SESSION`), 세션 쿠키 `__Host-Http-SESSION` 빈 설정과 30일 롤링 필터, `csrf.spa()`, `/webhooks/**` 별도 체인, 401·403 problem+json, `GET /api/me`, `POST /logout` 204, 토큰 미저장 저장소. 첫 엔티티·마이그레이션이라 Lombok(`lombok.config`)·`studybot` 스키마 설정도 함
+- 상태: 빌드 통과 (테스트 218개). 구현 전 새 테스트 27개 중 25개 실패 확인. Chromium 157로 `http://localhost`·`127.0.0.1`에서 `__Host-Http-` 쿠키 저장 확인
+- 다음: PR 검토와 병합 → S05(스터디·멤버십, OD-07·OD-08 결정 필요) 또는 S06(웹훅 수신). S06은 `/webhooks/**` 체인(CSRF 끔, STATELESS)을 그대로 쓰고, S07은 `/github/setup`에 로그인 규칙을 더해야 함
+- 막힌 것: 없음. 실제 GitHub 로그인 확인은 사람 할 일 H-02(개발용 App, 콜백 URL `/login/oauth2/code/github`, 환경 변수 `GITHUB_APP_CLIENT_ID`·`GITHUB_APP_CLIENT_SECRET`)
+- 참고: 사람이 정한 것 — 기존 `ErrorResponseIntegrationTest` 4개는 요청에만 `user()`·`csrf()`를 붙임(기대값 그대로). Boot 4.1은 MockMvc 환경에서 `server.servlet.session.cookie.*`를 쓰지 않아 쿠키를 빈으로 정함. Lombok 1.18.48은 `@SuperBuilder`를 `flagUsage`로 막지 못함. XSRF-TOKEN의 Secure는 요청이 HTTPS일 때만 붙어서 S17에서 프록시 헤더 설정이 필요함
+- PR: #
+
 ## 2026-11-22 S04 로그인과 세션: OD-02 결정 제안서와 결정 반영 (세션 1)
 - 한 일: S04 '만들 것' 1. 결정 제안서 005(GitHub 로그인 방식, A 별도 OAuth App / B GitHub App 사용자 인증 / C 설치 중 인증 비교, 추천 B). 사람이 B를 고른 뒤 같은 PR에서 005 '결정'·'검토 메모'를 받아 적고, 결정 대장(OD-02, 제안서 목록, ADR-002)·스펙(external-systems 4.6, infra 9.6, architecture '로그인' 행, api.md 머리·4.5, 5.02)·단계 문서(S04, steps/README의 H-02·H-03·S04 행)에 반영. S04 상태는 '대기'
 - 상태: 빌드 통과 (테스트 189개, 제안서 커밋 때). 반영은 문서만 바꿔 다시 돌리지 않음 (CI가 돎). 첫 빌드는 Maven Central 429로 실패했고, 다시 돌려 통과
