@@ -43,6 +43,8 @@ class ActuatorExposureIntegrationTest {
 	@DisplayName("S01: health 말고는 Actuator 엔드포인트가 노출되지 않는다")
 	void otherEndpointsAreNotExposed(String endpoint) {
 		assertThat(mvc.get().uri("/actuator/" + endpoint)).hasStatus(HttpStatus.NOT_FOUND);
+		// S04부터 토큰 없는 POST는 CSRF 검사(403)에서 먼저 막혀서 이 줄로는 노출 여부를 가려내지 못한다. 토큰을 붙인 POST가 404인지는
+		// auth.PathSecurityIntegrationTest#actuatorPostIsNotExposedEvenWithCsrfToken이 확인한다 (사람 결정 2026-11-22, S04 PR).
 		assertThat(mvc.post().uri("/actuator/" + endpoint)).hasStatus4xxClientError();
 	}
 
