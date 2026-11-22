@@ -18,6 +18,9 @@
 | `docs/decisions/NNN-*.md` | 결정 제안서 | 에이전트가 제안, 사람이 '결정' 칸 (요청하면 에이전트가 받아 적음) |
 | `docs/steps/` | 단계 문서와 로드맵 | 사람이 내용을 정하고 에이전트가 docs PR로 반영, 단계 PR에서는 에이전트가 상태와 체크 |
 | `docs/progress.md` | 세션 인계 기록 | 에이전트 |
+| `README.md` (루트) | 프로젝트 소개와 문서 링크 | 사람이 정하고, 에이전트가 docs PR로 반영 |
+| `.github/PULL_REQUEST_TEMPLATE.md` | PR 본문 양식 | 사람 |
+| `.github/workflows/` | CI | 단계 문서가 정한 단계 PR에서 에이전트 (예: S17) |
 
 'docs PR로 반영'은 사람이 정한 결정을 에이전트가 `docs/` 브랜치의 문서 전용 PR로 옮기는 거예요. 사람이 PR을 병합해야 효력이 생겨요 (`docs/workflow.md` 4장). 사람이 직접 고칠 때는 GitHub 웹이나 로컬 편집기에서 고치면 돼요. `CLAUDE.md`·`.claude/`·`docs/harness-log.md`를 Claude 세션으로 고치려면 그 세션의 환경 변수에 `HARNESS_ALLOW_PROTECTED=1`을 잠깐 넣어요 (`.claude/hooks/protect-paths.sh`).
 
