@@ -2,6 +2,14 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-22 S04 로그인과 세션: OD-02 결정 제안서 (세션 1)
+- 한 일: S04 '만들 것' 1. 결정 제안서 005(GitHub 로그인 방식). 추천은 B(웹훅용 GitHub App의 사용자 인증. '설치 중 사용자 인증 요청'은 끄고, 사용자 토큰 만료는 켬). A(별도 OAuth App, scope 없음)와 C(설치 중 인증)도 비교. 근거는 GitHub Docs와 Spring Security 7.1·Boot 4.1 문서. S04 상태는 '결정 대기'
+- 상태: 빌드 통과 (테스트 189개, 문서만 바꿈). 첫 시도는 Maven Central 429로 실패했고, 다시 돌려 통과
+- 다음: 사람이 OD-02 결정 → docs PR로 결정 대장·스펙·S04·H-03 반영(005의 '받아들이면 고칠 문서' 표) → S04 '만들 것' 2부터 (새 브랜치 `feat/S04-login-session`)
+- 막힌 것: 결정 대기 OD-02
+- 참고: 사람이 이번 세션에서 답한 것 — 추천 기준은 보안·운영 단순성(OD-01과 같음), 브랜치는 `docs/OD-02-github-login`. 어느 쪽을 골라도 S04에서 정할 것: 토큰을 남기지 않는 구성(Boot 기본 `InMemoryOAuth2AuthorizedClientService`가 토큰을 메모리에 둠), PKCE(`requireProofKey`), 신원 확인 직후 토큰 취소 여부. 세션 시작 때 로컬 `origin/master`가 오래돼 PR #7 병합을 늦게 봤음. 시작할 때 `git fetch origin master`부터 하기
+- PR: #
+
 ## 2026-11-22 OD-01·OD-05·OD-06 결정 반영 (docs PR, 단계 진행 아님)
 - 한 일: 새 규칙의 첫 문서 반영. 결정 대장(OD-05·06 확정, 제안서 목록 003·004, D22 표기), 스펙(architecture '세션'·'Lombok' 행, infra 9.4 `studybot`, data-model 머리, api.md 머리·4.5, security.md), 단계 문서(S04 머리 안내·읽을 문서·만들 것 3·8·수용 기준, S06 읽을 문서·만들 것 8, S17 6·7)
 - 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
