@@ -11,7 +11,7 @@
 
 - 세션은 DB 저장 (D22), 쿠키는 HttpOnly·Secure·SameSite=Lax
 - CSRF는 SPA용 공식 설정 그대로, 로그아웃은 POST
-- 쿠키는 `__Host-Http-` 접두사 사용
+- 세션 쿠키는 `__Host-Http-` 접두사 사용
 
 **권한 (가장 중요)**
 

@@ -42,8 +42,8 @@ GitHub로 로그인하고, 로그인 상태를 유지하고, `/api/me`로 내 �
 
 - [ ] 로그인 콜백을 거치면 `users` 행이 생기고, 같은 `github_id`로 다시 로그인하면 행이 늘지 않고 갱신된다
 - [ ] 로그인하지 않고 `GET /api/me` → 401 `application/problem+json`
-- [ ] 세션 쿠키에 HttpOnly, Secure, SameSite=Lax가 붙는다
-- [ ] CSRF 토큰 없이 로그인한 사용자가 POST → 403. `X-XSRF-TOKEN`, `__Host-Http-` 헤더가 맞으면 통과한다
+- [ ] 세션 쿠키에 HttpOnly, Secure, SameSite=Lax, __Host-Http-가 붙는다
+- [ ] CSRF 토큰 없이 로그인한 사용자가 POST → 403. `X-XSRF-TOKEN` 헤더가 맞으면 통과한다
 - [ ] 애플리케이션을 다시 띄워도 세션이 유지된다 (세션이 DB에 있음, D22)
 - [ ] GitHub access token이 DB와 로그 어디에도 남지 않는다
 - [ ] `/webhooks/**`는 CSRF 없이 요청이 컨트롤러까지 간다 (서명 검증 전 단계 확인용)
