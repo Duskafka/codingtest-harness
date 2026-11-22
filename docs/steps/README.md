@@ -20,7 +20,7 @@
 | [S01](S01-foundation.md) | 공통 기반 | P1 | S00 | — | H-00, H-09 | 완료 |
 | [S02](S02-study-calendar.md) | 시간 계산 (`StudyCalendar`) | P1 | S01 | OD-08 (규칙 전환일만) | — | 완료 |
 | [S03](S03-problem-parser.md) | 문제 식별 파서 | P1 | S01 | — | H-01 | 완료 |
-| [S04](S04-login-session.md) | 로그인과 세션 | P1 | S01 | OD-01, OD-02, OD-05, OD-06 | H-02 | 대기 |
+| [S04](S04-login-session.md) | 로그인과 세션 | P1 | S01 | OD-01, OD-02, OD-05, OD-06 | H-02 | 완료 |
 | [S05](S05-study-membership.md) | 스터디·규칙·기수·초대·멤버십 | P1 | S02, S04 | OD-07, OD-08 | — | 대기 |
 | [S06](S06-webhook-receiver.md) | 웹훅 수신 기반 | P1 | S01 | OD-05, OD-06 (먼저 하는 경우) | — | 대기 |
 | [S07](S07-github-app.md) | GitHub App 연결 | P1 | S04, S06 | — | H-02 | 대기 |

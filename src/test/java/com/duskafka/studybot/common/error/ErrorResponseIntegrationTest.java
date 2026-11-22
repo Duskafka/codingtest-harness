@@ -1,6 +1,8 @@
 package com.duskafka.studybot.common.error;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 import com.duskafka.studybot.IntegrationTest;
 import jakarta.validation.Constraint;
@@ -36,6 +38,10 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 공통 오류 형식: RFC 9457 {@code application/problem+json} (S01 만들 것 5번, docs/spec/api.md 4.4, security.md 9.7).
  * 오류를 일으키는 엔드포인트는 이 테스트에만 등록되는 테스트 전용 컨트롤러다.
+ *
+ * <p>S04에서 Spring Security가 들어오면서 {@code /api/**}는 로그인이 필요하고 POST에는 CSRF 토큰이 필요해졌다.
+ * 이 테스트가 보는 것은 오류 형식이라, 사람의 승인(2026-11-22)을 받아 해당 요청에만 로그인 사용자({@code user()})와
+ * CSRF 토큰({@code csrf()})을 붙였다. 기대값은 바꾸지 않았다. 로그인하지 않은 요청의 401은 S04 테스트가 본다.
  */
 @IntegrationTest
 @Import(ErrorResponseIntegrationTest.ErrorTestController.class)
@@ -49,7 +55,7 @@ class ErrorResponseIntegrationTest {
 	@Test
 	@DisplayName("S01: 없는 경로 요청 → 404 problem+json, 스택 트레이스와 예외 클래스 이름이 없다")
 	void unknownPathReturns404Problem() {
-		MvcTestResult result = mvc.get().uri("/api/does-not-exist").exchange();
+		MvcTestResult result = mvc.get().uri("/api/does-not-exist").with(user("s01-user")).exchange();
 
 		assertThat(result).hasStatus(HttpStatus.NOT_FOUND).hasContentType(MediaType.APPLICATION_PROBLEM_JSON);
 		assertThat(result).bodyJson().extractingPath("$.status").isEqualTo(404);
@@ -62,6 +68,7 @@ class ErrorResponseIntegrationTest {
 	void invalidBodyReturns400WithFieldErrors() {
 		MvcTestResult result = mvc.post()
 			.uri("/test/errors/body")
+			.with(csrf())
 			.contentType(MediaType.APPLICATION_JSON)
 			.content("""
 					{"name": "", "count": 0}
@@ -98,6 +105,7 @@ class ErrorResponseIntegrationTest {
 	void malformedJsonReturns400() {
 		MvcTestResult result = mvc.post()
 			.uri("/test/errors/body")
+			.with(csrf())
 			.contentType(MediaType.APPLICATION_JSON)
 			.content("{not json")
 			.exchange();
@@ -165,6 +173,7 @@ class ErrorResponseIntegrationTest {
 	void objectLevelErrorInMethodValidationHasNullField() {
 		MvcTestResult result = mvc.post()
 			.uri("/test/errors/object-and-param?page=0")
+			.with(csrf())
 			.contentType(MediaType.APPLICATION_JSON)
 			.content("""
 					{"min": 5, "max": 1}

@@ -21,15 +21,27 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	// GitHub App의 사용자 인증으로 로그인 (결정 제안서 005), 세션은 DB에 (D22, 결정 제안서 002)
+	// Boot 4.1에서 spring-boot-starter-oauth2-client는 이 이름으로 바뀌었다 (옛 이름은 deprecated)
+	implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+	implementation 'org.springframework.boot:spring-boot-starter-session-jdbc'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	// Boot BOM 밖. 3.2.0은 springdoc의 Spring Boot 4.1.x 계열(4.1.2 기반). 3.2.1은 Boot 4.2.0 기반이라 쓰지 않음 (S01 PR 판단 기록)
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api:3.2.0'
 	runtimeOnly 'org.postgresql:postgresql'
+	// 허용 목록만 쓴다. 나머지 기능은 레포 루트 lombok.config가 컴파일 오류로 막는다 (결정 제안서 003). 버전은 Boot BOM
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-session-jdbc-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
@@ -37,6 +49,9 @@ dependencies {
 	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	// Boot BOM 밖. 1.4.1부터 Java 25 클래스 파일 지원, 1.5.1이 최신 (S01 PR 판단 기록)
 	testImplementation 'com.tngtech.archunit:archunit:1.5.1'
+	// Boot BOM 밖. GitHub OAuth 엔드포인트를 흉내 낸다 (external-systems '개발 중에 외부 시스템 다루기').
+	// 3.13.2가 최신 안정판(4.x는 베타). standalone은 Jetty·Jackson을 내부에 숨겨 Boot 관리 버전과 부딪히지 않는다 (S04 PR 판단 기록)
+	testImplementation 'org.wiremock:wiremock-standalone:3.13.2'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

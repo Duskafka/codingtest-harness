@@ -1,0 +1,13 @@
+# 테스트에서만 쓰는 설정. classpath:/config/application.yaml은 main의 classpath:/application.yaml 위에 덮인다
+# (Spring Boot 기본 설정 위치). 그래서 모든 테스트 컨텍스트가 따로 설정하지 않아도 뜬다.
+#
+# GitHub App의 client ID·secret은 운영에서 환경 변수로 받는다 (main application.yaml).
+# 아래는 실제 App과 관계없는 가짜 값이다. 테스트는 GitHub에 접속하지 않는다 (S04 '주의할 것', external-systems).
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: test-client-id
+            client-secret: test-client-secret
