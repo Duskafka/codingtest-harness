@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-22 OD-01 결정 제안서 (S04 게이트 준비, 단계 진행 아님)
+- 한 일: 사람 요청으로 결정 제안서 002(로그인 유지 방식과 만료 정책) 초안. 추천은 ① DB 세션(Spring Session JDBC) ② 30일 롤링 + 절대 만료 ③ SameSite=Lax + `__Host-Http-` 접두사. 근거는 Spring Session 4.1·Security 7.1 문서, OWASP, RFC 10017(7.1)·9700·8725·8252
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 결정: 사람이 정한 내용을 002에 받아 적음 — ① DB 세션 ② 30일 롤링만(추천과 다름) ③ SameSite=Lax + `__Host-Http-`. 검토 메모의 '이유'는 사람이 채울 칸으로 남김
+- 다음: PR #4 병합 → 사람이 결정 대장(OD-01 행 '확정', 제안서 목록 002, D22 문장)과 스펙·S04 문서(쿠키 접두사, '세션' 행 확정, OD-01 안내 정리)를 고침 → OD-05·OD-06도 정해지면 S04 시작 (S04는 OD-02 제안서부터)
+- 막힌 것: 결정 대장·스펙 반영 대기 (사람)
+- 참고: 이번 세션에서 사람이 답한 조건 — Android·iOS 앱은 P1 이후 계획(스펙 2.4와 달라 스펙 변경 제안), 로그아웃·탈퇴는 즉시 무효화, 추천 기준은 보안·운영 단순성
+- PR: #4
+
 ## 2026-11-22 S03 문제 식별 파서 (세션 1/1)
 - 한 일: `verification`에 `ProblemParser.parse(message, paths) → ParsedCommit`(식별한 문제 + 확인 대기 후보), `ProblemRef`, `Platform`(BOJ·PROGRAMMERS·LEETCODE), 파서 버전 1. 커밋 샘플 18개(`src/test/resources/commit-samples/`, 형식은 그 폴더 README)
 - 상태: 빌드 통과 (테스트 189개)
