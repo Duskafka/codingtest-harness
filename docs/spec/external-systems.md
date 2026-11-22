@@ -41,4 +41,8 @@
 - 설치 가능 범위: Any account
 - Private key: 한 번 내려받아 서버에만 보관. 레포에 절대 커밋하지 않기
 - 개발용 App과 운영용 App을 따로 등록. 개발용 웹훅은 Cloudflare Tunnel의 개발용 호스트명 (또는 smee.io)으로 로컬에 전달
-- 로그인을 GitHub App의 사용자 인증으로 할지, OAuth App을 따로 둘지 결정 (ADR-002)
+- 로그인: 이 App의 사용자 인증으로 해요. 별도 OAuth App은 두지 않아요 (OD-02, 결정 제안서 005)
+- Callback URL: `https://(도메인)/login/oauth2/code/github` (개발용 App은 개발 환경 주소)
+- Expire user authorization tokens: 켜 둠 (기본값, 사용자 토큰 8시간)
+- Request user authorization (OAuth) during installation: 끔 (켜면 Setup URL을 쓸 수 없어요)
+- Client secret: 서버 `.env`에만 보관

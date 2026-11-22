@@ -5,10 +5,10 @@
 | 단계 | P1 |
 | 선행 | S01 |
 | 결정 게이트 | OD-01 (로그인 유지 방식), OD-02 (GitHub 로그인 방식), OD-05 (Lombok), OD-06 (스키마 이름, 이 단계가 첫 마이그레이션이면) |
-| 사람 할 일 | H-03 (실제 로그인 확인용 OAuth 설정, 자동 테스트에는 불필요) |
+| 사람 할 일 | H-02 (개발용 GitHub App 등록. 실제 로그인 확인용 콜백 URL·client secret 포함, 자동 테스트에는 불필요) |
 | T번호 | T19 기반 (권한 실패 응답) |
 
-> OD-01은 DB 세션으로 확정됐어요 (결정 제안서 002). OD-05·OD-06도 확정됐어요 (결정 제안서 003·004). OD-02는 에이전트가 결정 제안서를 먼저 쓰고, 사람이 정하면 그 결정을 이 문서에 반영한 뒤 2번부터 시작해요 (`docs/workflow.md` 4장).
+> OD-01은 DB 세션으로 확정됐어요 (결정 제안서 002). OD-05·OD-06도 확정됐어요 (결정 제안서 003·004). OD-02는 웹훅용 GitHub App의 사용자 인증으로 확정됐어요 (결정 제안서 005). 2번부터 시작해요.
 
 ## 목표
 
@@ -19,16 +19,17 @@ GitHub로 로그인하고, 로그인 상태를 유지하고, `/api/me`로 내 �
 - `docs/spec/api.md`: 4.4의 계정 행, 4.5 전체
 - `docs/spec/security.md`: 9.7 '로그인과 세션', '권한'
 - `docs/spec/data-model.md`: 4.3의 `users`, `spring_session` 행
-- `docs/spec/processes/5.02-github-connection.md`: '주의할 것' (OD-02 제안서를 쓸 때)
-- `docs/spec/external-systems.md`: 4.6 마지막 항목
+- `docs/spec/processes/5.02-github-connection.md`: '주의할 것'
+- `docs/spec/external-systems.md`: 4.6 로그인 항목 (콜백 URL, 토큰 만료, 설치 중 사용자 인증)
 - `docs/decisions/002-login-persistence.md`: '결정' (세션·만료·쿠키)
 - `docs/decisions/003-lombok.md`: '결정', B의 허용 목록과 강제 방법
 - `docs/decisions/004-db-schema-name.md`: '결정', '적용 방법' (Spring Session JDBC 항목 포함)
+- `docs/decisions/005-github-login-method.md`: '결정', '추천과 이유'의 '양쪽 공통'
 
 ## 만들 것
 
-1. **OD-02 결정 제안서 (먼저):** 별도 OAuth App과 GitHub App 사용자 인증을 비교한다. 받는 권한 범위, 설치와 로그인의 연결(5.2), 토큰 저장 여부, 운영 부담을 본다. 사람이 정하기 전에는 2번부터 하지 않는다.
-2. **GitHub 로그인:** Spring Security OAuth2 Client. GitHub access token은 신원 확인에만 쓰고 저장하지 않는다. `users`를 `github_id` 기준으로 저장하거나 갱신한다.
+1. **OD-02 결정 제안서 (먼저):** 별도 OAuth App과 GitHub App 사용자 인증을 비교한다. 받는 권한 범위, 설치와 로그인의 연결(5.2), 토큰 저장 여부, 운영 부담을 본다. 사람이 정하기 전에는 2번부터 하지 않는다. → 결정 제안서 005로 확정 (B).
+2. **GitHub 로그인:** Spring Security OAuth2 Client. 웹훅용 GitHub App의 사용자 인증으로(결정 제안서 005), App의 client ID와 client secret(`.env`, infra 9.6)을 쓴다. GitHub access token은 신원 확인에만 쓰고, 리프레시 토큰까지 저장하지 않는다. `users`를 `github_id` 기준으로 저장하거나 갱신한다.
 3. **세션:** Spring Session JDBC로 DB에 저장한다 (D22). 세션 쿠키는 HttpOnly, Secure, SameSite=Lax이고 이름은 `__Host-Http-` 접두사로 시작한다 (로컬 개발·브라우저 지원이 안 되면 `__Host-`, 확인 결과를 PR에 적는다). 만료는 30일 롤링 (4.5, 결정 제안서 002).
 4. **CSRF:** SPA용 공식 설정. 토큰을 쿠키로 내려 주고 SPA가 `X-XSRF-TOKEN` 헤더로 돌려보낸다.
 5. **엔드포인트:** `GET /api/me`, `POST /logout`. 4.4의 나머지 계정 엔드포인트는 그 단계에서 만든다.
@@ -63,5 +64,5 @@ GitHub로 로그인하고, 로그인 상태를 유지하고, `/api/me`로 내 �
 
 ## 판단 기록이 필요한 곳
 
-- **결정 제안서:** OD-02 (위 1번)
-- **판단 기록:** 세션 30일 롤링 구현 방식 (만료 정책은 결정 제안서 002에서 정함), `users` 갱신 항목, (첫 엔티티면) `@Builder` 쓰는 방식 (결정 제안서 003), (첫 마이그레이션이면) 스키마 설정 방법 (결정 제안서 004)
+- **결정 제안서:** OD-02 (위 1번, 005로 확정)
+- **판단 기록:** 세션 30일 롤링 구현 방식 (만료 정책은 결정 제안서 002에서 정함), `users` 갱신 항목, (첫 엔티티면) `@Builder` 쓰는 방식 (결정 제안서 003), (첫 마이그레이션이면) 스키마 설정 방법 (결정 제안서 004), 로그인 토큰을 남기지 않는 구성·인가 요청에 PKCE가 붙는지 확인·신원 확인 직후 토큰을 취소할지 (결정 제안서 005 '양쪽 공통')
