@@ -174,9 +174,9 @@ public class GithubConnectionService {
 		}
 	}
 
-	private LinkView autoLink(long userId, long installationId, InstalledRepository repository) {
+	private @Nullable LinkView autoLink(long userId, long installationId, InstalledRepository repository) {
 		try {
-			return this.store.linkIfNone(userId, installationId, repository);
+			return this.store.linkIfNone(userId, installationId, repository).orElse(null);
 		}
 		catch (DataIntegrityViolationException ex) {
 			// 같은 사용자의 다른 요청이 먼저 연결했다. 그 연결을 쓴다.

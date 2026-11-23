@@ -1,13 +1,16 @@
 package com.duskafka.studybot.github.connection;
 
+import com.duskafka.studybot.common.error.ConflictException;
 import com.duskafka.studybot.github.api.InstalledRepository;
 import com.duskafka.studybot.github.connection.ConnectionViews.InstallationView;
 import com.duskafka.studybot.github.connection.ConnectionViews.LinkView;
 import com.duskafka.studybot.github.persistence.GithubInstallationRepository;
+import com.duskafka.studybot.github.persistence.InstallationStatus;
 import com.duskafka.studybot.github.persistence.LinkedRepository;
 import com.duskafka.studybot.github.persistence.LinkedRepositoryRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -16,6 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 연결 화면의 DB 작업. GitHub API는 트랜잭션 밖에서 부르고, 그 결과를 여기서 짧은 트랜잭션으로 반영한다
  * (외부 호출 동안 DB 트랜잭션을 잡고 있지 않게).
+ *
+ * <p>연결을 저장할 때는 설치 행을 잠그고 아직 이 사용자의 ACTIVE 설치인지 다시 본다. GitHub를 부르는 사이에 suspend·deleted
+ * 웹훅이 오면, 웹훅이 먼저 끝났으면 저장하지 않고, 저장이 먼저 끝났으면 웹훅이 새 연결까지 함께 끈다.
  */
 @Component
 @RequiredArgsConstructor
@@ -47,6 +53,9 @@ class GithubConnectionStore {
 	 */
 	@Transactional
 	LinkView link(long userId, long installationId, InstalledRepository repository) {
+		if (!lockActiveInstallation(userId, installationId)) {
+			throw new ConflictException("GitHub App 설치 상태가 바뀌었어요. 다시 시도해 주세요.");
+		}
 		Instant now = this.clock.instant();
 		Optional<LinkedRepository> current = this.links.findCurrentByUserId(userId);
 		if (current.isPresent() && current.get().isActive() && current.get().getRepoId() == repository.id()
@@ -64,15 +73,21 @@ class GithubConnectionStore {
 		return LinkView.of(created);
 	}
 
-	/** 연결이 없을 때만 이 레포를 연결한다 (레포가 하나뿐인 설치의 자동 연결). 이미 연결이 있으면 그것을 돌려준다. */
+	/**
+	 * 연결이 없을 때만 이 레포를 연결한다 (레포가 하나뿐인 설치의 자동 연결). 이미 연결이 있으면 그것을 돌려주고,
+	 * 그사이 설치가 정지·삭제됐으면 연결하지 않는다 (빈 값).
+	 */
 	@Transactional
-	LinkView linkIfNone(long userId, long installationId, InstalledRepository repository) {
+	Optional<LinkView> linkIfNone(long userId, long installationId, InstalledRepository repository) {
+		if (!lockActiveInstallation(userId, installationId)) {
+			return this.links.findCurrentByUserId(userId).map(LinkView::of);
+		}
 		Optional<LinkedRepository> current = this.links.findCurrentByUserId(userId);
 		if (current.isPresent()) {
-			return LinkView.of(current.get());
+			return current.map(LinkView::of);
 		}
-		return LinkView.of(this.links.saveAndFlush(LinkedRepository.activate(userId, installationId, repository.id(),
-				repository.fullName(), repository.defaultBranch(), this.clock.instant())));
+		return Optional.of(LinkView.of(this.links.saveAndFlush(LinkedRepository.activate(userId, installationId,
+				repository.id(), repository.fullName(), repository.defaultBranch(), this.clock.instant()))));
 	}
 
 	/** 연결한 레포의 이름·기본 브랜치가 GitHub에서 바뀌었으면 고친다 (repo_id로 같은 레포). */
@@ -84,6 +99,14 @@ class GithubConnectionStore {
 				link.refresh(repository.fullName(), repository.defaultBranch(), this.clock.instant());
 				return LinkView.of(link);
 			});
+	}
+
+	/** 설치 행을 잠그고, 아직 이 사용자의 ACTIVE 설치인지 본다. */
+	private boolean lockActiveInstallation(long userId, long installationId) {
+		return this.installations.findForUpdate(installationId)
+			.filter(installation -> installation.getStatus() == InstallationStatus.ACTIVE
+					&& Objects.equals(installation.getUserId(), userId))
+			.isPresent();
 	}
 
 }

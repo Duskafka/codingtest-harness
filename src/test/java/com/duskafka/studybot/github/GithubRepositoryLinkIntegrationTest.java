@@ -8,6 +8,9 @@ import com.duskafka.studybot.github.GithubConnectionRows.TestUser;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
@@ -23,6 +26,7 @@ import tools.jackson.databind.JsonNode;
  * 사용자당 1개다.</li>
  * </ul>
  */
+@ExtendWith(OutputCaptureExtension.class)
 class GithubRepositoryLinkIntegrationTest extends GithubConnectionTestSupport {
 
 	@Test
@@ -303,8 +307,8 @@ class GithubRepositoryLinkIntegrationTest extends GithubConnectionTestSupport {
 	}
 
 	@Test
-	@DisplayName("S07: 레포 목록 조회가 실패해도 503이고, 받은 토큰은 응답에 싣지 않는다")
-	void repositoryListFailureIsServiceUnavailable() {
+	@DisplayName("S07: 레포 목록 조회가 실패해도 503이고, 받은 설치 토큰은 응답과 로그에 남지 않는다")
+	void repositoryListFailureIsServiceUnavailable(CapturedOutput output) {
 		TestUser user = newUser("list-outage");
 		long installationId = rows.insertLinkedInstallation(user, clock.instant());
 		GithubApiStub.stubInstallationToken(installationId, clock.instant().plusSeconds(3600));
@@ -314,6 +318,8 @@ class GithubRepositoryLinkIntegrationTest extends GithubConnectionTestSupport {
 
 		assertThat(list).hasStatus(HttpStatus.SERVICE_UNAVAILABLE);
 		assertThat(body(list)).doesNotContain(GithubApiStub.tokenFor(installationId, 1));
+		assertThat(output.getAll()).doesNotContain(GithubApiStub.tokenFor(installationId, 1))
+			.contains("installation=" + installationId);
 	}
 
 }
