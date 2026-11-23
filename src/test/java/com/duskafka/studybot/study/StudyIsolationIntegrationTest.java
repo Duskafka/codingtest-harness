@@ -38,13 +38,13 @@ class StudyIsolationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (T19): 다른 스터디의 상세 → 404")
+	@DisplayName("T19: 다른 스터디의 상세 → 404")
 	void detailOfOtherStudy() {
 		assertDenied(get(alice, "/api/studies/" + bobStudy));
 	}
 
 	@Test
-	@DisplayName("S05 (T19): 다른 스터디의 이름 변경·위임 → 404이고 바뀌지 않는다")
+	@DisplayName("T19: 다른 스터디의 이름 변경·위임 → 404이고 바뀌지 않는다")
 	void patchOtherStudy() {
 		assertDenied(patchJson(alice, "/api/studies/" + bobStudy, "{\"name\": \"탈취\"}"));
 		assertDenied(patchJson(alice, "/api/studies/" + bobStudy, "{\"ownerUserId\": " + alice.id() + "}"));
@@ -55,7 +55,7 @@ class StudyIsolationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (T19): 다른 스터디의 초대 만들기 → 404")
+	@DisplayName("T19: 다른 스터디의 초대 만들기 → 404")
 	void inviteToOtherStudy() {
 		long before = invitationCount(bobStudy);
 
@@ -64,7 +64,7 @@ class StudyIsolationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (T19): 다른 스터디의 초대 철회 → 404. 내 스터디 ID에 남의 초대 ID를 붙여도 404")
+	@DisplayName("T19: 다른 스터디의 초대 철회 → 404. 내 스터디 ID에 남의 초대 ID를 붙여도 404")
 	void revokeOtherStudyInvitation() {
 		assertDenied(delete(alice, "/api/studies/" + bobStudy + "/invitations/" + bobInvitation));
 		assertDenied(delete(alice, "/api/studies/" + aliceStudy + "/invitations/" + bobInvitation));
@@ -76,7 +76,7 @@ class StudyIsolationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (T19): 다른 스터디에서 탈퇴 → 404이고 그 스터디 멤버십은 그대로다")
+	@DisplayName("T19: 다른 스터디에서 탈퇴 → 404이고 그 스터디 멤버십은 그대로다")
 	void leaveOtherStudy() {
 		assertDenied(delete(alice, "/api/studies/" + bobStudy + "/members/me"));
 
@@ -85,7 +85,7 @@ class StudyIsolationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (T19): 내 스터디 목록에는 다른 스터디가 없다")
+	@DisplayName("T19: 내 스터디 목록에는 다른 스터디가 없다")
 	void listExcludesOtherStudy() {
 		List<Long> ids = json(get(alice, "/api/studies")).get("content")
 			.valueStream()

@@ -19,7 +19,6 @@ import com.duskafka.studybot.study.persistence.StudyRuleRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -92,10 +91,10 @@ public class InvitationService {
 		}
 		Study study = this.studyRepository.findById(invitation.getStudyId())
 			.orElseThrow(() -> new NotFoundException(NOT_FOUND_DETAIL));
-		List<StudyRule> rules = this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(study.getId());
-		StudyRule rule = StudyTimeline.ruleAt(rules, study.zoneId(), now);
+		StudyRule rule = StudyTimeline
+			.currentRule(this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(study.getId()));
 		Season season = StudyTimeline.seasonOn(this.seasonRepository.findByStudyIdOrderBySeqAsc(study.getId()),
-				StudyTimeline.studyDayOf(rule, study.zoneId(), now));
+				StudyTimeline.calendar(rule, study.zoneId()).studyDayOf(now));
 		return new InvitationPreview(study, rule, season, invitation.getExpiresAt());
 	}
 
@@ -107,7 +106,8 @@ public class InvitationService {
 	 * 같은 사람이 동시에 두 번 눌러도 멤버십이 하나다.</li>
 	 * <li>이미 멤버면 그대로 성공이다. 사용 횟수를 쓰지 않는다 (5.1 '이미 멤버면 그대로 성공').</li>
 	 * <li>만료·철회면 410, 정원이 찼으면 409.</li>
-	 * <li>사용 횟수는 {@code used_count < max_uses} 조건부 UPDATE로 늘린다. 바뀐 행이 없으면 410 (5.1 '정원 동시성').</li>
+	 * <li>사용 횟수는 {@code used_count < max_uses} 조건부 UPDATE로 늘린다 (5.1 '정원 동시성'). 같은 UPDATE가 철회·만료도
+	 * 다시 봐서, 초대를 읽은 뒤 철회가 커밋돼도 그 초대로는 가입하지 못한다. 바뀐 행이 없으면 410.</li>
 	 * <li>판정은 가입 다음 스터디 일부터다 (R14). 스터디가 시작하기 전이면 시작일부터.</li>
 	 * </ol>
 	 */
@@ -127,20 +127,24 @@ public class InvitationService {
 		if (this.membershipRepository.countByStudyIdAndLeftAtIsNull(studyId) >= StudyLimits.CAPACITY) {
 			throw new ConflictException("정원(" + StudyLimits.CAPACITY + "명)이 찼어요.");
 		}
-		if (this.invitationRepository.incrementUsedCount(invitation.getId()) == 0) {
-			throw new GoneException("사용 횟수를 다 쓴 초대예요.");
+		if (this.invitationRepository.incrementUsedCount(invitation.getId(), now) == 0) {
+			// 다 썼거나, 앞에서 읽은 뒤에 철회·만료됐다 (조건부 UPDATE가 최신 행으로 다시 본다).
+			throw new GoneException("더는 쓸 수 없는 초대예요.");
 		}
 		Membership membership = this.membershipRepository
 			.save(new Membership(studyId, userId, MembershipRole.MEMBER, now, judgedFrom(study, now)));
 		return AcceptedInvitation.of(membership);
 	}
 
-	/** 가입 다음 스터디 일 (R14). 스터디 시작일(첫 규칙 버전의 적용 시작일)보다 앞이면 시작일. */
+	/**
+	 * 가입 다음 스터디 일 (R14). 스터디 시작일(첫 규칙 버전의 적용 시작일)보다 앞이면 시작일이다.
+	 * 시작 전 날에는 적용되는 규칙 버전이 없어 판정할 수 없고, 방장의 판정 시작일도 시작일이라 맞춘다 (S05 PR 판단 기록).
+	 */
 	private LocalDate judgedFrom(Study study, Instant joinedAt) {
-		List<StudyRule> rules = this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(study.getId());
-		StudyRule rule = StudyTimeline.ruleAt(rules, study.zoneId(), joinedAt);
-		LocalDate nextStudyDay = StudyTimeline.studyDayOf(rule, study.zoneId(), joinedAt).plusDays(1);
-		LocalDate studyStart = rules.getFirst().getEffectiveFrom();
+		StudyRule rule = StudyTimeline
+			.currentRule(this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(study.getId()));
+		LocalDate nextStudyDay = StudyTimeline.calendar(rule, study.zoneId()).nextStudyDayOf(joinedAt);
+		LocalDate studyStart = rule.getEffectiveFrom();
 		return nextStudyDay.isBefore(studyStart) ? studyStart : nextStudyDay;
 	}
 

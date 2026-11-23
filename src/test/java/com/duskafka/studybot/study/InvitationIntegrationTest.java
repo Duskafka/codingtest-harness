@@ -159,7 +159,7 @@ class InvitationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (T20): 만료된 토큰은 미리보기와 수락이 거절된다 (만료 시각부터)")
+	@DisplayName("T20: 만료된 토큰은 미리보기와 수락이 거절된다 (만료 시각부터)")
 	void expiredTokenIsRejected() {
 		TestUser owner = newUser("expired-owner");
 		TestUser joiner = newUser("expired-joiner");
@@ -176,7 +176,7 @@ class InvitationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (T20): 방장이 철회한 토큰은 미리보기와 수락이 거절된다")
+	@DisplayName("T20: 방장이 철회한 토큰은 미리보기와 수락이 거절된다")
 	void revokedTokenIsRejected() {
 		TestUser owner = newUser("revoke-owner");
 		TestUser joiner = newUser("revoke-joiner");
@@ -198,7 +198,7 @@ class InvitationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (T20): 사용 횟수를 다 쓴 토큰은 다른 사람의 수락이 거절된다")
+	@DisplayName("T20: 사용 횟수를 다 쓴 토큰은 다른 사람의 수락이 거절된다")
 	void usedUpTokenIsRejected() {
 		TestUser owner = newUser("used-up-owner");
 		TestUser first = newUser("used-up-first");
@@ -272,7 +272,7 @@ class InvitationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (R14): 스터디 시작 전에 가입하면 시작일부터 판정한다")
+	@DisplayName("S05: 스터디 시작 전에 가입하면 시작일부터 판정한다 (R14의 다음 스터디 일이 시작일보다 앞이면 시작일, PR 판단 기록)")
 	void judgedFromIsNotBeforeStudyStart() {
 		TestUser owner = newUser("early-owner");
 		TestUser joiner = newUser("early-joiner");

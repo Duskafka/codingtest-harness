@@ -101,4 +101,22 @@ public final class StudyCalendar {
 		return rule.restDays().contains(studyDay.getDayOfWeek());
 	}
 
+	/** 시각이 속한 스터디 일의 다음 스터디 일. 가입하면 이날부터 판정한다 (R14). 새 스터디의 시작일 기본값도 이날이다 (S05). */
+	public LocalDate nextStudyDayOf(Instant instant) {
+		return studyDayOf(instant).plusDays(1);
+	}
+
+	/**
+	 * 기수의 마지막 스터디 일(포함). 시작일부터 기수 길이만큼 운영한다 (R13). 28일이면 시작일 + 27일.
+	 * 기수 경계일 계산은 여기 한 곳에서 한다 (5.13 '주의할 것'). 날짜만 세므로 시간 규칙과 관계없다.
+	 * 다음 기수를 언제 시작할지는 OD-07이라 아직 없다.
+	 */
+	public static LocalDate seasonEndDay(LocalDate startDay, int lengthDays) {
+		Objects.requireNonNull(startDay, "startDay");
+		if (lengthDays < 1) {
+			throw new IllegalArgumentException("기수 길이는 1일 이상이어야 해요: " + lengthDays);
+		}
+		return startDay.plusDays(lengthDays - 1L);
+	}
+
 }

@@ -5,6 +5,7 @@ import com.duskafka.studybot.study.StudyAccess;
 import com.duskafka.studybot.study.StudyMember;
 import com.duskafka.studybot.study.persistence.MembershipRepository;
 import com.duskafka.studybot.study.persistence.MyStudyRow;
+import com.duskafka.studybot.study.persistence.Season;
 import com.duskafka.studybot.study.persistence.SeasonRepository;
 import com.duskafka.studybot.study.persistence.Study;
 import com.duskafka.studybot.study.persistence.StudyRepository;
@@ -48,10 +49,9 @@ public class StudyQueryService {
 		Study study = this.studyRepository.findById(studyId)
 			.orElseThrow(() -> new NotFoundException("스터디를 찾을 수 없어요."));
 		Instant now = this.clock.instant();
-		StudyRule rule = StudyTimeline.ruleAt(this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(studyId),
-				study.zoneId(), now);
-		var season = StudyTimeline.seasonOn(this.seasonRepository.findByStudyIdOrderBySeqAsc(studyId),
-				StudyTimeline.studyDayOf(rule, study.zoneId(), now));
+		StudyRule rule = StudyTimeline.currentRule(this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(studyId));
+		Season season = StudyTimeline.seasonOn(this.seasonRepository.findByStudyIdOrderBySeqAsc(studyId),
+				StudyTimeline.calendar(rule, study.zoneId()).studyDayOf(now));
 		long memberCount = this.membershipRepository.countByStudyIdAndLeftAtIsNull(studyId);
 		return new StudyDetail(study, me.role(), memberCount, rule, season);
 	}

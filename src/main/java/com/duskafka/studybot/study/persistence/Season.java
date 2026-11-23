@@ -49,16 +49,18 @@ public class Season {
 
 	/**
 	 * 새 기수. 상태는 {@code SCHEDULED}다 (3.4 '[*] → SCHEDULED: 스터디 생성 또는 다음 기수 생성').
-	 * 끝 날짜는 시작일부터 기수 길이만큼 센 마지막 날이다 (R13). 28일이면 시작일 + 27일.
+	 * 끝 날짜는 {@code StudyCalendar.seasonEndDay}로 센다 (5.13 '경계일 계산은 StudyCalendar 한 곳에서').
 	 */
-	public Season(long studyId, int seq, LocalDate startDay, int lengthDays, Instant createdAt) {
-		if (seq < 1 || lengthDays < 1) {
-			throw new IllegalArgumentException("기수 번호와 길이는 1 이상이어야 해요");
+	public Season(long studyId, int seq, LocalDate startDay, LocalDate endDay, Instant createdAt) {
+		Objects.requireNonNull(startDay, "startDay");
+		Objects.requireNonNull(endDay, "endDay");
+		if (seq < 1 || endDay.isBefore(startDay)) {
+			throw new IllegalArgumentException("기수 번호는 1 이상, 끝 날짜는 시작일 이후여야 해요");
 		}
 		this.studyId = studyId;
 		this.seq = seq;
-		this.startDay = Objects.requireNonNull(startDay, "startDay");
-		this.endDay = startDay.plusDays(lengthDays - 1L);
+		this.startDay = startDay;
+		this.endDay = endDay;
 		this.status = SeasonStatus.SCHEDULED;
 		this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
 	}

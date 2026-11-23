@@ -28,7 +28,7 @@ class InvitationConcurrencyIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (T20): 마지막 한 자리(29/30)를 두 명이 동시에 수락하면 한 명만 성공하고 정원을 넘지 않는다")
+	@DisplayName("T20: 마지막 한 자리(29/30)를 두 명이 동시에 수락하면 한 명만 성공하고 정원을 넘지 않는다")
 	void lastSeatGoesToOnlyOne() throws Exception {
 		TestUser owner = newUser("seat-owner");
 		long studyId = createStudy(owner, "GROUP");
@@ -48,7 +48,7 @@ class InvitationConcurrencyIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (T20): 사용 횟수가 한 번 남은 초대를 두 명이 동시에 수락하면 한 명만 성공한다")
+	@DisplayName("T20: 사용 횟수가 한 번 남은 초대를 두 명이 동시에 수락하면 한 명만 성공한다")
 	void lastUseGoesToOnlyOne() throws Exception {
 		TestUser owner = newUser("use-owner");
 		long studyId = createStudy(owner, "GROUP");

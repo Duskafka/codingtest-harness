@@ -103,4 +103,19 @@ class StudySettingsIntegrationTest extends StudyTestSupport {
 			.hasStatus(HttpStatus.BAD_REQUEST);
 	}
 
+	@Test
+	@DisplayName("S05: 스터디 시간대는 바꿀 수 없다 (5.1). PATCH에 timezone만 보내면 바꿀 값이 없어 400이고 그대로다")
+	void timezoneCannotBeChanged() {
+		TestUser owner = newUser("timezone-owner");
+		long studyId = createStudy(owner, "GROUP");
+
+		MvcTestResult result = patchJson(owner, "/api/studies/" + studyId, "{\"timezone\": \"America/New_York\"}");
+
+		assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+		assertThat(jdbc.sql("select timezone from studybot.studies where id = :id")
+			.param("id", studyId)
+			.query(String.class)
+			.single()).isEqualTo("Asia/Seoul");
+	}
+
 }

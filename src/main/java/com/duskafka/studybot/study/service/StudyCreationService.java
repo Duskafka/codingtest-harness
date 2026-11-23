@@ -66,7 +66,8 @@ public class StudyCreationService {
 			.seasonLengthDays(rule.seasonLengthDays())
 			.createdAt(now)
 			.build());
-		this.seasonRepository.save(new Season(studyId, 1, start, rule.seasonLengthDays(), now));
+		this.seasonRepository
+			.save(new Season(studyId, 1, start, StudyCalendar.seasonEndDay(start, rule.seasonLengthDays()), now));
 		this.membershipRepository.save(new Membership(studyId, ownerId, MembershipRole.OWNER, now, start));
 		return studyId;
 	}
@@ -82,9 +83,9 @@ public class StudyCreationService {
 			// 요청 검증이 같은 범위를 먼저 본다. 여기까지 오면 메시지(범위 안내)를 그대로 돌려준다.
 			throw new BadRequestException(ex.getMessage());
 		}
-		LocalDate today = StudyCalendar.of(timeRule).studyDayOf(now);
-		LocalDate first = today.plusDays(1);
-		LocalDate last = today.plusDays(StudyLimits.START_DATE_MAX_DAYS_AHEAD);
+		StudyCalendar calendar = StudyCalendar.of(timeRule);
+		LocalDate first = calendar.nextStudyDayOf(now);
+		LocalDate last = calendar.studyDayOf(now).plusDays(StudyLimits.START_DATE_MAX_DAYS_AHEAD);
 		LocalDate start = newStudy.startDate() != null ? newStudy.startDate() : first;
 		if (start.isBefore(first) || start.isAfter(last)) {
 			throw new BadRequestException("시작일은 " + first + "부터 " + last + "까지 고를 수 있어요.");

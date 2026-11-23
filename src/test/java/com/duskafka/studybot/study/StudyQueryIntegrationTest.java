@@ -97,7 +97,7 @@ class StudyQueryIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05 (T19): 멤버가 아니면 스터디 상세를 볼 수 없다 (404)")
+	@DisplayName("T19: 멤버가 아니면 스터디 상세를 볼 수 없다 (404)")
 	void nonMemberCannotSeeDetail() {
 		TestUser owner = newUser("detail-private-owner");
 		TestUser stranger = newUser("detail-stranger");
