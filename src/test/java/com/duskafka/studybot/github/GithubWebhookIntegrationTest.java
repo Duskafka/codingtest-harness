@@ -248,7 +248,9 @@ class GithubWebhookIntegrationTest extends WebhookTestSupport {
 	}
 
 	@Test
-	@DisplayName("S06: 받는 이벤트인데 처리기가 아직 없으면(installation 계열, S07 전) 202이고 IGNORED로 남는다")
+	// S07에서 installation 처리기가 생겨 installation(created)은 설치를 저장하고 PROCESSED가 된다. 이 단언의 기대값과 이름만 바꿨다
+	// (사람이 정함, 2026-11-23 S07 세션 "installation 단언만 PROCESSED로 (Recommended)"). added는 바꿀 것이 없어 IGNORED 그대로다.
+	@DisplayName("S06·S07: installation 계열 웹훅은 202이고, 설치를 저장한 created는 PROCESSED, 바꿀 것이 없는 added는 IGNORED로 남는다")
 	void acceptedEventWithoutHandlerIsIgnored() {
 		String installation = newDeliveryId();
 		String repositories = newDeliveryId();
@@ -257,7 +259,7 @@ class GithubWebhookIntegrationTest extends WebhookTestSupport {
 		assertThat(sendSigned("installation_repositories", repositories, payload("installation_repositories.json")))
 			.hasStatus(202);
 
-		assertThat(onlyInboxRow(installation).status()).isEqualTo("IGNORED");
+		assertThat(onlyInboxRow(installation).status()).isEqualTo("PROCESSED");
 		assertThat(onlyInboxRow(repositories).status()).isEqualTo("IGNORED");
 		assertThat(onlyInboxRow(repositories).eventType()).isEqualTo("installation_repositories");
 	}
