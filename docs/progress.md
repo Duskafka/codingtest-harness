@@ -9,7 +9,7 @@
 - 다음: 이 PR 병합 → 새 세션에서 S07(GitHub App 연결, 선행 S04·S06 완료). S07 처리기는 `github.webhook.GithubEventHandler` 빈으로
 - 막힌 것: 없음
 - 참고: PR #12 '그 밖에 발견한 것'(OSIV 기본값 켜짐, 수신함 엔티티의 모듈 위치와 P3 디스코드, 헤더 제어 문자 → 500)은 사람이 아직 정하지 않아 문서에 넣지 않음
-- PR: (이 PR)
+- PR: #13
 
 ## 2026-11-23 S06 웹훅 수신 기반 (세션 1/1)
 - 한 일: 만들 것 1~8. V4 `webhook_inbox`, `POST /webhooks/github`(본문 5MB까지 바이트로 읽기 → 서명 → 이벤트 거르기 → 수신함 INSERT ON CONFLICT 별도 트랜잭션 → 새 트랜잭션에서 처리기 + 상태 → 실패면 FAILED), 시크릿 교체(현재·옛), 처리기 인터페이스 `github.webhook.GithubEventHandler`, `PingEventHandler`. 테스트 payload는 octokit/webhooks 예시를 가짜 값으로 바꿈(`github-payloads/README.md`)
