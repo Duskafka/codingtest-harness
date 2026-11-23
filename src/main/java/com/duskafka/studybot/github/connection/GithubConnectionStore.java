@@ -113,12 +113,15 @@ class GithubConnectionStore {
 		return this.links.findCurrentByUserId(userId).map(LinkView::of);
 	}
 
-	/** 설치 행을 잠그고, 아직 이 사용자의 ACTIVE 설치이며 레포 목록 리비전이 그대로인지 본다. */
+	/**
+	 * 설치 행을 잠그고, 아직 이 사용자의 ACTIVE 설치이며 레포 목록 리비전이 그대로인지 본다. 엔티티가 아니라 DB 값을 읽는다
+	 * ({@link GithubInstallationRepository#lockCurrentState}: open-in-view에 남은 옛 엔티티로 비교하지 않게).
+	 */
 	private boolean lockActiveInstallation(long userId, long installationId, long expectedRevision) {
-		return this.installations.findForUpdate(installationId)
-			.filter(installation -> installation.getStatus() == InstallationStatus.ACTIVE
-					&& Objects.equals(installation.getUserId(), userId)
-					&& installation.getRepositoriesRevision() == expectedRevision)
+		return this.installations.lockCurrentState(installationId)
+			.filter(state -> InstallationStatus.ACTIVE.name().equals(state.getStatus())
+					&& Objects.equals(state.getUserId(), userId)
+					&& state.getRepositoriesRevision() == expectedRevision)
 			.isPresent();
 	}
 

@@ -3,6 +3,7 @@ package com.duskafka.studybot.github.persistence;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -81,5 +82,31 @@ public interface GithubInstallationRepository extends JpaRepository<GithubInstal
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select i from GithubInstallation i where i.installationId = :installationId")
 	Optional<GithubInstallation> findForUpdate(@Param("installationId") long installationId);
+
+	/**
+	 * 설치 행을 잠그고 지금 DB 값을 읽는다. 연결을 저장하는 트랜잭션이 설치가 아직 이 사용자의 ACTIVE 설치이고 레포 목록 리비전이
+	 * 그대로인지 확인할 때 쓴다.
+	 *
+	 * <p>엔티티를 거치지 않는다. open-in-view로 요청 내내 열려 있는 EntityManager에는 앞서 읽은 설치 엔티티가 남아 있고,
+	 * {@link #findForUpdate}는 행을 잠그더라도 그 엔티티를 DB 값으로 다시 채우지 않고 그대로 돌려준다 (PR #14 리뷰 반영).
+	 */
+	@Query(value = """
+			select status as "status", user_id as "userId", repositories_revision as "repositoriesRevision"
+			from studybot.github_installations
+			where installation_id = :installationId
+			for update
+			""", nativeQuery = true)
+	Optional<LockedInstallation> lockCurrentState(@Param("installationId") long installationId);
+
+	/** 잠그고 읽은 설치의 지금 값. */
+	interface LockedInstallation {
+
+		String getStatus();
+
+		@Nullable Long getUserId();
+
+		long getRepositoriesRevision();
+
+	}
 
 }

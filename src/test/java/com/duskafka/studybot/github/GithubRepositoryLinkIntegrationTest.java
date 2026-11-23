@@ -370,4 +370,59 @@ class GithubRepositoryLinkIntegrationTest extends GithubConnectionTestSupport {
 		assertThat(rows.link(link).status()).isEqualTo("ACTIVE");
 	}
 
+	@Test
+	@DisplayName("S07: GitHub를 기다리는 사이 설치에서 레포가 빠지면(리비전이 오름) 고른 레포를 연결하지 않는다 (409, 요청 경로)")
+	void linkIsRefusedWhenRepositoriesChangeDuringGithubCall() {
+		TestUser user = newUser("removed-meanwhile");
+		long installationId = rows.insertLinkedInstallation(user, clock.instant());
+		long chosen = GithubConnectionRows.newRepoId();
+		stubInstallation(installationId, Repo.of(chosen, user.login() + "/algo"),
+				Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/other"));
+		GithubApiStub.beforeNextRepositoriesResponse(() -> changeInstallation(installationId,
+				"repositories_revision = repositories_revision + 1"));
+
+		MvcTestResult result = linkRepository(user, chosen);
+
+		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(rows.linksOf(user)).isEmpty();
+	}
+
+	@Test
+	@DisplayName("S07: GitHub를 기다리는 사이 설치가 정지되면 고른 레포를 연결하지 않는다 (409, 요청 경로)")
+	void linkIsRefusedWhenInstallationIsSuspendedDuringGithubCall() {
+		TestUser user = newUser("suspended-meanwhile");
+		long installationId = rows.insertLinkedInstallation(user, clock.instant());
+		long chosen = GithubConnectionRows.newRepoId();
+		stubInstallation(installationId, Repo.of(chosen, user.login() + "/algo"),
+				Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/other"));
+		GithubApiStub.beforeNextRepositoriesResponse(() -> changeInstallation(installationId, "status = 'SUSPENDED'"));
+
+		MvcTestResult result = linkRepository(user, chosen);
+
+		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(rows.linksOf(user)).isEmpty();
+	}
+
+	@Test
+	@DisplayName("S07: GitHub를 기다리는 사이 레포가 빠지면 레포가 하나여도 자동으로 연결하지 않는다 (요청 경로)")
+	void autoLinkIsSkippedWhenRepositoriesChangeDuringGithubCall() {
+		TestUser user = newUser("auto-meanwhile");
+		long installationId = rows.insertLinkedInstallation(user, clock.instant());
+		stubInstallation(installationId, Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/only"));
+		GithubApiStub.beforeNextRepositoriesResponse(() -> changeInstallation(installationId,
+				"repositories_revision = repositories_revision + 1"));
+
+		JsonNode body = json(repositories(user));
+
+		assertThat(body.get("linkedRepository").isNull()).isTrue();
+		assertThat(rows.linksOf(user)).isEmpty();
+	}
+
+	/** 웹훅이 설치를 바꾼 것처럼 다른 연결에서 바꾸고 커밋한다. */
+	private void changeInstallation(long installationId, String assignment) {
+		jdbc.sql("update studybot.github_installations set " + assignment + " where installation_id = :id")
+			.param("id", installationId)
+			.update();
+	}
+
 }

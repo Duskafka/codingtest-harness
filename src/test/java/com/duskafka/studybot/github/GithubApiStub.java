@@ -12,12 +12,16 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.client.ScenarioMappingBuilder;
+import com.github.tomakehurst.wiremock.extension.Parameters;
+import com.github.tomakehurst.wiremock.extension.ServeEventListener;
+import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -39,7 +43,10 @@ public final class GithubApiStub {
 
 	private static final String TOKEN_PREFIX = "ghs_S07FakeInstallationToken_";
 
-	private static final WireMockServer SERVER = new WireMockServer(wireMockConfig().dynamicPort());
+	private static final AtomicReference<Runnable> BEFORE_REPOSITORIES_RESPONSE = new AtomicReference<>();
+
+	private static final WireMockServer SERVER = new WireMockServer(
+			wireMockConfig().dynamicPort().extensions(new RepositoriesResponseHook()));
 
 	private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -59,6 +66,15 @@ public final class GithubApiStub {
 
 	public static void reset() {
 		server().resetAll();
+		BEFORE_REPOSITORIES_RESPONSE.set(null);
+	}
+
+	/**
+	 * 다음 레포 목록 응답을 보내기 직전에 한 번 실행한다. 앱이 GitHub 응답을 기다리는 사이에 일어나는 일(웹훅이 설치를 바꿈)을
+	 * 시간에 기대지 않고 재현할 때 쓴다. WireMock 요청 스레드에서 돌아서 앱의 트랜잭션과 다른 DB 연결을 쓴다.
+	 */
+	public static void beforeNextRepositoriesResponse(Runnable action) {
+		BEFORE_REPOSITORIES_RESPONSE.set(action);
 	}
 
 	/** 이 설치에 발급하는 가짜 토큰. 같은 설치에 다시 발급하면 끝 번호가 바뀐다. */
@@ -151,6 +167,26 @@ public final class GithubApiStub {
 
 	private static String json(Object value) {
 		return JSON.writeValueAsString(value);
+	}
+
+	/** 레포 목록 응답 직전에 {@link #beforeNextRepositoriesResponse}로 맡긴 일을 한 번 실행한다. */
+	static final class RepositoriesResponseHook implements ServeEventListener {
+
+		@Override
+		public String getName() {
+			return "studybot-repositories-response-hook";
+		}
+
+		@Override
+		public void beforeResponseSent(ServeEvent serveEvent, Parameters parameters) {
+			if (serveEvent.getRequest().getUrl().startsWith("/installation/repositories")) {
+				Runnable action = BEFORE_REPOSITORIES_RESPONSE.getAndSet(null);
+				if (action != null) {
+					action.run();
+				}
+			}
+		}
+
 	}
 
 	/** 목록에 넣을 레포. {@code fullName}은 {@code owner/name}. */
