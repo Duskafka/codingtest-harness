@@ -7,7 +7,8 @@
 모두 **추측**이에요. 실제 전달을 받아 만든 게 아니라, GitHub 공식 예시 payload의 모양을 따랐어요.
 
 - 출처: [octokit/webhooks](https://github.com/octokit/webhooks)의 `payload-examples/api.github.com/` (GitHub가 관리하는 웹훅 스키마·예시, 2026-11-23 `main`에서 받음)
-- 계정·이메일·ID는 가짜 값으로 바꿨어요. 사람: `studybot-tester`(id `100000001`), 이메일 `tester@example.com`, 레포 `studybot-tester/algorithm`(id `200000001`), 설치 id `300000001`, App id `400001`. `node_id`는 모두 `FAKE_NODE_ID`예요.
+- 계정·이메일·ID는 가짜 값으로 바꿨어요. 사람: `studybot-tester`(id `100000001`), 이메일 `tester@example.com`, 레포 `studybot-tester/algorithm`(id `200000001`), 설치 id `300000001`, App id `400001`, 그 밖의 레포·이슈·라벨 id는 `200000002`~, `600000001`~, `700000001`~. `node_id`는 모두 `FAKE_NODE_ID`예요.
+- 이름·설명 같은 글(예: 레포 `Space`, 이슈 제목)은 원본 예시 그대로예요. 실제 사람의 정보가 아니에요.
 - 실제 전달을 받으면(사람 할 일 H-02) `X-GitHub-Event`별로 이 파일들과 모양을 비교해 고쳐요.
 
 | 파일 | 이벤트 (`X-GitHub-Event`) | 원본 예시 | 바꾼 것 |

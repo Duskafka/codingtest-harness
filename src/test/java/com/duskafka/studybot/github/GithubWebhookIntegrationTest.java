@@ -6,6 +6,7 @@ import com.duskafka.studybot.github.webhook.GithubEvent;
 import com.duskafka.studybot.github.webhook.GithubWebhookEvent;
 import com.duskafka.studybot.github.webhook.HandlingResult;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -282,9 +283,10 @@ class GithubWebhookIntegrationTest extends WebhookTestSupport {
 		String login = "webhook-rollback-" + newDeliveryId();
 		AtomicReference<Long> countInsideHandler = new AtomicReference<>();
 		pushHandler.willDo(event -> {
-			jdbc.sql("insert into studybot.users (github_id, github_login, created_at) values (:githubId, :login, now())")
+			jdbc.sql("insert into studybot.users (github_id, github_login, created_at) values (:githubId, :login, :createdAt)")
 				.param("githubId", ThreadLocalRandom.current().nextLong(9_000_000_000L, 9_999_999_999L))
 				.param("login", login)
+				.param("createdAt", Timestamp.from(clock.instant()))
 				.update();
 			countInsideHandler.set(usersWithLogin(login));
 			throw new IllegalStateException("기록 뒤 실패");
