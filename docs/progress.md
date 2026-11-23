@@ -9,7 +9,7 @@
 - 다음: PR 검토 → 사람이 '지금 병합할지, OD-08까지 열어 둘지'(PR 열린 질문 1)와 결정 제안서 006을 정함 → 병합 뒤 `docs/` 문서 전용 PR로 두 결정과 받아들인 스펙 변경 제안을 반영 → OD-08이 정해지면 규칙 변경 `PUT /rules`·T11
 - 막힌 것: 결정 대기 OD-08 (규칙 변경 API, T11). OD-07은 1기 생성만 했고 다음 기수는 S12. 단계 상태는 '결정 대기'
 - 참고: S05 테스트는 `study/StudyTestSupport`(사용자는 DB에 넣고 `authentication()`으로 로그인, CSRF는 쿠키로)를 상속. 기수 SCHEDULED→ACTIVE 전환은 아직 어느 단계에도 없음(PR 열린 질문). Hibernate 7.4의 PostgreSQL 쓰기 잠금은 `FOR NO KEY UPDATE`
-- PR: (열면 채움)
+- PR: #11
 
 ## 2026-11-22 S04 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #9의 '스펙 변경 제안' 두 건을 사람이 받아들여 문서 전용 PR로 반영했다
