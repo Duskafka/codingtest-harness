@@ -9,7 +9,7 @@
 - 다음: PR 검토(판단 기록 '꼭 봐 주세요': 응답 모양, 테이블 컬럼·상태 값, 엔티티 이름, 가입 연결 방식, state) → 병합 뒤 받아들인 스펙 변경 제안을 docs PR로 → S08(push 처리, 선행 S03·S06·S07 완료)
 - 막힌 것: 없음. 실제 연동 확인은 H-02. 새 환경 변수 `GITHUB_APP_SLUG`(필수), `GITHUB_APP_PRIVATE_KEY_PATH` 또는 `GITHUB_APP_PRIVATE_KEY`(하나만, 없으면 앱이 안 뜸). JWT `iss`는 기존 `GITHUB_APP_CLIENT_ID`
 - 참고: S08은 연결을 `repo_id` + ACTIVE로 찾는다(부분 UNIQUE). `default_branch`는 목록 조회 때 GitHub 값으로 갱신된다. 모든 통합 테스트 컨텍스트에 테스트 키·WireMock(`github.GithubApiStub`)이 들어간다(`GithubAppTestConfiguration`). 컨텍스트를 따로 띄우는 테스트는 키를 직접 넣는다(`SessionRestartTest`는 실행 인자로, `properties()`는 yaml 빈 값에 밀림). 커밋 전 파일을 `git checkout --`로 되돌리는 명령은 막히니 조건 빼 보기는 커밋한 뒤 정확히 되바꿔서
-- PR: #
+- PR: #14
 
 ## 2026-11-23 S06 후속 결정 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #12(병합)에서 사람이 정한 것을 문서에 반영. S08 '만들 것' 7·수용 기준(네 이벤트 모두 처리기 필수), pseudocode 'push 웹훅 처리'(ping 200, `last_error`는 예외 종류), data-model `webhook_inbox`(payload 14일 뒤 비움, NULL 허용, 행은 남음), 5.3 '주의할 것'(5MB, 413 + 전달 ID 경고 로그)
