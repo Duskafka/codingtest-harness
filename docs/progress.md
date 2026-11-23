@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-23 S06 후속 결정 반영 (docs PR, 단계 진행 아님)
+- 한 일: PR #12(병합)에서 사람이 정한 것을 문서에 반영. S08 '만들 것' 7·수용 기준(네 이벤트 모두 처리기 필수), pseudocode 'push 웹훅 처리'(ping 200, `last_error`는 예외 종류), data-model `webhook_inbox`(payload 14일 뒤 비움, NULL 허용, 행은 남음), 5.3 '주의할 것'(5MB, 413 + 전달 ID 경고 로그)
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 사람이 정한 것 (2026-11-23, 세션 중 선택지): 스펙 변경 제안 1·2 "둘 다 받아들임 (Recommended)". 열린 질문 셋은 S06 기록에 있음
+- 다음: 이 PR 병합 → 새 세션에서 S07(GitHub App 연결, 선행 S04·S06 완료). S07 처리기는 `github.webhook.GithubEventHandler` 빈으로
+- 막힌 것: 없음
+- 참고: PR #12 '그 밖에 발견한 것'(OSIV 기본값 켜짐, 수신함 엔티티의 모듈 위치와 P3 디스코드, 헤더 제어 문자 → 500)은 사람이 아직 정하지 않아 문서에 넣지 않음
+- PR: #13
+
 ## 2026-11-23 S06 웹훅 수신 기반 (세션 1/1)
 - 한 일: 만들 것 1~8. V4 `webhook_inbox`, `POST /webhooks/github`(본문 5MB까지 바이트로 읽기 → 서명 → 이벤트 거르기 → 수신함 INSERT ON CONFLICT 별도 트랜잭션 → 새 트랜잭션에서 처리기 + 상태 → 실패면 FAILED), 시크릿 교체(현재·옛), 처리기 인터페이스 `github.webhook.GithubEventHandler`, `PingEventHandler`. 테스트 payload는 octokit/webhooks 예시를 가짜 값으로 바꿈(`github-payloads/README.md`)
 - 상태: 빌드 통과 (테스트 376개). 구현 전 새 테스트 42개 중 41개 실패 확인. 트랜잭션을 합치거나 ON CONFLICT를 빼면 해당 테스트가 실패하는 것도 확인. spec-reviewer '통과', 고려할 것 6건 반영(PR 본문). CodeRabbit '지적 없음'
