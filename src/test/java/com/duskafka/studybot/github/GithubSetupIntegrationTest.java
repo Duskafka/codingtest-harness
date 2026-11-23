@@ -6,6 +6,7 @@ import com.duskafka.studybot.github.GithubConnectionRows.TestUser;
 import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import tools.jackson.databind.JsonNode;
@@ -135,6 +136,29 @@ class GithubSetupIntegrationTest extends GithubConnectionTestSupport {
 
 		assertThat(result).hasStatus(HttpStatus.FOUND);
 		assertThat(result.getResponse().getHeader("Location")).isEqualTo("/");
+	}
+
+	@Test
+	@DisplayName("S07: HEAD도 GET과 같다. 로그인하지 않았으면 프론트 홈으로 보내고 핸들러에 닿지 않는다 (CodeRabbit 리뷰)")
+	void headWithoutLoginRedirectsHome() {
+		MvcTestResult result = mvc.method(HttpMethod.HEAD).uri("/github/setup?installation_id=1").exchange();
+
+		assertThat(result).hasStatus(HttpStatus.FOUND);
+		assertThat(result.getResponse().getHeader("Location")).isEqualTo("/");
+	}
+
+	@Test
+	@DisplayName("S07: 로그인한 HEAD는 GET과 같은 안내 주소로 보낸다")
+	void headWithLoginRedirectsLikeGet() {
+		TestUser user = newUser("head");
+
+		MvcTestResult result = mvc.method(HttpMethod.HEAD)
+			.uri("/github/setup?setup_action=update")
+			.with(as(user))
+			.exchange();
+
+		assertThat(result).hasStatus(HttpStatus.FOUND);
+		assertThat(result.getResponse().getHeader("Location")).isEqualTo("/?github_setup=unverified");
 	}
 
 }

@@ -24,8 +24,9 @@ import org.springframework.security.web.servlet.util.matcher.PathPatternRequestM
  * <li>{@code /api/**}: 로그인이 필요하다. 로그인하지 않으면 401, CSRF 토큰이 없거나 틀리면 403
  * ({@code application/problem+json}). 공개 API는 그 단계에서 여기에 하나씩 연다: 초대 미리보기 {@code GET /api/invitations/{token}}
  * (S05).</li>
- * <li>{@code GET /github/setup}(S07): GitHub App 설치 뒤 브라우저가 돌아오는 화면 경로라 로그인이 필요하다. 로그인하지 않았으면
- * 401 JSON 대신 로그인 화면(프론트 홈)으로 보낸다.</li>
+ * <li>{@code /github/setup}(S07): GitHub App 설치 뒤 브라우저가 돌아오는 화면 경로라 로그인이 필요하다. 메서드와 관계없이
+ * 막는다(Spring MVC는 {@code @GetMapping}을 HEAD에도 연결한다). 로그인하지 않았으면 401 JSON 대신 로그인 화면(프론트 홈)으로
+ * 보낸다.</li>
  * <li>그 밖의 경로는 연다. 그 경로들은 이렇다: {@code /oauth2/*}·{@code /login/*}은 아래 로그인 필터가 처리하고,
  * {@code POST /logout}은 로그아웃 필터가 처리하며(CSRF 토큰 필요), 외부에 노출하는 Actuator는 health뿐이다.</li>
  * </ul>
@@ -71,7 +72,7 @@ public class SecurityConfiguration {
 			.permitAll()
 			.requestMatchers("/api/**")
 			.authenticated()
-			.requestMatchers(HttpMethod.GET, GITHUB_SETUP)
+			.requestMatchers(GITHUB_SETUP)
 			.authenticated()
 			.requestMatchers("/actuator/health")
 			.permitAll()
@@ -98,13 +99,13 @@ public class SecurityConfiguration {
 	}
 
 	/**
-	 * 로그인하지 않은 요청에 답하는 방법. API는 401 problem+json이고, 브라우저가 화면으로 오는 {@code GET /github/setup}만
-	 * 로그인 화면(프론트 홈)으로 보낸다. 로그인하면 늘 홈으로 가므로 원래 주소를 기억하지 않는다.
+	 * 로그인하지 않은 요청에 답하는 방법. API는 401 problem+json이고, 브라우저가 화면으로 오는 {@code /github/setup}만
+	 * 로그인 화면(프론트 홈)으로 보낸다(HEAD도 GET과 같게). 로그인하면 늘 홈으로 가므로 원래 주소를 기억하지 않는다.
 	 */
 	private static AuthenticationEntryPoint entryPoint(ProblemDetailAuthenticationEntryPoint problemEntryPoint) {
 		AuthenticationEntryPoint toLoginPage = (request, response, ex) -> response.sendRedirect(LOGIN_SUCCESS_URL);
 		return DelegatingAuthenticationEntryPoint.builder()
-			.addEntryPointFor(toLoginPage, PathPatternRequestMatcher.pathPattern(HttpMethod.GET, GITHUB_SETUP))
+			.addEntryPointFor(toLoginPage, PathPatternRequestMatcher.pathPattern(GITHUB_SETUP))
 			.defaultEntryPoint(problemEntryPoint)
 			.build();
 	}
