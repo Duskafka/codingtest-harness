@@ -40,15 +40,15 @@
 
 ## 수용 기준
 
-- [ ] T21: Setup URL에 남의 `installation_id`를 넣어도 연결되지 않는다
-- [ ] `account.id`와 `sender.id`가 다르거나 조직 계정 설치면 사용자에게 연결하지 않는다
-- [ ] 설치를 먼저 하고 나중에 가입하면 가입할 때 연결된다
-- [ ] `installation_repositories` removed가 오면 그 레포의 연결이 비활성이 된다
-- [ ] `installation` deleted·suspend → 연결 비활성, unsuspend → 다시 활성
-- [ ] 레포 이름이 바뀌어도 `repo_id`로 같은 레포로 인식한다
-- [ ] 설치 토큰은 만료 전에 갱신되고, 유효한 동안은 다시 발급하지 않는다
-- [ ] GitHub API 호출은 WireMock으로 테스트하고, private key와 토큰이 로그에 남지 않는다
-- [ ] T19: 이 단계의 엔드포인트에서 남의 설치·레포에 접근할 수 없다
+- [x] T21: Setup URL에 남의 `installation_id`를 넣어도 연결되지 않는다
+- [x] `account.id`와 `sender.id`가 다르거나 조직 계정 설치면 사용자에게 연결하지 않는다
+- [x] 설치를 먼저 하고 나중에 가입하면 가입할 때 연결된다
+- [x] `installation_repositories` removed가 오면 그 레포의 연결이 비활성이 된다
+- [x] `installation` deleted·suspend → 연결 비활성, unsuspend → 다시 활성
+- [x] 레포 이름이 바뀌어도 `repo_id`로 같은 레포로 인식한다
+- [x] 설치 토큰은 만료 전에 갱신되고, 유효한 동안은 다시 발급하지 않는다
+- [x] GitHub API 호출은 WireMock으로 테스트하고, private key와 토큰이 로그에 남지 않는다
+- [x] T19: 이 단계의 엔드포인트에서 남의 설치·레포에 접근할 수 없다
 
 ## 주의할 것
 
