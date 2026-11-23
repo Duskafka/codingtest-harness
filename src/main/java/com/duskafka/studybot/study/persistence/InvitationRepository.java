@@ -15,6 +15,13 @@ public interface InvitationRepository extends JpaRepository<Invitation, Long> {
 	Optional<Invitation> findByIdAndStudyId(long id, long studyId);
 
 	/**
+	 * DB에 있는 지금의 사용 횟수. 영속성 컨텍스트에 남은 엔티티 값이 아니라 쿼리 시점의 값을 읽는다.
+	 * 수락은 스터디 잠금을 잡은 뒤 이 값으로 소진 여부를 먼저 본다.
+	 */
+	@Query("select i.usedCount from Invitation i where i.id = :id")
+	int findCurrentUsedCount(@Param("id") long id);
+
+	/**
 	 * 사용 횟수를 하나 늘린다. 이미 다 썼거나, 철회됐거나, 만료됐으면 바꾸지 않고 0을 돌려준다
 	 * (5.1 '정원 동시성': 영향받은 행 수로 판단). 앞서 읽은 값이 아니라 UPDATE 시점의 행으로 조건을 보므로, 읽은 뒤에
 	 * 커밋된 철회도 걸러진다. 영속성 컨텍스트의 {@link Invitation#getUsedCount()}는 갱신하지 않는다.

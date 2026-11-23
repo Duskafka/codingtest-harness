@@ -105,7 +105,8 @@ public class InvitationService {
 	 * <li>스터디 행을 쓰기 잠금으로 읽는다 (결정 제안서 006). 같은 스터디의 수락이 차례로 실행돼서 초대가 여러 개여도 정원을
 	 * 넘지 않고, 같은 사람이 동시에 두 번 눌러도 멤버십이 하나다.</li>
 	 * <li>이미 멤버면 그대로 성공이다. 사용 횟수를 쓰지 않는다 (5.1 '이미 멤버면 그대로 성공').</li>
-	 * <li>만료·철회면 410, 정원이 찼으면 409.</li>
+	 * <li>만료·철회면 410. 잠금 뒤 최신 사용 횟수로 소진이면 410. 그다음 정원이 찼으면 409. 링크 자체를 쓸 수 없는 경우를
+	 * 정원보다 먼저 알린다 (CodeRabbit PR #11 리뷰).</li>
 	 * <li>사용 횟수는 {@code used_count < max_uses} 조건부 UPDATE로 늘린다 (5.1 '정원 동시성'). 같은 UPDATE가 철회·만료도
 	 * 다시 봐서, 초대를 읽은 뒤 철회가 커밋돼도 그 초대로는 가입하지 못한다. 바뀐 행이 없으면 410.</li>
 	 * <li>판정은 가입 다음 스터디 일부터다 (R14).</li>
@@ -124,6 +125,9 @@ public class InvitationService {
 		}
 		Instant now = this.clock.instant();
 		requireUsable(invitation, now);
+		if (this.invitationRepository.findCurrentUsedCount(invitation.getId()) >= invitation.getMaxUses()) {
+			throw new GoneException("사용 횟수를 다 쓴 초대예요.");
+		}
 		if (this.membershipRepository.countByStudyIdAndLeftAtIsNull(studyId) >= StudyLimits.CAPACITY) {
 			throw new ConflictException("정원(" + StudyLimits.CAPACITY + "명)이 찼어요.");
 		}

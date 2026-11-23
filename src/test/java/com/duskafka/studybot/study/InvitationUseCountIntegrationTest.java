@@ -2,6 +2,7 @@ package com.duskafka.studybot.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.duskafka.studybot.study.persistence.Invitation;
 import com.duskafka.studybot.study.persistence.InvitationRepository;
 import java.time.Instant;
 import java.util.HexFormat;
@@ -10,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -25,6 +28,9 @@ class InvitationUseCountIntegrationTest extends StudyTestSupport {
 
 	@Autowired
 	private TransactionTemplate transactionTemplate;
+
+	@Autowired
+	private PlatformTransactionManager transactionManager;
 
 	private long studyId;
 
@@ -70,6 +76,31 @@ class InvitationUseCountIntegrationTest extends StudyTestSupport {
 
 		assertThat(increment(id)).isZero();
 		assertThat(usedCount(id)).isEqualTo(1);
+	}
+
+	/**
+	 * 철회({@code InvitationService.revoke})는 초대를 읽고 {@code revokedAt}만 바꾼다. 그 사이에 다른 수락이 사용 횟수를 올리고
+	 * 커밋해도, 철회 커밋이 엔티티에 남은 옛 사용 횟수로 덮어쓰면 안 된다 (CodeRabbit PR #11 리뷰).
+	 * 수락 쪽은 별도 트랜잭션(REQUIRES_NEW)으로 먼저 커밋해서 스레드 없이 같은 순서를 만든다.
+	 */
+	@Test
+	@DisplayName("T20: 철회가 초대를 읽은 뒤 다른 수락이 사용 횟수를 올려도 철회 커밋이 그 값을 되돌리지 않는다")
+	void revokeDoesNotOverwriteConcurrentUseCount() {
+		long id = insertInvitation("2026-11-27T06:00:00Z", 30, 0, null);
+		TransactionTemplate concurrentAccept = new TransactionTemplate(transactionManager);
+		concurrentAccept.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+		transactionTemplate.executeWithoutResult(status -> {
+			Invitation invitation = invitationRepository.findByIdAndStudyId(id, studyId).orElseThrow();
+			concurrentAccept.executeWithoutResult(inner -> invitationRepository.incrementUsedCount(id, NOW));
+			invitation.revoke(NOW);
+		});
+
+		assertThat(usedCount(id)).isEqualTo(1);
+		assertThat(jdbc.sql("select revoked_at is not null from studybot.invitations where id = :id")
+			.param("id", id)
+			.query(Boolean.class)
+			.single()).isTrue();
 	}
 
 	private int increment(long invitationId) {

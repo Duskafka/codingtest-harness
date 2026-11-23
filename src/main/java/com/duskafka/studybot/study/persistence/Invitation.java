@@ -40,7 +40,11 @@ public class Invitation {
 	@Column(name = "max_uses", nullable = false)
 	private int maxUses;
 
-	@Column(name = "used_count", nullable = false)
+	/**
+	 * 사용 횟수. 엔티티를 저장할 때는 쓰지 않는다({@code updatable = false}). 철회처럼 다른 컬럼을 바꾸는 저장이 동시 수락이
+	 * 올린 값을 옛 값으로 덮어쓰지 않게 하기 위해서다 (CodeRabbit PR #11 리뷰). 늘리는 건 조건부 UPDATE만 한다.
+	 */
+	@Column(name = "used_count", nullable = false, updatable = false)
 	private int usedCount;
 
 	@Column(name = "revoked_at")

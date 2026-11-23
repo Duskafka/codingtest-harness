@@ -214,6 +214,23 @@ class InvitationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
+	@DisplayName("T20: 사용 횟수를 다 쓴 초대는 스터디 정원이 찼어도 410이다 (정원 409보다 링크 상태를 먼저 알린다)")
+	void usedUpTokenOnFullStudyIsGone() {
+		TestUser owner = newUser("full-used-owner");
+		long studyId = createStudy(owner, "GROUP");
+		for (int i = 0; i < 28; i++) {
+			insertActiveMember(studyId, newUser("full-used-filler"));
+		}
+		String token = createInvitation(owner, studyId, 1).get("token").asString();
+		assertThat(accept(newUser("full-used-last"), token)).hasStatus(HttpStatus.OK);
+		assertThat(activeMemberCount(studyId)).isEqualTo(30);
+
+		MvcTestResult result = accept(newUser("full-used-late"), token);
+
+		assertThat(result).hasStatus(HttpStatus.GONE).hasContentType(MediaType.APPLICATION_PROBLEM_JSON);
+	}
+
+	@Test
 	@DisplayName("S05: 같은 사람이 같은 초대를 두 번 수락하면 두 번 다 성공 응답이고 멤버십은 하나다")
 	void acceptIsIdempotent() {
 		TestUser owner = newUser("idem-owner");
