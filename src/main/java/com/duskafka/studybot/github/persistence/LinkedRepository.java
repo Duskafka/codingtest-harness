@@ -13,16 +13,20 @@ import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 import org.jspecify.annotations.Nullable;
 
 /**
  * 사용자가 고른 풀이 레포 (data-model.md 4.3 {@code linked_repositories}, 5.2). 이름이 아니라 {@code repoId}로 추적한다.
  * 연결을 바꾸거나 끊어도 행을 지우지 않고 상태만 바꾼다. 활성 연결은 레포당 하나, 사용자당 하나다 (DB 부분 UNIQUE).
  *
- * <p>설치 이벤트로 여러 연결을 한꺼번에 바꿀 때는 {@link LinkedRepositoryRepository}의 일괄 UPDATE를 쓴다.
+ * <p>설치 이벤트로 여러 연결을 한꺼번에 바꿀 때는 {@link LinkedRepositoryRepository}의 일괄 UPDATE를 쓴다. 바뀐 컬럼만
+ * UPDATE하므로({@code @DynamicUpdate}), 이름·기본 브랜치를 고치는 동안 웹훅이 끊은 상태를 읽어 둔 옛 값으로 되살리지 않는다
+ * (PR #14 리뷰 반영).
  */
 @Entity
 @Table(name = "linked_repositories")
+@DynamicUpdate
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class LinkedRepository {

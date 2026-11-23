@@ -20,8 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
  * 연결 화면의 DB 작업. GitHub API는 트랜잭션 밖에서 부르고, 그 결과를 여기서 짧은 트랜잭션으로 반영한다
  * (외부 호출 동안 DB 트랜잭션을 잡고 있지 않게).
  *
- * <p>연결을 저장할 때는 설치 행을 잠그고 아직 이 사용자의 ACTIVE 설치인지 다시 본다. GitHub를 부르는 사이에 suspend·deleted
- * 웹훅이 오면, 웹훅이 먼저 끝났으면 저장하지 않고, 저장이 먼저 끝났으면 웹훅이 새 연결까지 함께 끈다.
+ * <p>연결을 저장할 때는 설치 행을 잠그고 아직 이 사용자의 ACTIVE 설치이고 레포 목록 리비전이 GitHub를 부르기 전과 같은지
+ * 다시 본다. GitHub를 부르는 사이에 suspend·deleted·removed 웹훅이 오면, 웹훅이 먼저 끝났으면 저장하지 않고, 저장이 먼저
+ * 끝났으면 웹훅이 기다렸다가 새 연결까지 함께 끈다 (PR #14 리뷰 반영).
  */
 @Component
 @RequiredArgsConstructor
@@ -37,7 +38,7 @@ class GithubConnectionStore {
 	Optional<InstallationView> currentInstallation(long userId) {
 		return this.installations.findCurrentByUserId(userId)
 			.map(installation -> new InstallationView(installation.getInstallationId(), installation.getAccountLogin(),
-					installation.getStatus()));
+					installation.getStatus(), installation.getRepositoriesRevision()));
 	}
 
 	@Transactional(readOnly = true)
@@ -52,9 +53,9 @@ class GithubConnectionStore {
 	 * @throws org.springframework.dao.DataIntegrityViolationException 같은 레포가 다른 사용자에게 활성으로 연결돼 있음, 또는 동시에 연결함
 	 */
 	@Transactional
-	LinkView link(long userId, long installationId, InstalledRepository repository) {
-		if (!lockActiveInstallation(userId, installationId)) {
-			throw new ConflictException("GitHub App 설치 상태가 바뀌었어요. 다시 시도해 주세요.");
+	LinkView link(long userId, long installationId, long expectedRevision, InstalledRepository repository) {
+		if (!lockActiveInstallation(userId, installationId, expectedRevision)) {
+			throw new ConflictException("GitHub App 설치나 설치한 레포가 바뀌었어요. 다시 시도해 주세요.");
 		}
 		Instant now = this.clock.instant();
 		Optional<LinkedRepository> current = this.links.findCurrentByUserId(userId);
@@ -75,11 +76,12 @@ class GithubConnectionStore {
 
 	/**
 	 * 연결이 없을 때만 이 레포를 연결한다 (레포가 하나뿐인 설치의 자동 연결). 이미 연결이 있으면 그것을 돌려주고,
-	 * 그사이 설치가 정지·삭제됐으면 연결하지 않는다 (빈 값).
+	 * 그사이 설치가 정지·삭제됐거나 레포가 빠졌으면 연결하지 않는다.
 	 */
 	@Transactional
-	Optional<LinkView> linkIfNone(long userId, long installationId, InstalledRepository repository) {
-		if (!lockActiveInstallation(userId, installationId)) {
+	Optional<LinkView> linkIfNone(long userId, long installationId, long expectedRevision,
+			InstalledRepository repository) {
+		if (!lockActiveInstallation(userId, installationId, expectedRevision)) {
 			return this.links.findCurrentByUserId(userId).map(LinkView::of);
 		}
 		Optional<LinkedRepository> current = this.links.findCurrentByUserId(userId);
@@ -101,11 +103,22 @@ class GithubConnectionStore {
 			});
 	}
 
-	/** 설치 행을 잠그고, 아직 이 사용자의 ACTIVE 설치인지 본다. */
-	private boolean lockActiveInstallation(long userId, long installationId) {
+	/**
+	 * 설치의 레포 목록 전체를 봤는데 연결한 레포가 없다('모든 레포'→'고른 레포'로 바꾼 뒤 등): 그 연결을 끊고 지금 연결을 돌려준다
+	 * (사람이 정함, 2026-11-23 "목록이 한 페이지로 다 보일 때만 끊음").
+	 */
+	@Transactional
+	Optional<LinkView> deactivateMissing(long userId, long repoId) {
+		this.links.deactivateActive(userId, repoId, this.clock.instant());
+		return this.links.findCurrentByUserId(userId).map(LinkView::of);
+	}
+
+	/** 설치 행을 잠그고, 아직 이 사용자의 ACTIVE 설치이며 레포 목록 리비전이 그대로인지 본다. */
+	private boolean lockActiveInstallation(long userId, long installationId, long expectedRevision) {
 		return this.installations.findForUpdate(installationId)
 			.filter(installation -> installation.getStatus() == InstallationStatus.ACTIVE
-					&& Objects.equals(installation.getUserId(), userId))
+					&& Objects.equals(installation.getUserId(), userId)
+					&& installation.getRepositoriesRevision() == expectedRevision)
 			.isPresent();
 	}
 

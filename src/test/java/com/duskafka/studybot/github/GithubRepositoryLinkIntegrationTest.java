@@ -322,4 +322,52 @@ class GithubRepositoryLinkIntegrationTest extends GithubConnectionTestSupport {
 			.contains("installation=" + installationId);
 	}
 
+	@Test
+	@DisplayName("S07: 목록은 앞의 1,000개까지만 본다. 선택에서 찾을 수 있는 범위와 같다 (CodeRabbit 리뷰)")
+	void listRangeMatchesSelectableRange() {
+		TestUser user = newUser("range");
+		long installationId = rows.insertLinkedInstallation(user, clock.instant());
+		stubInstallation(installationId, Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/x"),
+				Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/y"));
+
+		assertThat(get(user, "/api/me/github/repositories?page=10&size=100")).hasStatus(HttpStatus.BAD_REQUEST)
+			.hasContentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON);
+		assertThat(get(user, "/api/me/github/repositories?page=9&size=100")).hasStatus(HttpStatus.OK);
+	}
+
+	@Test
+	@DisplayName("S07: 설치의 레포 목록 전체가 한 페이지에 보이는데 연결 레포가 없으면 그 연결을 끊는다 (사람이 정함)")
+	void linkMissingFromCompleteListIsDeactivated() {
+		TestUser user = newUser("narrowed");
+		long installationId = rows.insertLinkedInstallation(user, clock.instant());
+		long gone = GithubConnectionRows.newRepoId();
+		long link = rows.insertLink(user, installationId, gone, user.login() + "/gone", "ACTIVE", clock.instant());
+		stubInstallation(installationId, Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/a"),
+				Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/b"));
+
+		JsonNode body = json(repositories(user));
+
+		assertThat(body.get("linkedRepository").isNull()).isTrue();
+		assertThat(body.get("repositories").get("content")).extracting(node -> node.get("linked").asBoolean())
+			.containsOnly(false);
+		assertThat(rows.link(link).status()).isEqualTo("INACTIVE");
+	}
+
+	@Test
+	@DisplayName("S07: 레포 목록이 여러 페이지면 한 페이지만 보고 연결을 끊지 않는다")
+	void linkIsKeptWhenListIsPartial() {
+		TestUser user = newUser("partial");
+		long installationId = rows.insertLinkedInstallation(user, clock.instant());
+		long elsewhere = GithubConnectionRows.newRepoId();
+		long link = rows.insertLink(user, installationId, elsewhere, user.login() + "/later", "ACTIVE", clock.instant());
+		GithubApiStub.stubInstallationToken(installationId, clock.instant().plusSeconds(3600));
+		GithubApiStub.stubRepositoriesPage(GithubApiStub.tokenFor(installationId, 1), 1, 150,
+				Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/first"));
+
+		JsonNode body = json(repositories(user));
+
+		assertThat(body.get("linkedRepository").get("repoId").asLong()).isEqualTo(elsewhere);
+		assertThat(rows.link(link).status()).isEqualTo("ACTIVE");
+	}
+
 }

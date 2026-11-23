@@ -12,8 +12,13 @@ public final class ConnectionViews {
 	private ConnectionViews() {
 	}
 
-	/** 내 설치. */
-	public record InstallationView(long installationId, String accountLogin, InstallationStatus status) {
+	/**
+	 * 내 설치.
+	 *
+	 * @param repositoriesRevision 레포 목록 리비전. GitHub에서 목록을 읽기 전에 받아 두고, 연결을 저장할 때 그대로인지 본다
+	 */
+	public record InstallationView(long installationId, String accountLogin, InstallationStatus status,
+			long repositoriesRevision) {
 	}
 
 	/** 내 풀이 레포 연결. */
