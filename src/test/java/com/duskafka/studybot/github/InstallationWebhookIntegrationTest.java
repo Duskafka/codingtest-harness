@@ -272,6 +272,22 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 	}
 
 	@Test
+	@DisplayName("S07: 처음 보는 설치의 unsuspend는 활성 설치로 남고, 연결 조건을 넘으면 사용자에게 잇는다")
+	void unknownUnsuspendIsRecordedActiveAndLinked() {
+		TestUser user = rows.newUser("early-unsuspend", clock.instant());
+		long installationId = GithubConnectionRows.newInstallationId();
+		Account account = Account.user(user.githubId());
+		String delivery = newDeliveryId();
+
+		sendSigned("installation", delivery,
+				InstallationPayloads.installation("unsuspend", installationId, account, account));
+
+		assertThat(onlyInboxRow(delivery).status()).isEqualTo("PROCESSED");
+		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("ACTIVE");
+		assertThat(rows.existingInstallation(installationId).userId()).isEqualTo(user.id());
+	}
+
+	@Test
 	@DisplayName("S07: 처음 보는 설치의 deleted는 삭제 이력으로 남는다 (조직·남이 설치한 것도 연결 조건은 같다)")
 	void unknownDeletedIsRecordedWithLinkingRules() {
 		long unknown = GithubConnectionRows.newInstallationId();
