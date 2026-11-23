@@ -7,7 +7,6 @@ import java.time.Clock;
 import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
-import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -24,8 +23,8 @@ import tools.jackson.databind.JsonNode;
  * 저장하지 못하면 503이다.</li>
  * <li><b>처리:</b> 새 트랜잭션에서 처리기를 부르고, 같은 트랜잭션에서 수신함을 PROCESSED·IGNORED로 바꾼다.
  * 처리 결과와 상태가 함께 커밋되거나 함께 롤백된다 (P2 워커 그림의 "처리 결과 반영과 상태 PROCESSED를 한 트랜잭션으로"와 같다).</li>
- * <li><b>실패 기록:</b> 처리 트랜잭션이 예외로 끝나면(커밋 실패 포함) 롤백된 뒤 또 새 트랜잭션에서 FAILED와 오류를 남긴다.
- * 이것도 실패하면 로그만 남긴다. 행은 RECEIVED로 남는다.</li>
+ * <li><b>실패 기록:</b> 처리 트랜잭션이 예외로 끝나면(커밋 실패 포함) 롤백된 뒤 또 새 트랜잭션에서 FAILED와 오류 종류를 남긴다
+ * ({@link WebhookFailureDescription}, 메시지는 로그에만). 이것도 실패하면 로그만 남긴다. 행은 RECEIVED로 남는다.</li>
  * </ol>
  *
  * 처리가 어떻게 끝나든 받기는 성공이다 (응답 202). 트랜잭션 경계를 코드에서 보이게 하려고 {@link TransactionTemplate}을 쓴다.
@@ -113,6 +112,8 @@ public class GithubWebhookReceiver {
 		GithubEventHandler handler = handlers.find(event.event()).orElse(null);
 		if (handler == null) {
 			// S06에는 installation 계열·push 처리기가 아직 없다 (S07, S08). 받기는 하되 처리할 것이 없어 IGNORED로 둔다.
+			// 5.3 상태 그림의 IGNORED와 다르게 쓰는 임시 처리다. S08에서 네 이벤트 모두 처리기가 있어야 앱이 뜨게 바꾼다
+			// (사람이 정함, 2026-11-23 S06 세션 "S08에서 처리기 필수로").
 			log.warn("처리기가 없는 웹훅이라 IGNORED로 남겨요: delivery={}, event={}", event.deliveryId(),
 					event.event().headerValue());
 			return HandlingResult.IGNORED;
@@ -126,7 +127,7 @@ public class GithubWebhookReceiver {
 
 	private void recordFailure(GithubWebhookEvent event, RuntimeException cause) {
 		try {
-			newTransaction.executeWithoutResult(status -> loadInbox(event).markFailed(describe(cause)));
+			newTransaction.executeWithoutResult(status -> loadInbox(event).markFailed(WebhookFailureDescription.of(cause)));
 		}
 		catch (RuntimeException ex) {
 			log.error("웹훅 처리 실패를 수신함에 남기지 못했어요. 행은 RECEIVED로 남아요: delivery={}, inbox={}",
@@ -137,21 +138,6 @@ public class GithubWebhookReceiver {
 	private WebhookInbox loadInbox(GithubWebhookEvent event) {
 		return inboxRepository.findById(event.inboxId())
 			.orElseThrow(() -> new IllegalStateException("수신함 행이 없어요: " + event.inboxId()));
-	}
-
-	/** {@code last_error}에 남길 내용: 예외 클래스와 메시지, 감싼 예외가 있으면 가장 안쪽 원인도. 스택은 로그에만 남긴다. */
-	private static String describe(Throwable cause) {
-		String description = summary(cause);
-		Throwable root = NestedExceptionUtils.getMostSpecificCause(cause);
-		if (root != cause) {
-			description += " (원인: " + summary(root) + ")";
-		}
-		return description;
-	}
-
-	private static String summary(Throwable throwable) {
-		String message = throwable.getMessage();
-		return message == null ? throwable.getClass().getName() : throwable.getClass().getName() + ": " + message;
 	}
 
 }

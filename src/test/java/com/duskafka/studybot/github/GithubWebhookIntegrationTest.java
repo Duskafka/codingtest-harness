@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.duskafka.studybot.github.webhook.GithubEvent;
 import com.duskafka.studybot.github.webhook.GithubWebhookEvent;
 import com.duskafka.studybot.github.webhook.HandlingResult;
+import com.duskafka.studybot.github.webhook.WebhookHandlingException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -23,6 +24,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -32,6 +36,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * S06 수용 기준: GitHub 웹훅 수신 (5.3 P1, 응답 코드 규칙). push 처리기 자리는 테스트 처리기가 채운다
  * ({@link WebhookTestConfiguration.RecordingPushHandler}).
  */
+@ExtendWith(OutputCaptureExtension.class)
 class GithubWebhookIntegrationTest extends WebhookTestSupport {
 
 	private static final byte[] PUSH = payload("push.json");
@@ -260,10 +265,10 @@ class GithubWebhookIntegrationTest extends WebhookTestSupport {
 	// --- 처리 실패와 트랜잭션 경계 ---
 
 	@Test
-	@DisplayName("S06: 처리기가 예외를 던져도 202이고, 수신함 상태는 FAILED이며 오류 내용이 남는다")
+	@DisplayName("S06: 처리기가 예외를 던져도 202이고, 수신함 상태는 FAILED이며 오류 내용(예외 종류)이 남는다. 메시지는 남기지 않는다")
 	void handlerFailureIsRecordedAsFailed() {
 		pushHandler.willDo(event -> {
-			throw new IllegalStateException("테스트 처리기 실패");
+			throw new IllegalStateException("tester@example.com 커밋 처리 실패");
 		});
 		String delivery = newDeliveryId();
 
@@ -272,9 +277,46 @@ class GithubWebhookIntegrationTest extends WebhookTestSupport {
 		assertThat(result).hasStatus(202);
 		InboxRow row = onlyInboxRow(delivery);
 		assertThat(row.status()).isEqualTo("FAILED");
-		assertThat(row.lastError()).contains("IllegalStateException").contains("테스트 처리기 실패");
+		assertThat(row.lastError()).isEqualTo("java.lang.IllegalStateException");
 		assertThat(row.attempts()).isEqualTo(1);
 		assertThat(row.processedAt()).isNull();
+	}
+
+	@Test
+	@DisplayName("S06: 처리기가 WebhookHandlingException으로 준 문장은 last_error에 남는다")
+	void handlerSafeMessageIsRecorded() {
+		pushHandler.willDo(event -> {
+			throw new WebhookHandlingException("연결하지 않은 레포예요");
+		});
+		String delivery = newDeliveryId();
+
+		assertThat(sendSigned("push", delivery, PUSH)).hasStatus(202);
+
+		assertThat(onlyInboxRow(delivery).lastError())
+			.isEqualTo("com.duskafka.studybot.github.webhook.WebhookHandlingException: 연결하지 않은 레포예요");
+	}
+
+	@Test
+	@DisplayName("S06: 처리 중 DB 오류면 last_error에 SQLState는 남지만 오류 메시지의 키 값은 남지 않는다")
+	void databaseErrorKeepsSqlStateButNotValues() {
+		long githubId = ThreadLocalRandom.current().nextLong(9_000_000_000L, 9_999_999_999L);
+		pushHandler.willDo(event -> {
+			for (int i = 0; i < 2; i++) {
+				jdbc.sql("insert into studybot.users (github_id, github_login, created_at) values (:githubId, :login, :createdAt)")
+					.param("githubId", githubId)
+					.param("login", "webhook-duplicate-" + i)
+					.param("createdAt", Timestamp.from(clock.instant()))
+					.update();
+			}
+			return HandlingResult.PROCESSED;
+		});
+		String delivery = newDeliveryId();
+
+		assertThat(sendSigned("push", delivery, PUSH)).hasStatus(202);
+
+		InboxRow row = onlyInboxRow(delivery);
+		assertThat(row.status()).isEqualTo("FAILED");
+		assertThat(row.lastError()).contains("SQLState 23505").doesNotContain(String.valueOf(githubId));
 	}
 
 	@Test
@@ -344,7 +386,7 @@ class GithubWebhookIntegrationTest extends WebhookTestSupport {
 
 		InboxRow row = onlyInboxRow(delivery);
 		assertThat(row.status()).isEqualTo("FAILED");
-		assertThat(row.lastError()).contains("커밋 직전 실패");
+		assertThat(row.lastError()).contains("java.lang.IllegalStateException").doesNotContain("커밋 직전 실패");
 		assertThat(row.processedAt()).isNull();
 	}
 
@@ -353,13 +395,14 @@ class GithubWebhookIntegrationTest extends WebhookTestSupport {
 	void longErrorIsTruncated() {
 		String longMessage = "x".repeat(5000);
 		pushHandler.willDo(event -> {
-			throw new IllegalStateException(longMessage);
+			throw new WebhookHandlingException(longMessage);
 		});
 		String delivery = newDeliveryId();
 
 		sendSigned("push", delivery, PUSH);
 
-		assertThat(onlyInboxRow(delivery).lastError()).hasSize(2000).startsWith("java.lang.IllegalStateException");
+		assertThat(onlyInboxRow(delivery).lastError()).hasSize(2000)
+			.startsWith("com.duskafka.studybot.github.webhook.WebhookHandlingException: xxx");
 	}
 
 	// --- 본문과 헤더 ---
@@ -376,6 +419,20 @@ class GithubWebhookIntegrationTest extends WebhookTestSupport {
 		assertThat(result).hasContentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON);
 		assertThat(inboxRows(delivery)).isEmpty();
 		assertThat(pushHandler.calls()).isEmpty();
+	}
+
+	@Test
+	@DisplayName("S06: 본문이 한도를 넘어 거절하면 전달 ID를 경고 로그로 남긴다 (한도를 올린 뒤 GitHub에서 재전송할 수 있게)")
+	void oversizedBodyIsLoggedWithDeliveryId(CapturedOutput output) {
+		String delivery = newDeliveryId();
+		// 서명 확인 전이라 헤더는 믿을 수 없다. 긴 값은 잘라서 남긴다. 줄바꿈 같은 제어 문자는 Spring Security 방화벽이 먼저 막는다.
+		String longHeader = "d".repeat(100) + "-로그에-남으면-안-되는-뒷부분";
+
+		assertThat(sendSigned("push", delivery, jsonOfSize(5 * 1024 * 1024 + 1))).hasStatus(413);
+		assertThat(send("push", longHeader, jsonOfSize(5 * 1024 * 1024 + 1), null)).hasStatus(413);
+
+		assertThat(output.getOut()).contains("WARN").contains("delivery=" + delivery).contains("event=push");
+		assertThat(output.getOut()).contains("delivery=" + "d".repeat(100) + "…").doesNotContain("로그에-남으면-안-되는-뒷부분");
 	}
 
 	@Test
