@@ -4,11 +4,11 @@
 
 ## 2026-11-23 S06 웹훅 수신 기반 (세션 1/1)
 - 한 일: 만들 것 1~8. V4 `webhook_inbox`, `POST /webhooks/github`(본문 5MB까지 바이트로 읽기 → 서명 → 이벤트 거르기 → 수신함 INSERT ON CONFLICT 별도 트랜잭션 → 새 트랜잭션에서 처리기 + 상태 → 실패면 FAILED), 시크릿 교체(현재·옛), 처리기 인터페이스 `github.webhook.GithubEventHandler`, `PingEventHandler`. 테스트 payload는 octokit/webhooks 예시를 가짜 값으로 바꿈(`github-payloads/README.md`)
-- 상태: 빌드 통과 (테스트 366개). 구현 전 새 테스트 42개 중 41개 실패 확인. 트랜잭션을 합치거나 ON CONFLICT를 빼면 해당 테스트가 실패하는 것도 확인. spec-reviewer '통과', 고려할 것 6건 반영(PR 본문)
-- 사람이 정한 것 (2026-11-23, 세션 중 선택지): 브랜치 "feat/S06-webhook-receiver (Recommended)", ping "수신함에 넣고 200 (Recommended)"
-- 다음: PR 검토 → 열린 질문(본문 한도 5MB, 처리기 없는 이벤트 IGNORED를 S08에서 '네 이벤트 모두 처리기 필수'로 바꿀지, `last_error` 개인정보를 S15에서 지울지)과 스펙 변경 제안(pseudocode의 ping 200) 결정 → 병합 뒤 docs PR로 반영 → S07(GitHub App 연결, 선행 S04·S06 완료)
+- 상태: 빌드 통과 (테스트 376개). 구현 전 새 테스트 42개 중 41개 실패 확인. 트랜잭션을 합치거나 ON CONFLICT를 빼면 해당 테스트가 실패하는 것도 확인. spec-reviewer '통과', 고려할 것 6건 반영(PR 본문). CodeRabbit '지적 없음'
+- 사람이 정한 것 (2026-11-23, 세션 중 선택지): 브랜치 "feat/S06-webhook-receiver (Recommended)", ping "수신함에 넣고 200 (Recommended)". PR 열린 질문 셋: 본문 한도 "5MB 유지 + 경고 로그 (Recommended)", 처리기 없는 이벤트 "S08에서 처리기 필수로 (Recommended)", `last_error` "메시지 대신 예외 종류만 (Recommended)" → 1·3은 이 PR에 구현(`cfdad73`), 2는 기록만
+- 다음: PR 검토와 병합 → docs PR로 S08 '만들 것'에 "네 이벤트 모두 처리기가 있어야 앱이 뜬다" 추가와 스펙 변경 제안 1·2(pseudocode의 ping 200, data-model payload NULL 허용) 반영 → S07(GitHub App 연결, 선행 S04·S06 완료)
 - 막힌 것: 없음. 실제 GitHub 전달 확인은 H-02. 시크릿은 환경 변수 `GITHUB_WEBHOOK_SECRET`(필수)·`GITHUB_WEBHOOK_SECRET_PREVIOUS`(교체 중)
-- 참고: S07·S08 처리기는 `GithubEventHandler` 빈 하나만 더하면 된다(이벤트당 하나, 예외 = FAILED, GitHub API 금지). `spring.jpa.open-in-view`가 켜져 있어 요청 안의 새 트랜잭션은 같은 EntityManager·연결을 이어 씀(롤백 때 clear). DB 장애 테스트는 `github.WebhookTestConfiguration.DatabaseOutage`
+- 참고: S07·S08 처리기는 `GithubEventHandler` 빈 하나만 더하면 된다(이벤트당 하나, 예외 = FAILED, GitHub API 금지). `last_error`에는 예외 종류만 남으니 DB에서 볼 설명은 `WebhookHandlingException`(개인정보 금지)으로. `spring.jpa.open-in-view`가 켜져 있어 요청 안의 새 트랜잭션은 같은 EntityManager·연결을 이어 씀(롤백 때 clear). DB 장애 테스트는 `github.WebhookTestConfiguration.DatabaseOutage`. 작업 프로세스가 재시작되면 dockerd가 죽어 있을 수 있음(`CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`)
 - PR: #12
 
 ## 2026-11-23 S05 스터디·규칙·기수·초대·멤버십 (세션 1)
