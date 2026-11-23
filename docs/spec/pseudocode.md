@@ -46,7 +46,8 @@ onGithubWebhook(rawBody, headers):
         process(inbox)                               -- P1: 같은 요청 안, 새 트랜잭션
         inbox.status = PROCESSED (또는 IGNORED)
     catch e:
-        inbox.status = FAILED, inbox.lastError = e
+        inbox.status = FAILED, inbox.lastError = 예외 종류(e)  -- 메시지는 로그에만 (개인정보가 들어갈 수 있음)
+    if event == ping: return 200                     -- 5.3 응답 코드 표. ping도 수신함에는 남김
     return 202
 
 processPush(inbox):
