@@ -10,7 +10,7 @@
 - 다음: 이 PR 병합 → S05(스터디·멤버십, OD-07·OD-08 결정 필요) 또는 S06(웹훅 수신)
 - 막힌 것: 없음
 - 참고: 훅은 `docs/S[0-9]*` 브랜치를 단계 브랜치로 봐서 스펙 수정을 막는다. 문서 전용 PR 브랜치 이름은 `docs/S`로 시작하지 않게 한다
-- PR: #
+- PR: #10
 
 ## 2026-11-22 S04 로그인과 세션 구현 (세션 1, 이어서)
 - 한 일: '만들 것' 2~8. GitHub App 사용자 인증 로그인(`/user`에서 id·login·avatar만, users native upsert), DB 세션(`studybot.SPRING_SESSION`), 세션 쿠키 `__Host-Http-SESSION` 빈 설정과 30일 롤링 필터, `csrf.spa()`, `/webhooks/**` 별도 체인, 401·403 problem+json, `GET /api/me`, `POST /logout` 204, 토큰 미저장 저장소. 첫 엔티티·마이그레이션이라 Lombok(`lombok.config`)·`studybot` 스키마 설정도 함
