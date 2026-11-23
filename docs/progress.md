@@ -2,6 +2,16 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-23 S05 스터디·규칙·기수·초대·멤버십 (세션 1)
+- 한 일: 만들 것 1·2·3·5·6·7·8·9. V3 마이그레이션(studies, study_rules, seasons, memberships, invitations), 만들기(규칙 v1·1기·방장 한 트랜잭션), 목록(PagedModel)·상세, 이름 변경·위임, 초대 만들기·철회·미리보기(공개)·수락, 탈퇴, `StudyAccess`(비멤버 404, 비방장 403). 정원 동시성은 스터디 행 잠금 + 조건부 UPDATE(철회·만료도 다시 봄), 결정 제안서 006. `StudyCalendar`에 `nextStudyDayOf`·`seasonEndDay` 추가
+- 상태: 빌드 통과 (테스트 322개). 구현 전 새 테스트 73개 중 72개 실패 확인. 잠금·UPDATE 조건을 하나씩 빼면 해당 테스트가 실패하는 것도 확인. spec-reviewer 1차 12건·2차 11건 처리(PR 본문)
+- 사람이 정한 것 (2026-11-23, 세션 중 선택지): 시작일 "다음 날~30일 뒤 (추천)", 초대 철회 "DELETE 엔드포인트 추가 (추천)". 선택지 설명 원문과 에이전트가 해석한 부분은 PR 본문에 나눠 적음
+- 다음: PR 검토 → 사람이 '지금 병합할지, OD-08까지 열어 둘지'(PR 열린 질문 1)와 결정 제안서 006을 정함 → 병합 뒤 `docs/` 문서 전용 PR로 두 결정과 받아들인 스펙 변경 제안을 반영 → OD-08이 정해지면 규칙 변경 `PUT /rules`·T11
+- 막힌 것: 결정 대기 OD-08 (규칙 변경 API, T11). OD-07은 1기 생성만 했고 다음 기수는 S12. 단계 상태는 '결정 대기'
+- 참고: S05 테스트는 `study/StudyTestSupport`(사용자는 DB에 넣고 `authentication()`으로 로그인, CSRF는 쿠키로)를 상속. 기수 SCHEDULED→ACTIVE 전환은 아직 어느 단계에도 없음(PR 열린 질문). Hibernate 7.4의 PostgreSQL 쓰기 잠금은 `FOR NO KEY UPDATE`
+- 리뷰 반영 (같은 세션): CodeRabbit 2건. 철회 저장이 동시 수락의 `used_count`를 덮어쓰던 것(`updatable = false`), 소진된 초대는 정원 찬 스터디에서도 410. 새 테스트 2개 실패 확인 뒤 고침
+- PR: #11
+
 ## 2026-11-22 S04 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #9의 '스펙 변경 제안' 두 건을 사람이 받아들여 문서 전용 PR로 반영했다
     - architecture 4.1 Nginx 경로 목록에 `/logout`·`/github/setup`·`/actuator/health`를 더했다. 같은 목록이 있는 S17 '만들 것' 3도 함께 고쳤다

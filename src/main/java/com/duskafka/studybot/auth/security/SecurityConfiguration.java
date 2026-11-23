@@ -5,6 +5,7 @@ import com.duskafka.studybot.auth.login.NoStoreAuthorizedClientRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -18,7 +19,8 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
  * <ul>
  * <li>{@code /webhooks/**}: CSRF와 세션에서 뺀다. 인증은 서명으로만 한다 (서명 검증은 S06).</li>
  * <li>{@code /api/**}: 로그인이 필요하다. 로그인하지 않으면 401, CSRF 토큰이 없거나 틀리면 403
- * ({@code application/problem+json}). 공개 API(초대 미리보기 등)는 그 단계에서 여기에 하나씩 연다.</li>
+ * ({@code application/problem+json}). 공개 API는 그 단계에서 여기에 하나씩 연다: 초대 미리보기 {@code GET /api/invitations/{token}}
+ * (S05).</li>
  * <li>그 밖의 경로는 연다. 그 경로들은 이렇다: {@code /oauth2/*}·{@code /login/*}은 아래 로그인 필터가 처리하고,
  * {@code POST /logout}은 로그아웃 필터가 처리하며(CSRF 토큰 필요), 외부에 노출하는 Actuator는 health뿐이다.
  * 로그인이 필요한 화면 경로(S07의 {@code /github/setup})는 그 단계에서 규칙을 더한다. architecture.md 4.1의 Nginx 경로 목록에는
@@ -37,6 +39,9 @@ public class SecurityConfiguration {
 	/** 로그인에 실패하면 보내는 곳. 프론트가 이 쿼리를 보고 실패를 알린다. */
 	static final String LOGIN_FAILURE_URL = "/?login_error";
 
+	/** 로그인 없이 볼 수 있는 API: 초대 미리보기 {@code GET /api/invitations/{token}} (S05). */
+	static final String PUBLIC_INVITATION_PREVIEW = "/api/invitations/*";
+
 	@Bean
 	@Order(1)
 	SecurityFilterChain webhookSecurityFilterChain(HttpSecurity http) {
@@ -54,7 +59,11 @@ public class SecurityConfiguration {
 			NoStoreAuthorizedClientRepository authorizedClientRepository,
 			ProblemDetailAuthenticationEntryPoint authenticationEntryPoint,
 			ProblemDetailAccessDeniedHandler accessDeniedHandler) {
-		http.authorizeHttpRequests(authorize -> authorize.requestMatchers("/api/**")
+		http.authorizeHttpRequests(authorize -> authorize
+			// 초대 미리보기는 공개다 (api.md 4.4, S05). 경로 한 칸만 열어서 수락(/accept, 로그인)은 아래 규칙을 따른다.
+			.requestMatchers(HttpMethod.GET, PUBLIC_INVITATION_PREVIEW)
+			.permitAll()
+			.requestMatchers("/api/**")
 			.authenticated()
 			.requestMatchers("/actuator/health")
 			.permitAll()
