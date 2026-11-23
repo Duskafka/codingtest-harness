@@ -148,6 +148,16 @@ abstract class GithubConnectionTestSupport {
 			this.user = user;
 		}
 
+		private Browser(TestUser user, @Nullable String session) {
+			this.user = user;
+			this.session = session;
+		}
+
+		/** 같은 브라우저(같은 세션 쿠키)에서 다른 사용자로 로그인한 상태. */
+		Browser loggedInAs(TestUser other) {
+			return new Browser(other, session);
+		}
+
 		MvcTestResult get(String uri) {
 			MockMvcRequestBuilder request = mvc.get().uri(uri).with(as(user));
 			if (session != null) {

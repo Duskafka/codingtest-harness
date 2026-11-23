@@ -97,6 +97,19 @@ class GithubSetupIntegrationTest extends GithubConnectionTestSupport {
 	}
 
 	@Test
+	@DisplayName("T19: 같은 브라우저 세션이라도 다른 사용자로 로그인했으면 앞 사용자의 state는 확인되지 않는다")
+	void t19StateIsBoundToUserNotOnlySession() {
+		TestUser first = newUser("first-login");
+		TestUser second = newUser("second-login");
+		Browser browser = new Browser(first);
+		String firstState = browser.installState();
+
+		MvcTestResult result = browser.loggedInAs(second).get("/github/setup?setup_action=install&state=" + firstState);
+
+		assertThat(result.getResponse().getHeader("Location")).isEqualTo("/?github_setup=unverified");
+	}
+
+	@Test
 	@DisplayName("S07: state가 없거나, 고쳤거나, 30분이 지났으면 unverified")
 	void missingTamperedOrExpiredStateIsUnverified() {
 		TestUser user = newUser("expired");
