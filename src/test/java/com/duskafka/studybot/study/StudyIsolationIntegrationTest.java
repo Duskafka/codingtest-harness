@@ -48,6 +48,7 @@ class StudyIsolationIntegrationTest extends StudyTestSupport {
 	void patchOtherStudy() {
 		assertDenied(patchJson(alice, "/api/studies/" + bobStudy, "{\"name\": \"탈취\"}"));
 		assertDenied(patchJson(alice, "/api/studies/" + bobStudy, "{\"ownerUserId\": " + alice.id() + "}"));
+		assertDenied(patchJson(alice, "/api/studies/" + bobStudy, "{}"));
 
 		JsonNode bobView = json(get(bob, "/api/studies/" + bobStudy));
 		assertThat(bobView.get("name").asString()).isEqualTo("S05 스터디");

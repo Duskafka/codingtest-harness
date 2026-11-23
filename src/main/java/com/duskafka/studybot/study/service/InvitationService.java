@@ -102,13 +102,13 @@ public class InvitationService {
 	 * 초대를 수락한다 (권한: 로그인, 5.1 처리 순서 3).
 	 *
 	 * <ol>
-	 * <li>스터디 행을 쓰기 잠금으로 읽는다. 같은 스터디의 수락이 차례로 실행돼서 초대가 여러 개여도 정원을 넘지 않고,
-	 * 같은 사람이 동시에 두 번 눌러도 멤버십이 하나다.</li>
+	 * <li>스터디 행을 쓰기 잠금으로 읽는다 (결정 제안서 006). 같은 스터디의 수락이 차례로 실행돼서 초대가 여러 개여도 정원을
+	 * 넘지 않고, 같은 사람이 동시에 두 번 눌러도 멤버십이 하나다.</li>
 	 * <li>이미 멤버면 그대로 성공이다. 사용 횟수를 쓰지 않는다 (5.1 '이미 멤버면 그대로 성공').</li>
 	 * <li>만료·철회면 410, 정원이 찼으면 409.</li>
 	 * <li>사용 횟수는 {@code used_count < max_uses} 조건부 UPDATE로 늘린다 (5.1 '정원 동시성'). 같은 UPDATE가 철회·만료도
 	 * 다시 봐서, 초대를 읽은 뒤 철회가 커밋돼도 그 초대로는 가입하지 못한다. 바뀐 행이 없으면 410.</li>
-	 * <li>판정은 가입 다음 스터디 일부터다 (R14). 스터디가 시작하기 전이면 시작일부터.</li>
+	 * <li>판정은 가입 다음 스터디 일부터다 (R14).</li>
 	 * </ol>
 	 */
 	@Transactional
@@ -137,15 +137,13 @@ public class InvitationService {
 	}
 
 	/**
-	 * 가입 다음 스터디 일 (R14). 스터디 시작일(첫 규칙 버전의 적용 시작일)보다 앞이면 시작일이다.
-	 * 시작 전 날에는 적용되는 규칙 버전이 없어 판정할 수 없고, 방장의 판정 시작일도 시작일이라 맞춘다 (S05 PR 판단 기록).
+	 * 가입 다음 스터디 일 (R14, 5.1 처리 순서 3). 스터디가 시작하기 전에 가입해도 그대로다. 시작 전 날은 1기 밖이라
+	 * R9의 '기수 밖'(면제)이고, 그 날을 어떻게 남길지는 OD-07과 함께 정한다 (glossary '판정 결과').
 	 */
 	private LocalDate judgedFrom(Study study, Instant joinedAt) {
 		StudyRule rule = StudyTimeline
 			.currentRule(this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(study.getId()));
-		LocalDate nextStudyDay = StudyTimeline.calendar(rule, study.zoneId()).nextStudyDayOf(joinedAt);
-		LocalDate studyStart = rule.getEffectiveFrom();
-		return nextStudyDay.isBefore(studyStart) ? studyStart : nextStudyDay;
+		return StudyTimeline.calendar(rule, study.zoneId()).nextStudyDayOf(joinedAt);
 	}
 
 	private Invitation find(String token) {

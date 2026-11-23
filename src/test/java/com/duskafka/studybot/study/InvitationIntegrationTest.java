@@ -272,8 +272,8 @@ class InvitationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("S05: 스터디 시작 전에 가입하면 시작일부터 판정한다 (R14의 다음 스터디 일이 시작일보다 앞이면 시작일, PR 판단 기록)")
-	void judgedFromIsNotBeforeStudyStart() {
+	@DisplayName("S05 (R14): 스터디 시작 전에 가입해도 judged_from은 가입 다음 스터디 일이다 (시작 전 날은 1기 밖, R9·OD-07)")
+	void judgedFromBeforeStudyStartIsStillNextStudyDay() {
 		TestUser owner = newUser("early-owner");
 		TestUser joiner = newUser("early-joiner");
 		long studyId = createStudyWithBody(owner, "{\"name\": \"다음 주\", \"mode\": \"GROUP\", \"startDate\": \"2026-11-25\"}");
@@ -281,7 +281,7 @@ class InvitationIntegrationTest extends StudyTestSupport {
 
 		MvcTestResult result = accept(joiner, token);
 
-		assertThat(json(result).get("judgedFrom").asString()).isEqualTo("2026-11-25");
+		assertThat(json(result).get("judgedFrom").asString()).isEqualTo("2026-11-21");
 	}
 
 	@Test

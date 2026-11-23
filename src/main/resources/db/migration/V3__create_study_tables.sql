@@ -54,7 +54,8 @@ CREATE TABLE studybot.study_rules (
 	CONSTRAINT study_rules_season_length_ck CHECK (season_length_days BETWEEN 7 AND 56)
 );
 
--- 기수 (R13, 3.4 상태). S05는 1기만 만든다. 다음 기수와 상태 전환은 S12 (OD-07).
+-- 기수 (R13, 3.4 상태). S05는 1기만 SCHEDULED로 만든다. 다음 기수(OD-07)와 마지막 날 뒤의 상태 전환은 S12다.
+-- 시작일의 SCHEDULED → ACTIVE 전환을 맡은 단계는 아직 없다 (S05 PR 열린 질문).
 CREATE TABLE studybot.seasons (
 	id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	study_id   BIGINT      NOT NULL REFERENCES studybot.studies (id),

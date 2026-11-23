@@ -27,7 +27,7 @@ public class MembershipService {
 
 	/**
 	 * 탈퇴한다. {@code left_at}을 남기고 그 시각이 속한 스터디 일까지 판정한다 (R14). 원장(P2)은 지우지 않는다.
-	 * 방장은 위임한 뒤에만 탈퇴할 수 있다 (409). 스터디 행을 잠가 위임과 차례로 실행한다.
+	 * 방장은 위임한 뒤에만 탈퇴할 수 있다 (409). 스터디 행을 잠가 위임과 차례로 실행한다 (결정 제안서 006).
 	 */
 	@Transactional
 	public void leave(long studyId, long userId) {
