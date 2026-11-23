@@ -1,6 +1,7 @@
 package com.duskafka.studybot.github.webhook;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.duskafka.studybot.github.WebhookSigner;
 import java.nio.charset.StandardCharsets;
@@ -86,11 +87,23 @@ class GithubSignatureVerifierTest {
 	}
 
 	@Test
-	@DisplayName("S06: 옛 시크릿을 설정하지 않았으면(비었거나 공백) 옛 시크릿 서명은 거절한다")
-	void rejectsPreviousSecretWhenNotConfigured() {
+	@DisplayName("S06: 옛 시크릿을 설정하지 않았으면(없음, 빈 값, 공백) 현재 시크릿만 받는다")
+	void usesOnlyCurrentSecretWhenPreviousIsNotConfigured() {
 		assertThat(verifier.verify(BODY, WebhookSigner.sign(PREVIOUS, BODY))).isFalse();
-		assertThat(new GithubSignatureVerifier(SECRET, "").verify(BODY, WebhookSigner.sign("", BODY))).isFalse();
-		assertThat(new GithubSignatureVerifier(SECRET, "  ").verify(BODY, WebhookSigner.sign("  ", BODY))).isFalse();
+
+		GithubSignatureVerifier emptyPrevious = new GithubSignatureVerifier(SECRET, "");
+		assertThat(emptyPrevious.verify(BODY, WebhookSigner.sign(SECRET, BODY))).isTrue();
+
+		GithubSignatureVerifier blankPrevious = new GithubSignatureVerifier(SECRET, "  ");
+		assertThat(blankPrevious.verify(BODY, WebhookSigner.sign(SECRET, BODY))).isTrue();
+		assertThat(blankPrevious.verify(BODY, WebhookSigner.sign("  ", BODY))).isFalse();
+	}
+
+	@Test
+	@DisplayName("S06: 현재 시크릿이 비어 있으면 검증기를 만들 수 없다")
+	void requiresCurrentSecret() {
+		assertThatThrownBy(() -> new GithubSignatureVerifier("", null)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> new GithubSignatureVerifier("   ", PREVIOUS)).isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test

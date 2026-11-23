@@ -24,6 +24,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
+import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
@@ -319,6 +320,30 @@ class GithubWebhookIntegrationTest extends WebhookTestSupport {
 
 		assertThat(statusSeenByOtherConnection.get()).isEqualTo("RECEIVED");
 		assertThat(transactionActive).isTrue();
+	}
+
+	@Test
+	@DisplayName("S06: 처리기는 성공했지만 커밋이 실패하면 처리기 변경은 롤백되고 FAILED로 남는다")
+	void commitFailureAfterHandlerIsRecordedAsFailed() {
+		pushHandler.willDo(event -> {
+			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+
+				@Override
+				public void beforeCommit(boolean readOnly) {
+					throw new IllegalStateException("커밋 직전 실패");
+				}
+
+			});
+			return HandlingResult.PROCESSED;
+		});
+		String delivery = newDeliveryId();
+
+		assertThat(sendSigned("push", delivery, PUSH)).hasStatus(202);
+
+		InboxRow row = onlyInboxRow(delivery);
+		assertThat(row.status()).isEqualTo("FAILED");
+		assertThat(row.lastError()).contains("커밋 직전 실패");
+		assertThat(row.processedAt()).isNull();
 	}
 
 	@Test

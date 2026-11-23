@@ -4,10 +4,13 @@ import com.duskafka.studybot.github.webhook.GithubEvent;
 import com.duskafka.studybot.github.webhook.GithubEventHandler;
 import com.duskafka.studybot.github.webhook.GithubWebhookEvent;
 import com.duskafka.studybot.github.webhook.HandlingResult;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLTransientConnectionException;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -73,11 +76,17 @@ public class WebhookTestConfiguration {
 	}
 
 	/**
-	 * DB 장애 흉내. 앱의 {@link DataSource} 빈을 감싸고, {@link #start()} 하면 새 연결을 달라는 요청이
-	 * {@link SQLTransientConnectionException}으로 실패한다 (연결 풀이 DB에 닿지 못할 때와 같은 예외 종류).
-	 * 이미 트랜잭션이 잡은 연결은 그대로 쓴다. 테스트마다 {@link #stop()}한다.
+	 * DB 장애 흉내. 앱의 {@link DataSource} 빈을 감싸고, {@link #start()} 하면 새 연결을 달라는 요청과 이미 받아 둔 연결의 사용이
+	 * 모두 {@link SQLTransientConnectionException}으로 실패한다 (DB에 닿지 못할 때와 같은 예외 종류). 연결을 풀에 돌려주는
+	 * {@code close()}는 그대로 된다. 테스트마다 {@link #stop()}한다.
+	 *
+	 * <p>이미 받아 둔 연결도 막는 이유: {@code spring.jpa.open-in-view}가 켜져 있어 한 요청 안의 트랜잭션들이 요청에 묶인
+	 * EntityManager와 그 연결을 이어 쓴다. 새 연결만 막으면 요청 중간에 난 장애를 흉내 낼 수 없다.
 	 */
 	public static class DatabaseOutage implements BeanPostProcessor {
+
+		private static final Set<String> ALWAYS_ALLOWED = Set.of("close", "isClosed", "unwrap", "isWrapperFor", "toString",
+				"hashCode", "equals");
 
 		private final AtomicBoolean down = new AtomicBoolean();
 
@@ -97,18 +106,34 @@ public class WebhookTestConfiguration {
 					@Override
 					public Connection getConnection() throws SQLException {
 						failIfDown();
-						return super.getConnection();
+						return guard(super.getConnection());
 					}
 
 					@Override
 					public Connection getConnection(String username, String password) throws SQLException {
 						failIfDown();
-						return super.getConnection(username, password);
+						return guard(super.getConnection(username, password));
 					}
 
 				};
 			}
 			return bean;
+		}
+
+		/** 장애 중에는 연결을 쓰는 모든 호출이 실패한다. 풀에 돌려주는 호출과 객체 기본 메서드만 그대로 둔다. */
+		private Connection guard(Connection connection) {
+			return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[] { Connection.class },
+					(proxy, method, args) -> {
+						if (!ALWAYS_ALLOWED.contains(method.getName())) {
+							failIfDown();
+						}
+						try {
+							return method.invoke(connection, args);
+						}
+						catch (InvocationTargetException ex) {
+							throw ex.getCause();
+						}
+					});
 		}
 
 		private void failIfDown() throws SQLTransientConnectionException {
