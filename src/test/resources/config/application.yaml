@@ -11,3 +11,12 @@ spring:
           github:
             client-id: test-client-id
             client-secret: test-client-secret
+
+# GitHub 웹훅 시크릿 (S06). 운영에서는 환경 변수로만 받는다 (main application.yaml, infra.md 9.6).
+# 아래는 테스트 안에서만 쓰는 가짜 값이다. 테스트는 이 값으로 payload에 서명한다 (github.WebhookTestSupport).
+# 교체 중 상태(옛 시크릿도 받음)를 모든 웹훅 테스트의 기본으로 둔다. 옛 시크릿이 없을 때는 GithubSignatureVerifierTest가 본다.
+studybot:
+  github:
+    webhook:
+      secret: test-webhook-secret
+      previous-secret: test-webhook-secret-previous
