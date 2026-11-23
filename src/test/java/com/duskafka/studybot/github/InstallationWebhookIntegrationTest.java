@@ -53,7 +53,7 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 
 		InstallationRow installation = rows.existingInstallation(installationId);
 		assertThat(installation.userId()).isNull();
-		assertThat(installation.senderId()).isEqualTo(other.githubId());
+		assertThat(installation.installedByOwner()).isFalse();
 	}
 
 	@Test
@@ -85,7 +85,7 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 		InstallationRow installation = rows.existingInstallation(installationId);
 		assertThat(installation.userId()).isNull();
 		assertThat(installation.accountId()).isEqualTo(githubId);
-		assertThat(installation.senderId()).isEqualTo(githubId);
+		assertThat(installation.installedByOwner()).isTrue();
 		assertThat(installation.status()).isEqualTo("ACTIVE");
 	}
 
@@ -171,6 +171,32 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 
 		assertThat(rows.link(removed).status()).isEqualTo("INACTIVE");
 		assertThat(rows.link(current).status()).isEqualTo("ACTIVE");
+	}
+
+	@Test
+	@DisplayName("S07: 정지된 동안 같은 레포가 다른 연결로 활성이 됐으면 unsuspend로 되살리지 않고 끊는다 (레포당 활성 하나)")
+	void unsuspendDoesNotCreateSecondActiveLinkForSameRepo() {
+		TestUser previous = rows.newUser("prev-owner", clock.instant());
+		long previousInstallation = GithubConnectionRows.newInstallationId();
+		rows.insertInstallation(previousInstallation, previous.id(), previous.githubId(), "User", previous.githubId(),
+				"SUSPENDED", clock.instant());
+		long repoId = GithubConnectionRows.newRepoId();
+		long suspended = rows.insertLink(previous, previousInstallation, repoId, "someone/algo", "SUSPENDED",
+				clock.instant());
+		// 레포 이전처럼 정상 흐름에서는 드문 모양: 그동안 같은 레포가 다른 사용자에게 활성으로 연결됐다.
+		TestUser current = rows.newUser("new-owner", clock.instant());
+		long currentInstallation = rows.insertLinkedInstallation(current, clock.instant());
+		long active = rows.insertLink(current, currentInstallation, repoId, "someone/algo", "ACTIVE", clock.instant());
+		Account account = Account.user(previous.githubId());
+		String delivery = newDeliveryId();
+
+		sendSigned("installation", delivery,
+				InstallationPayloads.installation("unsuspend", previousInstallation, account, account));
+
+		assertThat(onlyInboxRow(delivery).status()).isEqualTo("PROCESSED");
+		assertThat(rows.existingInstallation(previousInstallation).status()).isEqualTo("ACTIVE");
+		assertThat(rows.link(suspended).status()).isEqualTo("INACTIVE");
+		assertThat(rows.link(active).status()).isEqualTo("ACTIVE");
 	}
 
 	@Test

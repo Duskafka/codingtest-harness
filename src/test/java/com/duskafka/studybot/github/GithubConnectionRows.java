@@ -55,20 +55,21 @@ public final class GithubConnectionRows {
 		return new TestUser(id, githubId, login + "-" + githubId);
 	}
 
-	/** 설치 행을 바로 넣는다 (웹훅을 거치지 않고 상태를 준비할 때). */
+	/** 설치 행을 바로 넣는다 (웹훅을 거치지 않고 상태를 준비할 때). 설치자가 계정 주인인지는 {@code senderId == accountId}로 정한다. */
 	public void insertInstallation(long installationId, @Nullable Long userId, long accountId, String accountType,
 			long senderId, String status, Instant createdAt) {
 		jdbc.sql("""
 				insert into studybot.github_installations
-					(installation_id, user_id, account_id, account_login, account_type, sender_id, status, created_at, updated_at)
-				values (:installationId, :userId, :accountId, :login, :accountType, :senderId, :status, :createdAt, :createdAt)
+					(installation_id, user_id, account_id, account_login, account_type, installed_by_owner, status, created_at,
+					updated_at)
+				values (:installationId, :userId, :accountId, :login, :accountType, :byOwner, :status, :createdAt, :createdAt)
 				""")
 			.param("installationId", installationId)
 			.param("userId", userId)
 			.param("accountId", accountId)
 			.param("login", "account-" + accountId)
 			.param("accountType", accountType)
-			.param("senderId", senderId)
+			.param("byOwner", senderId == accountId)
 			.param("status", status)
 			.param("createdAt", Timestamp.from(createdAt))
 			.update();
@@ -102,13 +103,13 @@ public final class GithubConnectionRows {
 
 	public Optional<InstallationRow> installation(long installationId) {
 		return jdbc.sql("""
-				select installation_id, user_id, account_id, account_login, account_type, sender_id, status
+				select installation_id, user_id, account_id, account_login, account_type, installed_by_owner, status
 				from studybot.github_installations where installation_id = :id
 				""")
 			.param("id", installationId)
 			.query((rs, rowNum) -> new InstallationRow(rs.getLong("installation_id"),
 					(Long) rs.getObject("user_id"), rs.getLong("account_id"), rs.getString("account_login"),
-					rs.getString("account_type"), rs.getLong("sender_id"), rs.getString("status")))
+					rs.getString("account_type"), rs.getBoolean("installed_by_owner"), rs.getString("status")))
 			.optional();
 	}
 
@@ -153,7 +154,7 @@ public final class GithubConnectionRows {
 	}
 
 	public record InstallationRow(long installationId, @Nullable Long userId, long accountId, String accountLogin,
-			String accountType, long senderId, String status) {
+			String accountType, boolean installedByOwner, String status) {
 	}
 
 	public record LinkRow(long id, long userId, long installationId, long repoId, String fullName, String defaultBranch,

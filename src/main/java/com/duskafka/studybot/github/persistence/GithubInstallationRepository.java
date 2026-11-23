@@ -1,8 +1,10 @@
 package com.duskafka.studybot.github.persistence;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,17 +20,18 @@ public interface GithubInstallationRepository extends JpaRepository<GithubInstal
 	@Modifying(flushAutomatically = true)
 	@Query(value = """
 			insert into studybot.github_installations
-				(installation_id, user_id, account_id, account_login, account_type, sender_id, status, created_at, updated_at)
-			values (:installationId, null, :accountId, :accountLogin, :accountType, :senderId, 'ACTIVE', :now, :now)
+				(installation_id, user_id, account_id, account_login, account_type, installed_by_owner, status, created_at,
+				updated_at)
+			values (:installationId, null, :accountId, :accountLogin, :accountType, :installedByOwner, 'ACTIVE', :now, :now)
 			on conflict (installation_id) do nothing
 			""", nativeQuery = true)
 	int insertIfAbsent(@Param("installationId") long installationId, @Param("accountId") long accountId,
 			@Param("accountLogin") String accountLogin, @Param("accountType") String accountType,
-			@Param("senderId") long senderId, @Param("now") Instant now);
+			@Param("installedByOwner") boolean installedByOwner, @Param("now") Instant now);
 
 	/**
 	 * 이 GitHub ID의 사용자에게 아직 주인이 없는 설치를 잇는다 (5.2 처리 순서 1·2). 서명된 웹훅이 남긴 설치자 정보로만 판단한다:
-	 * 개인 계정({@code account_type = 'User'})이고 계정 = 설치자({@code account_id = sender_id})이며 삭제되지 않은 설치.
+	 * 개인 계정({@code account_type = 'User'})이고 계정 주인이 직접 설치했으며({@code installed_by_owner}) 삭제되지 않은 설치.
 	 * 이미 주인이 있는 설치는 바꾸지 않는다.
 	 *
 	 * @return 이은 설치 수
@@ -39,7 +42,7 @@ public interface GithubInstallationRepository extends JpaRepository<GithubInstal
 			set user_id = :userId, updated_at = :now
 			where account_id = :githubId
 				and account_type = 'User'
-				and sender_id = account_id
+				and installed_by_owner
 				and user_id is null
 				and status <> 'DELETED'
 			""", nativeQuery = true)
@@ -53,5 +56,13 @@ public interface GithubInstallationRepository extends JpaRepository<GithubInstal
 			limit 1
 			""")
 	Optional<GithubInstallation> findCurrentByUserId(@Param("userId") long userId);
+
+	/**
+	 * 설치 행을 잠그고 읽는다. 연결을 저장하는 트랜잭션이 설치가 아직 이 사용자의 ACTIVE 설치인지 다시 확인할 때 쓴다.
+	 * 설치 웹훅(suspend·deleted)도 이 행을 고치므로, 둘이 겹치면 한쪽이 끝날 때까지 기다린다.
+	 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select i from GithubInstallation i where i.installationId = :installationId")
+	Optional<GithubInstallation> findForUpdate(@Param("installationId") long installationId);
 
 }

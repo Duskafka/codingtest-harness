@@ -3,8 +3,11 @@
 
 -- 설치 하나가 한 행이다. installation_id는 GitHub가 정하고, 삭제 후 다시 설치하면 새 값이 된다.
 -- user_id는 서명된 installation 웹훅의 설치자 정보로만 채운다 (5.2, T21). 개인 계정(account_type = 'User')이고
--- 계정 = 설치자(account_id = sender_id)일 때만 그 GitHub ID의 사용자에게 잇는다. 아직 가입하지 않았으면 NULL로 두고 가입할 때 잇는다.
--- account_type·sender_id는 data-model 표에 없는 컬럼이다. 가입할 때 위 조건을 다시 확인하려고 둔다 (S07 PR 판단 기록).
+-- 계정 주인이 직접 설치했을 때(installed_by_owner, 웹훅의 account.id = sender.id)만 그 GitHub ID의 사용자에게 잇는다.
+-- 아직 가입하지 않았으면 NULL로 두고 가입할 때 잇는다.
+-- account_type·installed_by_owner는 data-model 표에 없는 컬럼이다. 가입할 때 위 조건을 다시 확인하려고 둔다 (S07 PR 판단 기록).
+-- 설치자(sender)의 GitHub ID는 남기지 않는다. 조직 설치나 남이 대신 설치하면 회원이 아닌 사람의 ID라서다 (security.md 9.8 최소 수집).
+-- 행을 고친 시각 updated_at도 표에 없는 컬럼이다 (상태가 언제 바뀌었는지 보려고).
 -- status: ACTIVE, SUSPENDED(installation suspend), DELETED(installation deleted). 삭제해도 행은 남긴다 (계정 삭제 때 지우는 건 S15).
 CREATE TABLE studybot.github_installations (
 	installation_id BIGINT      PRIMARY KEY,
@@ -12,7 +15,7 @@ CREATE TABLE studybot.github_installations (
 	account_id      BIGINT      NOT NULL,
 	account_login   TEXT        NOT NULL,
 	account_type    TEXT        NOT NULL,
-	sender_id       BIGINT      NOT NULL,
+	installed_by_owner BOOLEAN NOT NULL,
 	status          TEXT        NOT NULL,
 	created_at      TIMESTAMPTZ NOT NULL,
 	updated_at      TIMESTAMPTZ NOT NULL,
@@ -27,7 +30,7 @@ CREATE INDEX github_installations_account_idx ON studybot.github_installations (
 -- 사용자가 고른 풀이 레포. 이름이 아니라 repo_id로 추적한다 (레포 이름은 바뀔 수 있다).
 -- 연결을 바꾸거나 끊어도 행은 지우지 않고 status만 바꾼다 (push가 어느 연결로 인정됐는지 남기기 위해).
 -- status: ACTIVE, SUSPENDED(설치 정지 동안. unsuspend면 ACTIVE로 돌아간다), INACTIVE(레포가 설치에서 빠짐·설치 삭제·다른 레포로 바꿈. 되살리지 않는다).
--- path_prefix는 S08(확인 대기 판단)에서 쓴다. 지금은 비워 둔다.
+-- path_prefix는 S08(확인 대기 판단)에서 쓴다. 지금은 비워 둔다. created_at·updated_at은 data-model 표에 없는 컬럼이다.
 CREATE TABLE studybot.linked_repositories (
 	id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	user_id         BIGINT      NOT NULL REFERENCES studybot.users (id),

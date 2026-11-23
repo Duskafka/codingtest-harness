@@ -40,10 +40,11 @@ public class GithubInstallationLinker {
 	 * 가입할 때 {@link #claim}이 잇는다. 같은 이벤트가 다시 와도 결과가 같다.
 	 */
 	@Transactional
-	HandlingResult created(long installationId, long accountId, String accountLogin, String accountType, long senderId) {
+	HandlingResult created(long installationId, long accountId, String accountLogin, String accountType,
+			boolean installedByOwner) {
 		Instant now = this.clock.instant();
-		this.installations.insertIfAbsent(installationId, accountId, accountLogin, accountType, senderId, now);
-		if (USER_ACCOUNT.equals(accountType) && accountId == senderId) {
+		this.installations.insertIfAbsent(installationId, accountId, accountLogin, accountType, installedByOwner, now);
+		if (USER_ACCOUNT.equals(accountType) && installedByOwner) {
 			this.users.findUserIdByGithubId(accountId).ifPresent(userId -> this.installations.claim(userId, accountId, now));
 		}
 		return HandlingResult.PROCESSED;

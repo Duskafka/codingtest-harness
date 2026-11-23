@@ -46,9 +46,12 @@ public class GithubInstallation {
 	@Column(name = "account_type", nullable = false, updatable = false)
 	private String accountType;
 
-	/** 설치 이벤트를 일으킨 사람의 GitHub ID ({@code sender.id}). */
-	@Column(name = "sender_id", nullable = false, updatable = false)
-	private Long senderId;
+	/**
+	 * 계정 주인이 직접 설치했는지 ({@code installation} created의 {@code account.id == sender.id}). 설치자의 GitHub ID는 남기지 않는다
+	 * (조직 설치나 남이 대신 설치하면 회원이 아닌 사람의 ID라서, security.md 9.8 최소 수집).
+	 */
+	@Column(name = "installed_by_owner", nullable = false, updatable = false)
+	private boolean installedByOwner;
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false)

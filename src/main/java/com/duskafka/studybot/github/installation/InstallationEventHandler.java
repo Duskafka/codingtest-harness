@@ -48,10 +48,10 @@ class InstallationEventHandler implements GithubEventHandler {
 		if (account == null || account.id() == null || isBlank(account.login()) || isBlank(account.type())) {
 			throw new WebhookHandlingException("설치 웹훅에 installation.account가 없어요");
 		}
-		// sender가 없으면 설치자를 알 수 없으니 계정과 다른 값으로 두어 연결하지 않는다 (ghost 사용자도 계정과 다르다).
+		// 계정 주인이 직접 설치했는지만 남긴다. sender가 없으면 설치자를 알 수 없어 연결하지 않는다 (ghost 사용자도 계정과 다르다).
 		Account sender = payload.sender();
-		long senderId = sender != null && sender.id() != null ? sender.id() : -1L;
-		return this.linker.created(installationId, account.id(), account.login(), account.type(), senderId);
+		boolean installedByOwner = sender != null && account.id().equals(sender.id());
+		return this.linker.created(installationId, account.id(), account.login(), account.type(), installedByOwner);
 	}
 
 	private static boolean isBlank(@Nullable String value) {
