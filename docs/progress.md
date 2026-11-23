@@ -9,6 +9,7 @@
 - 다음: PR 검토(판단 기록 '꼭 봐 주세요': 응답 모양, 테이블 컬럼·상태 값, 엔티티 이름, 가입 연결 방식, state) → 병합 뒤 받아들인 스펙 변경 제안을 docs PR로 → S08(push 처리, 선행 S03·S06·S07 완료)
 - 막힌 것: 없음. 실제 연동 확인은 H-02. 새 환경 변수 `GITHUB_APP_SLUG`(필수), `GITHUB_APP_PRIVATE_KEY_PATH` 또는 `GITHUB_APP_PRIVATE_KEY`(하나만, 없으면 앱이 안 뜸). JWT `iss`는 기존 `GITHUB_APP_CLIENT_ID`
 - 참고: S08은 연결을 `repo_id` + ACTIVE로 찾는다(부분 UNIQUE). `default_branch`는 목록 조회 때 GitHub 값으로 갱신된다. 모든 통합 테스트 컨텍스트에 테스트 키·WireMock(`github.GithubApiStub`)이 들어간다(`GithubAppTestConfiguration`). 컨텍스트를 따로 띄우는 테스트는 키를 직접 넣는다(`SessionRestartTest`는 실행 인자로, `properties()`는 yaml 빈 값에 밀림). 커밋 전 파일을 `git checkout --`로 되돌리는 명령은 막히니 조건 빼 보기는 커밋한 뒤 정확히 되바꿔서
+- 리뷰 반영 (같은 세션): CodeRabbit 11건 중 9건 코드로(HEAD 500, 웹훅 행 잠금, 순서 바뀐 deleted·suspend 기록, `repositories_revision`으로 제거·연결 경합, 완전한 목록에 없는 연결 끊기, refresh 재읽기, 목록 1000개 범위, `@DynamicUpdate`, 로그인 연결 `@Async`), 2건은 답글만(토큰 기준 해석, state 원자성). spec-reviewer 2차가 찾은 open-in-view 문제(잠근 뒤에도 요청 안의 옛 엔티티로 비교) → 네이티브 `select … for update`로. 빌드 통과(테스트 450개). 사람이 정한 것 (2026-11-23, 세션 선택지): "체크 유지, 해석을 답글로", "세션 유지, 답글로 설명", "목록이 한 페이지로 다 보일 때만 끊음", "비동기로 실행" (모두 Recommended). S13 참고: 연결은 이제 웹훅뿐 아니라 목록 조회(GET)에서도 끊긴다. open-in-view가 켜져 있어 같은 요청에서 앞서 읽은 엔티티는 잠가도 다시 채워지지 않으니, 잠근 뒤 확인은 네이티브 쿼리로
 - PR: #14
 
 ## 2026-11-23 S06 후속 결정 반영 (docs PR, 단계 진행 아님)
