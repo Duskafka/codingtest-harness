@@ -1,0 +1,48 @@
+{
+  "zen": "Anything added dilutes everything else.",
+  "hook_id": 500000001,
+  "hook": {
+    "type": "App",
+    "id": 500000001,
+    "name": "web",
+    "active": true,
+    "events": [
+      "installation",
+      "installation_repositories",
+      "push"
+    ],
+    "config": {
+      "content_type": "json",
+      "url": "https://studybot.example/webhooks/github",
+      "insecure_ssl": "0"
+    },
+    "updated_at": "2026-11-20T12:00:00Z",
+    "created_at": "2026-11-20T12:00:00Z",
+    "last_response": {
+      "code": null,
+      "status": "unused",
+      "message": null
+    },
+    "app_id": 400001
+  },
+  "sender": {
+    "login": "studybot-tester",
+    "id": 100000001,
+    "node_id": "FAKE_NODE_ID",
+    "avatar_url": "https://avatars.githubusercontent.com/u/100000001?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/studybot-tester",
+    "html_url": "https://github.com/studybot-tester",
+    "followers_url": "https://api.github.com/users/studybot-tester/followers",
+    "following_url": "https://api.github.com/users/studybot-tester/following{/other_user}",
+    "gists_url": "https://api.github.com/users/studybot-tester/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/studybot-tester/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/studybot-tester/subscriptions",
+    "organizations_url": "https://api.github.com/users/studybot-tester/orgs",
+    "repos_url": "https://api.github.com/users/studybot-tester/repos",
+    "events_url": "https://api.github.com/users/studybot-tester/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/studybot-tester/received_events",
+    "type": "User",
+    "site_admin": false
+  }
+}

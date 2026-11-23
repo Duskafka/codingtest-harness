@@ -61,3 +61,14 @@ management:
 springdoc:
   api-docs:
     enabled: false
+
+# GitHub 웹훅 (S06, processes 5.3). github.webhook.GithubWebhookProperties
+studybot:
+  github:
+    webhook:
+      # 시크릿은 서버 .env의 환경 변수로만 받는다 (infra.md 9.6 'GitHub 웹훅 시크릿'). 기본값이 없어 없으면 기동이 실패한다.
+      secret: ${GITHUB_WEBHOOK_SECRET}
+      # 시크릿을 교체하는 동안만 옛 값을 넣는다. 옛 값과 새 값으로 서명한 요청을 모두 받는다. 교체가 끝나면 비운다.
+      previous-secret: ${GITHUB_WEBHOOK_SECRET_PREVIOUS:}
+      # 이보다 큰 본문은 413으로 거절한다 (5.3 '주의할 것' "예: 5MB"). Nginx client_max_body_size도 같이 건다 (S17).
+      max-body-size: 5MB

@@ -1,0 +1,147 @@
+package com.duskafka.studybot.github;
+
+import com.duskafka.studybot.github.webhook.GithubEvent;
+import com.duskafka.studybot.github.webhook.GithubEventHandler;
+import com.duskafka.studybot.github.webhook.GithubWebhookEvent;
+import com.duskafka.studybot.github.webhook.HandlingResult;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.SQLTransientConnectionException;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
+import javax.sql.DataSource;
+import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.jdbc.datasource.DelegatingDataSource;
+
+/**
+ * 웹훅 통합 테스트용 빈. 웹훅 테스트 클래스는 모두 이 설정 하나만 더해서 Spring 컨텍스트를 함께 쓴다.
+ *
+ * <ul>
+ * <li>{@link RecordingPushHandler}: S08 전까지 push 처리기 자리를 채우는 테스트 처리기. 불린 횟수와 받은 값을 남기고,
+ * 테스트가 정한 대로 결과를 돌려주거나 예외를 던진다.</li>
+ * <li>{@link DatabaseOutage}: 앱의 DataSource를 감싸서, 켜면 새 DB 연결을 얻지 못하게 한다 (DB 장애 흉내).</li>
+ * </ul>
+ */
+@TestConfiguration(proxyBeanMethods = false)
+public class WebhookTestConfiguration {
+
+	@Bean
+	RecordingPushHandler recordingPushHandler() {
+		return new RecordingPushHandler();
+	}
+
+	@Bean
+	static DatabaseOutage databaseOutage() {
+		return new DatabaseOutage();
+	}
+
+	/** push 처리기 자리의 테스트 처리기. 테스트마다 {@link #reset()}한다. */
+	public static class RecordingPushHandler implements GithubEventHandler {
+
+		private final List<GithubWebhookEvent> calls = new CopyOnWriteArrayList<>();
+
+		private volatile Function<GithubWebhookEvent, HandlingResult> behavior = event -> HandlingResult.PROCESSED;
+
+		@Override
+		public GithubEvent event() {
+			return GithubEvent.PUSH;
+		}
+
+		@Override
+		public HandlingResult handle(GithubWebhookEvent event) {
+			calls.add(event);
+			return behavior.apply(event);
+		}
+
+		public List<GithubWebhookEvent> calls() {
+			return List.copyOf(calls);
+		}
+
+		public void willDo(Function<GithubWebhookEvent, HandlingResult> newBehavior) {
+			this.behavior = newBehavior;
+		}
+
+		public void reset() {
+			calls.clear();
+			behavior = event -> HandlingResult.PROCESSED;
+		}
+
+	}
+
+	/**
+	 * DB 장애 흉내. 앱의 {@link DataSource} 빈을 감싸고, {@link #start()} 하면 새 연결을 달라는 요청과 이미 받아 둔 연결의 사용이
+	 * 모두 {@link SQLTransientConnectionException}으로 실패한다 (DB에 닿지 못할 때와 같은 예외 종류). 연결을 풀에 돌려주는
+	 * {@code close()}는 그대로 된다. 테스트마다 {@link #stop()}한다.
+	 *
+	 * <p>이미 받아 둔 연결도 막는 이유: {@code spring.jpa.open-in-view}가 켜져 있어 한 요청 안의 트랜잭션들이 요청에 묶인
+	 * EntityManager와 그 연결을 이어 쓴다. 새 연결만 막으면 요청 중간에 난 장애를 흉내 낼 수 없다.
+	 */
+	public static class DatabaseOutage implements BeanPostProcessor {
+
+		private static final Set<String> ALWAYS_ALLOWED = Set.of("close", "isClosed", "unwrap", "isWrapperFor", "toString",
+				"hashCode", "equals");
+
+		private final AtomicBoolean down = new AtomicBoolean();
+
+		public void start() {
+			down.set(true);
+		}
+
+		public void stop() {
+			down.set(false);
+		}
+
+		@Override
+		public Object postProcessAfterInitialization(Object bean, String beanName) {
+			if (bean instanceof DataSource dataSource) {
+				return new DelegatingDataSource(dataSource) {
+
+					@Override
+					public Connection getConnection() throws SQLException {
+						failIfDown();
+						return guard(super.getConnection());
+					}
+
+					@Override
+					public Connection getConnection(String username, String password) throws SQLException {
+						failIfDown();
+						return guard(super.getConnection(username, password));
+					}
+
+				};
+			}
+			return bean;
+		}
+
+		/** 장애 중에는 연결을 쓰는 모든 호출이 실패한다. 풀에 돌려주는 호출과 객체 기본 메서드만 그대로 둔다. */
+		private Connection guard(Connection connection) {
+			return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[] { Connection.class },
+					(proxy, method, args) -> {
+						if (!ALWAYS_ALLOWED.contains(method.getName())) {
+							failIfDown();
+						}
+						try {
+							return method.invoke(connection, args);
+						}
+						catch (InvocationTargetException ex) {
+							throw ex.getCause();
+						}
+					});
+		}
+
+		private void failIfDown() throws SQLTransientConnectionException {
+			if (down.get()) {
+				throw new SQLTransientConnectionException("테스트: DB에 연결할 수 없어요");
+			}
+		}
+
+	}
+
+}
