@@ -103,13 +103,15 @@ public final class GithubConnectionRows {
 
 	public Optional<InstallationRow> installation(long installationId) {
 		return jdbc.sql("""
-				select installation_id, user_id, account_id, account_login, account_type, installed_by_owner, status
+				select installation_id, user_id, account_id, account_login, account_type, installed_by_owner, status,
+					repositories_revision
 				from studybot.github_installations where installation_id = :id
 				""")
 			.param("id", installationId)
 			.query((rs, rowNum) -> new InstallationRow(rs.getLong("installation_id"),
 					(Long) rs.getObject("user_id"), rs.getLong("account_id"), rs.getString("account_login"),
-					rs.getString("account_type"), rs.getBoolean("installed_by_owner"), rs.getString("status")))
+					rs.getString("account_type"), rs.getBoolean("installed_by_owner"), rs.getString("status"),
+					rs.getLong("repositories_revision")))
 			.optional();
 	}
 
@@ -154,7 +156,7 @@ public final class GithubConnectionRows {
 	}
 
 	public record InstallationRow(long installationId, @Nullable Long userId, long accountId, String accountLogin,
-			String accountType, boolean installedByOwner, String status) {
+			String accountType, boolean installedByOwner, String status, long repositoriesRevision) {
 	}
 
 	public record LinkRow(long id, long userId, long installationId, long repoId, String fullName, String defaultBranch,

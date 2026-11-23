@@ -9,6 +9,9 @@
 -- 설치자(sender)의 GitHub ID는 남기지 않는다. 조직 설치나 남이 대신 설치하면 회원이 아닌 사람의 ID라서다 (security.md 9.8 최소 수집).
 -- 행을 고친 시각 updated_at도 표에 없는 컬럼이다 (상태가 언제 바뀌었는지 보려고).
 -- status: ACTIVE, SUSPENDED(installation suspend), DELETED(installation deleted). 삭제해도 행은 남긴다 (계정 삭제 때 지우는 건 S15).
+-- 웹훅 전달 순서는 보장되지 않아서, 처음 보는 설치의 deleted·suspend도 그 상태로 행을 남긴다(늦게 온 created가 되살리지 않게).
+-- repositories_revision은 표에 없는 컬럼이다. installation_repositories removed마다 1 오른다. GitHub에서 레포 목록을 읽은 뒤
+-- 연결을 저장할 때 그사이 빠진 레포가 없는지 이 값으로 본다 (PR #14 리뷰 반영).
 CREATE TABLE studybot.github_installations (
 	installation_id BIGINT      PRIMARY KEY,
 	user_id         BIGINT      REFERENCES studybot.users (id),
@@ -17,6 +20,7 @@ CREATE TABLE studybot.github_installations (
 	account_type    TEXT        NOT NULL,
 	installed_by_owner BOOLEAN NOT NULL,
 	status          TEXT        NOT NULL,
+	repositories_revision BIGINT NOT NULL DEFAULT 0,
 	created_at      TIMESTAMPTZ NOT NULL,
 	updated_at      TIMESTAMPTZ NOT NULL,
 	CONSTRAINT github_installations_status_ck CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED')),

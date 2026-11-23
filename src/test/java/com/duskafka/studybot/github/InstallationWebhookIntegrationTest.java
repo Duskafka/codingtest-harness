@@ -216,27 +216,75 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("DELETED");
 	}
 
+	// 이 PR에서 처음 쓴 테스트를 리뷰 반영으로 나눴다(CodeRabbit: 순서가 바뀐 웹훅). 모르는 설치의 deleted·suspend는 이제
+	// 행을 남기고 PROCESSED다. 다루지 않는 action은 그대로 IGNORED다.
 	@Test
-	@DisplayName("S07: 모르는 설치의 deleted·suspend와 다루지 않는 action(new_permissions_accepted)은 IGNORED")
-	void unknownInstallationsAndActionsAreIgnored() {
-		long unknown = GithubConnectionRows.newInstallationId();
-		Account account = Account.user(GithubConnectionRows.newGithubId());
-		String deleted = newDeliveryId();
-		String suspend = newDeliveryId();
-		sendSigned("installation", deleted, InstallationPayloads.installation("deleted", unknown, account, account));
-		sendSigned("installation", suspend, InstallationPayloads.installation("suspend", unknown, account, account));
-
+	@DisplayName("S07: 다루지 않는 action(new_permissions_accepted)은 IGNORED이고 설치는 그대로")
+	void unhandledActionIsIgnored() {
 		TestUser user = rows.newUser("perm", clock.instant());
 		long known = rows.insertLinkedInstallation(user, clock.instant());
 		String permissions = newDeliveryId();
+
 		sendSigned("installation", permissions, InstallationPayloads.installation("new_permissions_accepted", known,
 				Account.user(user.githubId()), Account.user(user.githubId())));
 
-		assertThat(onlyInboxRow(deleted).status()).isEqualTo("IGNORED");
-		assertThat(onlyInboxRow(suspend).status()).isEqualTo("IGNORED");
-		assertThat(rows.installation(unknown)).isEmpty();
 		assertThat(onlyInboxRow(permissions).status()).isEqualTo("IGNORED");
 		assertThat(rows.existingInstallation(known).status()).isEqualTo("ACTIVE");
+	}
+
+	@Test
+	@DisplayName("S07: deleted가 created보다 먼저 와도(전달 순서는 보장되지 않음) 늦은 created가 설치를 되살리지 않는다")
+	void deletedBeforeCreatedStaysDeleted() {
+		TestUser user = rows.newUser("out-of-order", clock.instant());
+		long installationId = GithubConnectionRows.newInstallationId();
+		Account account = Account.user(user.githubId());
+		String deleted = newDeliveryId();
+		String created = newDeliveryId();
+
+		sendSigned("installation", deleted, InstallationPayloads.installation("deleted", installationId, account, account));
+		sendSigned("installation", created, InstallationPayloads.installation("created", installationId, account, account));
+
+		assertThat(onlyInboxRow(deleted).status()).isEqualTo("PROCESSED");
+		assertThat(onlyInboxRow(created).status()).isEqualTo("PROCESSED");
+		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("DELETED");
+		assertThat(rows.existingInstallation(installationId).userId()).as("삭제된 설치는 잇지 않는다").isNull();
+	}
+
+	@Test
+	@DisplayName("S07: suspend가 created보다 먼저 와도 정지 상태가 남고, unsuspend가 오면 활성이 된다")
+	void suspendBeforeCreatedStaysSuspended() {
+		TestUser user = rows.newUser("early-suspend", clock.instant());
+		long installationId = GithubConnectionRows.newInstallationId();
+		Account account = Account.user(user.githubId());
+
+		sendSigned("installation", newDeliveryId(),
+				InstallationPayloads.installation("suspend", installationId, account, account));
+		sendSigned("installation", newDeliveryId(),
+				InstallationPayloads.installation("created", installationId, account, account));
+
+		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("SUSPENDED");
+		assertThat(rows.existingInstallation(installationId).userId()).isEqualTo(user.id());
+
+		sendSigned("installation", newDeliveryId(),
+				InstallationPayloads.installation("unsuspend", installationId, account, account));
+
+		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("ACTIVE");
+	}
+
+	@Test
+	@DisplayName("S07: 처음 보는 설치의 deleted는 삭제 이력으로 남는다 (조직·남이 설치한 것도 연결 조건은 같다)")
+	void unknownDeletedIsRecordedWithLinkingRules() {
+		long unknown = GithubConnectionRows.newInstallationId();
+		long owner = GithubConnectionRows.newGithubId();
+		String deleted = newDeliveryId();
+
+		sendSigned("installation", deleted, InstallationPayloads.installation("deleted", unknown,
+				Account.organization(owner), Account.user(GithubConnectionRows.newGithubId())));
+
+		assertThat(onlyInboxRow(deleted).status()).isEqualTo("PROCESSED");
+		assertThat(rows.existingInstallation(unknown).status()).isEqualTo("DELETED");
+		assertThat(rows.existingInstallation(unknown).accountType()).isEqualTo("Organization");
+		assertThat(rows.existingInstallation(unknown).installedByOwner()).isFalse();
 	}
 
 }

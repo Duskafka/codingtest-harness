@@ -55,8 +55,10 @@ class InstallationRepositoriesWebhookIntegrationTest extends WebhookTestSupport 
 		assertThat(rows.link(link).status()).isEqualTo("INACTIVE");
 	}
 
+	// 이 PR에서 처음 쓴 테스트를 리뷰 반영으로 고쳤다(CodeRabbit: 제거와 새 연결 저장의 경합). removed는 연결 유무와 관계없이
+	// 설치의 레포 목록 리비전을 올리므로 PROCESSED다 (이전 기대값 IGNORED).
 	@Test
-	@DisplayName("S07: 연결하지 않은 다른 레포가 빠지면 연결은 그대로이고 IGNORED")
+	@DisplayName("S07: 연결하지 않은 다른 레포가 빠지면 연결은 그대로이고, 설치의 레포 목록 리비전만 오른다")
 	void removedOtherRepoKeepsLink() {
 		TestUser user = rows.newUser("keeper", clock.instant());
 		long installationId = rows.insertLinkedInstallation(user, clock.instant());
@@ -69,8 +71,38 @@ class InstallationRepositoriesWebhookIntegrationTest extends WebhookTestSupport 
 				InstallationPayloads.installationRepositories("removed", installationId, account, account, List.of(),
 						List.of(new Repo(GithubConnectionRows.newRepoId(), user.login() + "/other"))));
 
-		assertThat(onlyInboxRow(delivery).status()).isEqualTo("IGNORED");
+		assertThat(onlyInboxRow(delivery).status()).isEqualTo("PROCESSED");
 		assertThat(rows.link(link).status()).isEqualTo("ACTIVE");
+		assertThat(rows.existingInstallation(installationId).repositoriesRevision()).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("S07: '모든 레포'→'고른 레포'로 바꿔 removed가 빈 목록으로 와도 리비전이 오른다")
+	void removedWithEmptyListBumpsRevision() {
+		TestUser user = rows.newUser("selection", clock.instant());
+		long installationId = rows.insertLinkedInstallation(user, clock.instant());
+		Account account = Account.user(user.githubId());
+		String delivery = newDeliveryId();
+
+		sendSigned("installation_repositories", delivery, InstallationPayloads.installationRepositories("removed",
+				installationId, account, account, List.of(), List.of()));
+
+		assertThat(onlyInboxRow(delivery).status()).isEqualTo("PROCESSED");
+		assertThat(rows.existingInstallation(installationId).repositoriesRevision()).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("S07: 모르는 설치의 removed는 IGNORED")
+	void removedForUnknownInstallationIsIgnored() {
+		long unknown = GithubConnectionRows.newInstallationId();
+		Account account = Account.user(GithubConnectionRows.newGithubId());
+		String delivery = newDeliveryId();
+
+		sendSigned("installation_repositories", delivery, InstallationPayloads.installationRepositories("removed",
+				unknown, account, account, List.of(), List.of(new Repo(GithubConnectionRows.newRepoId(), "x/y"))));
+
+		assertThat(onlyInboxRow(delivery).status()).isEqualTo("IGNORED");
+		assertThat(rows.installation(unknown)).isEmpty();
 	}
 
 	@Test
