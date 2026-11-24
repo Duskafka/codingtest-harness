@@ -83,7 +83,7 @@ class SessionRestartTest {
 		// (GithubAppTestConfiguration). properties()는 기본값이라 application.yaml의 빈 값에 밀려서 실행 인자로 넣는다.
 		// 이 테스트가 보는 것(세션 유지)과 기대값은 그대로다.
 		return new SpringApplicationBuilder(StudybotApplication.class).properties(properties)
-			.run("--studybot.github.app.private-key=" + GithubAppTestKeys.pkcs1Pem(),
+			.run("--studybot.github.app.private-key-path=" + GithubAppTestKeys.pkcs1PemFile(),
 					"--studybot.github.app.api-base-url=" + GithubApiStub.baseUrl());
 	}
 

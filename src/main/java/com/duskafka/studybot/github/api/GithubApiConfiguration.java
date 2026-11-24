@@ -33,27 +33,24 @@ class GithubApiConfiguration {
 		return new InstallationTokenCache(client, clock);
 	}
 
+	/**
+	 * private key를 서버 파일에서 읽는다 (infra.md 9.6, 사람이 정함 2026-11-24 "파일만"). 경로가 없거나, 파일을 읽지 못하거나,
+	 * 키를 읽지 못하면 앱이 뜨지 않는다. 오류에는 경로만 싣고 키 내용은 싣지 않는다.
+	 */
 	static PrivateKey loadPrivateKey(GithubAppProperties properties) {
-		boolean hasContent = GithubAppProperties.hasText(properties.privateKey());
-		boolean hasPath = GithubAppProperties.hasText(properties.privateKeyPath());
-		if (hasContent && hasPath) {
+		if (!GithubAppProperties.hasText(properties.privateKeyPath())) {
 			throw new IllegalStateException(
-					"GitHub App private key는 GITHUB_APP_PRIVATE_KEY_PATH와 GITHUB_APP_PRIVATE_KEY 중 하나만 넣어 주세요");
+					"GitHub App private key 파일 경로가 없어요. GITHUB_APP_PRIVATE_KEY_PATH에 PEM 파일 경로를 넣어 주세요");
 		}
-		if (hasContent) {
-			return PemPrivateKeys.parse(properties.privateKey());
+		Path path = Path.of(properties.privateKeyPath());
+		String pem;
+		try {
+			pem = Files.readString(path, StandardCharsets.US_ASCII);
 		}
-		if (hasPath) {
-			Path path = Path.of(properties.privateKeyPath());
-			try {
-				return PemPrivateKeys.parse(Files.readString(path, StandardCharsets.US_ASCII));
-			}
-			catch (IOException ex) {
-				throw new IllegalStateException("GitHub App private key 파일을 읽지 못했어요: " + path, ex);
-			}
+		catch (IOException ex) {
+			throw new IllegalStateException("GitHub App private key 파일을 읽지 못했어요: " + path, ex);
 		}
-		throw new IllegalStateException(
-				"GitHub App private key가 없어요. GITHUB_APP_PRIVATE_KEY_PATH(파일)나 GITHUB_APP_PRIVATE_KEY(PEM)를 넣어 주세요");
+		return PemPrivateKeys.parse(pem);
 	}
 
 }

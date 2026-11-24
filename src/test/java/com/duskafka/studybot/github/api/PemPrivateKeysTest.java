@@ -26,16 +26,6 @@ class PemPrivateKeysTest {
 	}
 
 	@Test
-	@DisplayName("S07: 환경 변수에 줄바꿈을 \\n 글자로 넣은 PEM도 읽는다")
-	void readsEscapedNewlines() {
-		String escaped = GithubAppTestKeys.pkcs1Pem().replace("\n", "\\n");
-
-		RSAPrivateCrtKey key = (RSAPrivateCrtKey) PemPrivateKeys.parse(escaped);
-
-		assertThat(key.getModulus()).isEqualTo(GithubAppTestKeys.publicKey().getModulus());
-	}
-
-	@Test
 	@DisplayName("S07: 읽지 못한 키는 예외 메시지에 키 내용을 싣지 않는다")
 	void failureDoesNotLeakKeyMaterial() {
 		String body = GithubAppTestKeys.pkcs1Base64();

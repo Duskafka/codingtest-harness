@@ -1,5 +1,10 @@
 package com.duskafka.studybot.github;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -13,7 +18,8 @@ import java.util.Base64;
  *
  * <p>GitHub가 내려주는 키는 PKCS#1({@code BEGIN RSA PRIVATE KEY}) PEM이라
  * (<a href="https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/managing-private-keys-for-github-apps">GitHub 문서</a>),
- * 앱 설정에는 그 형식({@link #pkcs1Pem()})을 넣는다. JDK는 PKCS#8로만 내보내서 PKCS#1 부분을 꺼내 쓴다.
+ * 앱 설정에는 그 형식을 임시 파일로 써서 경로({@link #pkcs1PemFile()})를 넣는다. JDK는 PKCS#8로만 내보내서 PKCS#1 부분을
+ * 꺼내 쓴다.
  */
 public final class GithubAppTestKeys {
 
@@ -40,9 +46,36 @@ public final class GithubAppTestKeys {
 		return pem("RSA PRIVATE KEY", pkcs1Der(KEY_PAIR.getPrivate().getEncoded()));
 	}
 
+	/**
+	 * {@link #pkcs1Pem()}을 임시 파일에 한 번 써 두고 그 경로를 돌려준다. 앱은 private key를 파일 경로로만 받는다
+	 * (infra.md 9.6, {@code GITHUB_APP_PRIVATE_KEY_PATH}). 파일은 JVM이 끝날 때 지운다.
+	 */
+	public static String pkcs1PemFile() {
+		return KeyFile.PATH;
+	}
+
 	/** PEM 본문(base64)만. 로그에 키가 남지 않았는지 찾을 때 쓴다. */
 	public static String pkcs1Base64() {
 		return Base64.getEncoder().encodeToString(pkcs1Der(KEY_PAIR.getPrivate().getEncoded()));
+	}
+
+	/** 처음 쓸 때 한 번만 파일을 만든다 (클래스 초기화는 스레드 안전하다). */
+	private static final class KeyFile {
+
+		private static final String PATH = write();
+
+		private static String write() {
+			try {
+				Path file = Files.createTempFile("studybot-test-github-app-", ".pem");
+				file.toFile().deleteOnExit();
+				Files.writeString(file, pkcs1Pem(), StandardCharsets.US_ASCII);
+				return file.toAbsolutePath().toString();
+			}
+			catch (IOException ex) {
+				throw new UncheckedIOException(ex);
+			}
+		}
+
 	}
 
 	static String pem(String type, byte[] der) {

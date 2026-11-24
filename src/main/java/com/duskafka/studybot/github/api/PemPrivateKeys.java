@@ -36,9 +36,7 @@ public final class PemPrivateKeys {
 	}
 
 	public static PrivateKey parse(String pem) {
-		// 환경 변수에 넣을 때 줄바꿈을 \n 두 글자로 쓰는 경우가 많다.
-		String text = pem.replace("\\n", "\n");
-		Matcher matcher = PEM.matcher(text);
+		Matcher matcher = PEM.matcher(pem);
 		if (!matcher.find()) {
 			throw new IllegalArgumentException(FAILURE);
 		}
