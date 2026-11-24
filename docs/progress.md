@@ -9,7 +9,7 @@
 - 다음: 이 PR 병합 → docs PR #15 병합(deleted_at 문서가 이 PR에 기댐) → H-02(실제 App으로 확인) → S08
 - 막힌 것: 없음
 - 참고 (실수와 교훈): #14가 01:47Z에 병합된 것을 모르고, 그 뒤에 feat 브랜치에서 V5를 고친 커밋(43359e4)을 push했다. 로컬 origin/master가 병합 전에 멈춰 있어서 보호 훅도 막지 못했다. **작업을 시작하거나 마이그레이션을 고치기 전에 `git fetch origin master`로 병합 여부를 본다.** 43359e4는 master에 없고, 내용은 이 PR로 옮겼다(V5는 그대로)
-- PR: #16 (docs PR #15보다 먼저 병합)
+- PR: #16 (docs PR #15보다 먼저 병합). 재발 방지로 세션 시작 때 origin/master를 받아 오는 chore PR #17(사람이 정함 "스크립트 + 훅 패치 제안"). 세션 도중 병합까지 잡는 보호 훅 패치는 #17 본문에 제안만 했고 적용은 사람 몫
 
 ## 2026-11-23 S07 GitHub App 연결 (세션 1/1)
 - 한 일: 만들 것 1~6. V5(`github_installations`, `linked_repositories`), 설치 웹훅 처리기(created·deleted·suspend·unsuspend, removed·added), 가입 때 연결(auth `UserLoggedIn` 커밋 뒤 + 연결 화면에서 다시 claim), GitHub API 클라이언트(App JWT를 JDK로 서명, PKCS#1·#8 키, 설치 토큰 메모리 캐시·만료 5분 전 갱신), `GET /api/github/install-url`(서명된 1회용 state), `GET /github/setup`(302), `GET /api/me/github/repositories`(레포 1개면 자동 연결), `PUT /api/me/linked-repository`
