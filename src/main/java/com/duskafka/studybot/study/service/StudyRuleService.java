@@ -1,5 +1,6 @@
 package com.duskafka.studybot.study.service;
 
+import com.duskafka.studybot.common.error.ConflictException;
 import com.duskafka.studybot.common.error.NotFoundException;
 import com.duskafka.studybot.common.time.StudyCalendar;
 import com.duskafka.studybot.study.StudyAccess;
@@ -25,7 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <ul>
  * <li><b>1기 시작 전</b>(오늘 &lt; 1기 시작일): 아직 판정한 날이 없어 모든 항목을 1기 시작일부터 적용한다. 1기 끝 날짜도 새 기수
- * 길이로 다시 센다 (사람이 정함, 2026-11-24 "모두 1기 시작일부터").</li>
+ * 길이로 다시 센다 (사람이 정함, 2026-11-24 "모두 1기 시작일부터"). 다만 기준 시각을 앞당겨 1기 첫날이 이미 시작된 것이
+ * 되면 409로 거절한다. 그 사이 가입한 멤버의 '가입 다음 날부터 판정'(R14)이 깨지기 때문이다 (사람이 정함, 2026-11-24 "거절 (409)").</li>
  * <li><b>기수 중</b>: 다음 스터디 일 항목은 다음 스터디 일부터, 다음 기수 항목은 다음 기수 시작일(오늘이 속한 기수의 끝 + 1)부터
  * ({@link RuleSettings}). 오늘이 기수 마지막 날이면 두 날이 같아 버전 하나다. 지금 규칙과 같은 종류는 버전을 만들지 않으니,
  * 지금 규칙과 같게 보내면 예정된 변경이 없어진다.</li>
@@ -60,11 +62,7 @@ public class StudyRuleService {
 		Season first = seasons.getFirst();
 
 		if (today.isBefore(first.getStartDay())) {
-			LocalDate start = first.getStartDay();
-			this.ruleRepository.deleteFrom(studyId, start);
-			this.ruleRepository.save(desired.toVersion(studyId, start, now));
-			this.seasonRepository.rescheduleEnd(first.getId(),
-					StudyCalendar.seasonEndDay(start, desired.seasonLengthDays()));
+			changeBeforeFirstSeason(studyId, study, first, desired, now);
 			return;
 		}
 
@@ -83,6 +81,23 @@ public class StudyRuleService {
 		}
 		if (!desired.sameNextSeasonItems(current)) {
 			this.ruleRepository.save(desired.toVersion(studyId, nextSeasonStart, now));
+		}
+	}
+
+	private void changeBeforeFirstSeason(long studyId, Study study, Season first, RuleSettings desired, Instant now) {
+		LocalDate start = first.getStartDay();
+		// 바꾼 뒤에는 1기 시작일이 첫 버전이라, 첫날은 새 규칙의 기준 시각에 시작한다 (RuleVersionCalendar).
+		Instant newStart = StudyCalendar.of(desired.toTimeRule(study.zoneId())).boundaryOf(start);
+		if (!now.isBefore(newStart)) {
+			throw new ConflictException("이 기준 시각으로 바꾸면 1기 첫날이 이미 시작돼요. 1기가 시작한 뒤에 바꾸면 다음 기수부터 적용돼요.");
+		}
+		this.ruleRepository.deleteFrom(studyId, start);
+		this.ruleRepository.save(desired.toVersion(studyId, start, now));
+		int rescheduled = this.seasonRepository.rescheduleEnd(first.getId(),
+				StudyCalendar.seasonEndDay(start, desired.seasonLengthDays()));
+		if (rescheduled != 1) {
+			// 시작 전인데 1기가 SCHEDULED가 아니면 기수 상태가 날짜와 어긋난 것이다. 규칙과 기수 끝 날짜가 어긋나게 두지 않는다.
+			throw new IllegalStateException("시작 전 1기의 끝 날짜를 바꾸지 못했어요: season=" + first.getId());
 		}
 	}
 

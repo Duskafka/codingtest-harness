@@ -1,5 +1,6 @@
 package com.duskafka.studybot.study.service;
 
+import com.duskafka.studybot.common.time.StudyTimeRule;
 import com.duskafka.studybot.study.PenaltyType;
 import com.duskafka.studybot.study.SelfReportMode;
 import com.duskafka.studybot.study.persistence.StudyRule;
@@ -7,6 +8,7 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Set;
 
@@ -74,6 +76,11 @@ public record RuleSettings(int dailyGoal, LocalTime dayBoundary, int graceMinute
 		return new RuleSettings(this.dailyGoal, current.dayBoundary, this.graceMinutes, this.restDays, current.penaltyType,
 				current.fineAmount, current.exemptionsPerSeason, this.reminderOffsetMinutes, this.selfReportMode,
 				current.seasonLengthDays);
+	}
+
+	/** 이 값의 시간 규칙. 날짜 계산은 {@code common.time}에서 한다. */
+	public StudyTimeRule toTimeRule(ZoneId zoneId) {
+		return new StudyTimeRule(zoneId, this.dayBoundary, this.graceMinutes, this.reminderOffsetMinutes, this.restDays);
 	}
 
 	/** 이 값으로 만든 새 규칙 버전 행. */

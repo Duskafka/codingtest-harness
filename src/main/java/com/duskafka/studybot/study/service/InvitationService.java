@@ -94,10 +94,12 @@ public class InvitationService {
 			.orElseThrow(() -> new NotFoundException(NOT_FOUND_DETAIL));
 		List<StudyRule> rules = this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(study.getId());
 		LocalDate today = StudyTimeline.calendar(rules, study.zoneId()).studyDayOf(now);
-		// 공개 미리보기라 예정된 변경은 보여 주지 않고 현재 규칙만 (노출 최소화, S05 판단 기록).
+		// 가입하면 다음 스터디 일부터 판정하는데, 그날부터 예정된 변경이 적용될 수 있어 예정된 변경도 보여 준다
+		// (5.1 '가입 전에 규칙을 보여줘야', 사람이 정함 2026-11-24 "예정 변경도 보여 줌").
 		StudyRule rule = StudyTimeline.ruleOn(rules, today);
 		Season season = StudyTimeline.seasonOn(this.seasonRepository.findByStudyIdOrderBySeqAsc(study.getId()), today);
-		return new InvitationPreview(study, rule, season, invitation.getExpiresAt());
+		return new InvitationPreview(study, rule, StudyTimeline.upcoming(rules, rule), season,
+				invitation.getExpiresAt());
 	}
 
 	/**
@@ -182,10 +184,17 @@ public class InvitationService {
 	 * 초대 미리보기.
 	 * @param study 스터디
 	 * @param currentRule 지금 적용되는 규칙 버전
+	 * @param upcomingRules 아직 적용되지 않은 예정 버전 (적용 시작일 순서)
 	 * @param currentSeason 지금 기수
 	 * @param expiresAt 초대 만료 시각
 	 */
-	public record InvitationPreview(Study study, StudyRule currentRule, Season currentSeason, Instant expiresAt) {
+	public record InvitationPreview(Study study, StudyRule currentRule, List<StudyRule> upcomingRules,
+			Season currentSeason, Instant expiresAt) {
+
+		public InvitationPreview {
+			upcomingRules = List.copyOf(upcomingRules);
+		}
+
 	}
 
 	/**
