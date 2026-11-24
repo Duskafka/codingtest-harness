@@ -105,6 +105,16 @@ public final class RuleVersionCalendar {
 		return day;
 	}
 
+	/** 뼈대: 구현 전. */
+	public boolean isInGrace(Instant instant) {
+		throw new UnsupportedOperationException("구현 전");
+	}
+
+	/** 뼈대: 구현 전. */
+	public Instant judgeAt(LocalDate studyDay) {
+		throw new UnsupportedOperationException("구현 전");
+	}
+
 	/** 시각이 속한 스터디 일의 다음 스터디 일. 가입하면 이날부터 판정하고(R14), 규칙 변경은 이날부터 적용한다(R2). */
 	public LocalDate nextStudyDayOf(Instant instant) {
 		return studyDayOf(instant).plusDays(1);

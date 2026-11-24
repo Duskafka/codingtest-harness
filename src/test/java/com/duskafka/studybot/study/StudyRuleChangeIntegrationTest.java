@@ -219,7 +219,7 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 		// 11/21 04:00 KST에 00:00으로 바꾸면 1기 첫날이 4시간 전에 시작한 셈이 된다.
 		setClock("2026-11-20T19:00:00Z");
 
-		MvcTestResult result = putJson(earlyOwner, "/api/studies/" + early + "/rules", rules(Map.of("dayBoundary", "00:00")));
+		MvcTestResult result = putRulesTo(earlyOwner, early, rules(Map.of("dayBoundary", "00:00")));
 
 		assertThat(result).hasStatus(HttpStatus.CONFLICT);
 		assertThat(json(get(earlyOwner, "/api/studies/" + early)).get("rule").get("dayBoundary").asString())
@@ -250,6 +250,52 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 		assertThat(json(result).get("upcomingRules")).isEmpty();
 	}
 
+	// --- 기준 버전 (사람이 정함, 2026-11-24 "기준 버전 ID를 받음") ---
+
+	@Test
+	@DisplayName("S05: 예정된 변경이 있는데 현재 버전에서 출발한 값을 보내면 409이고, 예정된 변경이 조용히 취소되지 않는다")
+	void requestBasedOnCurrentRuleWhilePendingIsRejected() {
+		setClock(MID_SEASON);
+		putRules(owner, rules(Map.of("penaltyType", "FINE", "fineAmount", 2000)));
+		ObjectNode basedOnCurrent = (ObjectNode) JSON.readTree(rules(Map.of("dailyGoal", 2)));
+		basedOnCurrent.put("basedOnRuleId", ruleIdFrom(SEASON_1));
+
+		MvcTestResult result = putRules(owner, JSON.writeValueAsString(basedOnCurrent));
+
+		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(versions()).containsExactly(new Version(SEASON_1, 1, LocalTime.MIDNIGHT, 1000, 28),
+				new Version(SEASON_2, 1, LocalTime.MIDNIGHT, 2000, 28));
+	}
+
+	@Test
+	@DisplayName("S05: 기준 버전이 다른 스터디의 버전이거나 없는 ID면 409, 빠지면 400이다")
+	void wrongOrMissingBasedOnRuleIdIsRejected() {
+		setClock(MID_SEASON);
+		TestUser other = newUser("other-owner");
+		long otherStudy = createStudy(other, "GROUP");
+		ObjectNode otherStudyVersion = (ObjectNode) JSON.readTree(rules(Map.of("dailyGoal", 2)));
+		otherStudyVersion.put("basedOnRuleId", latestRuleId(otherStudy));
+		ObjectNode unknown = (ObjectNode) JSON.readTree(rules(Map.of("dailyGoal", 2)));
+		unknown.put("basedOnRuleId", Long.MAX_VALUE);
+
+		assertThat(putRules(owner, JSON.writeValueAsString(otherStudyVersion))).hasStatus(HttpStatus.CONFLICT);
+		assertThat(putRules(owner, JSON.writeValueAsString(unknown))).hasStatus(HttpStatus.CONFLICT);
+		assertThat(putJson(owner, "/api/studies/" + studyId + "/rules", rules(Map.of("dailyGoal", 2))))
+			.hasStatus(HttpStatus.BAD_REQUEST);
+		assertThat(versions()).hasSize(1);
+	}
+
+	@Test
+	@DisplayName("S05: 상세의 현재 규칙과 예정된 변경에는 버전 ID가 있어, 화면이 마지막 버전의 ID를 기준으로 보낼 수 있다")
+	void detailExposesRuleVersionIds() {
+		setClock(MID_SEASON);
+
+		JsonNode detail = json(putRules(owner, rules(Map.of("penaltyType", "FINE", "fineAmount", 2000))));
+
+		assertThat(detail.get("rule").get("id").asLong()).isEqualTo(ruleIdFrom(SEASON_1));
+		assertThat(detail.get("upcomingRules").get(0).get("id").asLong()).isEqualTo(ruleIdFrom(SEASON_2));
+	}
+
 	@Test
 	@DisplayName("S05: 멤버도 상세에서 현재 규칙과 예정된 변경을 본다")
 	void memberSeesUpcomingRules() {
@@ -275,7 +321,7 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 		long early = createStudyWithBody(earlyOwner,
 				"{\"name\": \"새벽 스터디\", \"mode\": \"GROUP\", \"rule\": {\"dayBoundary\": \"06:00\"}}");
 		setClock(MID_SEASON);
-		assertThat(putJson(earlyOwner, "/api/studies/" + early + "/rules", rules(Map.of("dayBoundary", "00:00"))))
+		assertThat(putRulesTo(earlyOwner, early, rules(Map.of("dayBoundary", "00:00"))))
 			.hasStatus(HttpStatus.OK);
 		// 12/19 03:00 KST. 1기 마지막 날(12/18)은 옛 기준 06:00까지라 아직 12/18이다.
 		setClock("2026-12-18T18:00:00Z");
@@ -315,7 +361,7 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 		long otherStudy = createStudy(outsider, "GROUP");
 
 		assertThat(putRules(outsider, rules(Map.of("dailyGoal", 2)))).hasStatus(HttpStatus.NOT_FOUND);
-		assertThat(putJson(owner, "/api/studies/" + otherStudy + "/rules", rules(Map.of("dailyGoal", 2))))
+		assertThat(putRulesTo(owner, otherStudy, rules(Map.of("dailyGoal", 2))))
 			.hasStatus(HttpStatus.NOT_FOUND);
 		assertThat(versions()).hasSize(1);
 	}
@@ -335,7 +381,34 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 	}
 
 	private MvcTestResult putRules(TestUser user, String body) {
-		return putJson(user, "/api/studies/" + studyId + "/rules", body);
+		return putRulesTo(user, studyId, body);
+	}
+
+	/**
+	 * 화면처럼 마지막 버전(예정 변경이 있으면 마지막 예정 버전)에서 출발한 요청을 보낸다. 본문에 {@code basedOnRuleId}가 없으면
+	 * 그 스터디의 마지막 버전 ID를 넣는다 (사람이 정함, 2026-11-24 "기준 버전 ID를 받음").
+	 */
+	private MvcTestResult putRulesTo(TestUser user, long targetStudyId, String body) {
+		ObjectNode node = (ObjectNode) JSON.readTree(body);
+		if (!node.has("basedOnRuleId")) {
+			node.put("basedOnRuleId", latestRuleId(targetStudyId));
+		}
+		return putJson(user, "/api/studies/" + targetStudyId + "/rules", JSON.writeValueAsString(node));
+	}
+
+	private long latestRuleId(long targetStudyId) {
+		return jdbc.sql("select id from studybot.study_rules where study_id = :studyId order by effective_from desc limit 1")
+			.param("studyId", targetStudyId)
+			.query(Long.class)
+			.single();
+	}
+
+	private long ruleIdFrom(LocalDate effectiveFrom) {
+		return jdbc.sql("select id from studybot.study_rules where study_id = :studyId and effective_from = :from")
+			.param("studyId", studyId)
+			.param("from", effectiveFrom)
+			.query(Long.class)
+			.single();
 	}
 
 	/** R1 기본값으로 채운 규칙 전체에 바꿀 값만 덮어쓴다. */

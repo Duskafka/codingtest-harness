@@ -138,6 +138,56 @@ class RuleVersionCalendarTest {
 		assertThat(calendar.ruleFor(day("2026-12-19"))).isEqualTo(third);
 	}
 
+	@ParameterizedTest
+	@ValueSource(strings = { "2026-11-21T23:59:59+09:00", "2026-11-22T00:00:00+09:00", "2026-11-22T00:29:59+09:00",
+			"2026-11-22T00:30:00+09:00", "2026-11-22T12:00:00+09:00" })
+	@DisplayName("S05: 버전이 하나면 유예 안인지와 판정 시각이 StudyCalendar와 같다")
+	void singleVersionGraceAndJudgeMatchStudyCalendar(String instant) {
+		StudyTimeRule rule = rule(SEOUL, "00:00", 30);
+		RuleVersionCalendar versions = RuleVersionCalendar.of(List.of(version("2026-11-21", rule)));
+		StudyCalendar single = StudyCalendar.of(rule);
+
+		assertThat(versions.isInGrace(at(instant))).isEqualTo(single.isInGrace(at(instant)));
+		assertThat(versions.judgeAt(day("2026-11-21"))).isEqualTo(single.judgeAt(day("2026-11-21")));
+	}
+
+	@Test
+	@DisplayName("S05: 유예를 30분에서 60분으로 바꾸면 그 전날의 유예 구간과 판정 시각은 바꾼 뒤의 60분을 쓴다 (사람이 정함, 2026-11-24 \"바꾼 뒤의 유예\")")
+	void longerGraceAppliesToWindowAfterChange() {
+		RuleVersionCalendar calendar = RuleVersionCalendar
+			.of(List.of(version("2026-11-21", rule(SEOUL, "00:00", 30)), version("2026-11-26", rule(SEOUL, "00:00", 60))));
+
+		assertThat(calendar.isInGrace(at("2026-11-26T00:45:00+09:00"))).isTrue();
+		assertThat(calendar.isInGrace(at("2026-11-26T01:00:00+09:00"))).isFalse();
+		assertThat(calendar.judgeAt(day("2026-11-25"))).isEqualTo(at("2026-11-26T01:10:00+09:00"));
+		// 그 전날까지는 옛 유예다.
+		assertThat(calendar.isInGrace(at("2026-11-25T00:45:00+09:00"))).isFalse();
+		assertThat(calendar.judgeAt(day("2026-11-24"))).isEqualTo(at("2026-11-25T00:40:00+09:00"));
+	}
+
+	@Test
+	@DisplayName("S05: 유예를 60분에서 30분으로 바꾸면 그 전날의 유예 구간도 30분으로 줄어든다")
+	void shorterGraceAppliesToWindowAfterChange() {
+		RuleVersionCalendar calendar = RuleVersionCalendar
+			.of(List.of(version("2026-11-21", rule(SEOUL, "00:00", 60)), version("2026-11-26", rule(SEOUL, "00:00", 30))));
+
+		assertThat(calendar.isInGrace(at("2026-11-26T00:29:59+09:00"))).isTrue();
+		assertThat(calendar.isInGrace(at("2026-11-26T00:45:00+09:00"))).isFalse();
+		assertThat(calendar.judgeAt(day("2026-11-25"))).isEqualTo(at("2026-11-26T00:40:00+09:00"));
+	}
+
+	@Test
+	@DisplayName("S05: 기준 시각과 유예가 함께 바뀌는 기수 경계에서 마지막 날 판정은 새 첫날 시작(옛 기준 시각) + 새 유예 + 10분이다")
+	void judgeAtSeasonBoundaryUsesNewFirstDayStartAndNewGrace() {
+		RuleVersionCalendar calendar = RuleVersionCalendar
+			.of(List.of(version("2026-11-21", rule(SEOUL, "00:00", 30)), version("2026-12-19", rule(SEOUL, "06:00", 60))));
+
+		assertThat(calendar.judgeAt(day("2026-12-18"))).isEqualTo(at("2026-12-19T01:10:00+09:00"));
+		assertThat(calendar.isInGrace(at("2026-12-19T00:30:00+09:00"))).isTrue();
+		// 새 첫날(30시간)의 유예는 다음 날 새 기준 시각 06:00부터다.
+		assertThat(calendar.judgeAt(SEASON_2)).isEqualTo(at("2026-12-20T07:10:00+09:00"));
+	}
+
 	@Test
 	@DisplayName("S05: 버전이 없거나, 적용 시작일이 겹치거나, 시간대가 다르면 만들 수 없다")
 	void rejectsInvalidVersions() {
