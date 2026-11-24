@@ -9,7 +9,7 @@
 - 다음: PR 검토 → 병합 → S09(선행 S02·S05·S08 완료). S09 전에 PR #20 열린 질문 1(다음 기수 행 생성 시점)·3(유예가 바뀐 날의 유예)을 정하면 좋음
 - 막힌 것: 없음
 - 참고: 유예·알림·판정 시각은 버전에 걸쳐 계산하지 않는다(열린 질문 3). S09·S12는 스터디 일을 `RuleVersionCalendar`로, 그날의 유예 등은 그날 규칙의 `StudyCalendar`로 센다. 세션 재시작 뒤 dockerd가 죽어 있으면 `CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`
-- PR: (열면 채움)
+- PR: #21
 
 ## 2026-11-24 OD-07·OD-08 결정 반영 (docs PR, 단계 진행 아님)
 - 한 일: 사람이 정한 OD-07·OD-08을 결정 대장(확정), 스펙(R2·R9·R13, glossary `JudgmentResult`, 5.13, api `PUT /rules`, testing T11, product 기능 표), 단계 문서(S05 만들 것 4·T11·판단 기록, S09 판정 대상, S12 만들 것 6·수용 기준, steps README의 S05 상태 '대기')에 반영
