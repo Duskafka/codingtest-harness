@@ -9,7 +9,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /**
  * S08 수용 기준: push 웹훅을 풀이 기록으로 (5.3 'push 처리 순서' 1~4·6, 5.4 '확인 대기', T3). 실제 push 처리기를 부른다
@@ -113,6 +120,39 @@ class PushWebhookIntegrationTest extends WebhookTestSupport {
 		assertThat(onlyInboxRow(second).status()).isEqualTo("PROCESSED");
 		assertThat(solves()).extracting(SolveRow::status).containsExactly("CONFIRMED", "PENDING_IDENTIFICATION");
 		assertThat(solves()).extracting(SolveRow::inboxId).containsOnly(onlyInboxRow(first).id());
+		assertThat(studyDayAssignment.calls()).hasSize(1);
+	}
+
+	@Test
+	@DisplayName("S08: 같은 push가 다른 전달 ID로 동시에 두 번 와도 풀이 기록은 한 번만 남고 둘 다 PROCESSED다")
+	void concurrentlyRedeliveredPushIsRecordedOnce() throws Exception {
+		byte[] body = PushPayloads.push(repoId, PushPayloads.MAIN,
+				List.of(Commit.adding(BOJ_MESSAGE, BOJ_FILE), Commit.adding("코드트리 풀이", "codetree/별 찍기/Main.java")));
+		List<String> deliveries = List.of(newDeliveryId(), newDeliveryId());
+		CountDownLatch ready = new CountDownLatch(deliveries.size());
+		CountDownLatch go = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(deliveries.size());
+		try {
+			List<Future<MvcTestResult>> results = new ArrayList<>();
+			for (String delivery : deliveries) {
+				results.add(executor.submit(() -> {
+					ready.countDown();
+					go.await();
+					return sendSigned("push", delivery, body);
+				}));
+			}
+			assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+			go.countDown();
+			for (Future<MvcTestResult> result : results) {
+				assertThat(result.get(30, TimeUnit.SECONDS).getResponse().getStatus()).isEqualTo(202);
+			}
+		}
+		finally {
+			executor.shutdownNow();
+		}
+
+		assertThat(deliveries).allSatisfy(delivery -> assertThat(onlyInboxRow(delivery).status()).isEqualTo("PROCESSED"));
+		assertThat(solves()).extracting(SolveRow::status).containsExactlyInAnyOrder("CONFIRMED", "PENDING_IDENTIFICATION");
 		assertThat(studyDayAssignment.calls()).hasSize(1);
 	}
 
