@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-24 다음 기수 행을 만드는 시점 반영 (docs PR, 단계 진행 아님)
+- 한 일: PR #20 열린 질문 1(다음 기수 행을 언제 만드나)과 PR #11 열린 질문(시작일의 SCHEDULED→ACTIVE 전환을 맡은 단계 없음)의 결정을 문서에 반영. R13·3.4 기수 상태도, 5.13(만들 것·흐름도·주의할 것), 5.10 처리 순서·흐름도, pseudocode 판정 배치 `startSeasons`, data-model `seasons` 비고, S12 목표·만들 것 6·수용 기준 3개, S09 만들 것 3
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 사람이 정한 것 (2026-11-24, 질문 "다음 기수 행은 언제 만드는 게 좋을까", 세션 선택지, 모두 Recommended): 생성 시점 "이번 기수가 시작될 때"(늘 한 기수 앞섬), 맡을 단계 "S12 판정 배치가 함께"(판정 전에 ACTIVE 전환과 다음 행 생성), 반영 "지금 별도 docs PR"
+- 다음: 이 PR과 PR #21 병합(둘 다 이 파일 맨 위를 바꿔서 나중 쪽이 master를 병합해 두 기록을 남김) → PR #21의 스펙 변경 제안 docs PR → S09
+- 막힌 것: 없음
+- 참고: 기수 중 기수 길이 변경 때 예정인 다음 기수 행의 끝 날짜를 다시 세는 일은 S12 만들 것 6에 넣었다(PR #21의 `StudyRuleService` 기수 중 분기, `SeasonRepository.rescheduleEnd`). S12 코드 PR에서 `SeasonStatus`·`StudyTimeline.seasonOn`·`nextSeasonStart` 주석('전환을 맡은 단계 없음', '다음 기수 행은 S12가 만든다')을 함께 고친다
+- PR: (열면 적음)
+
 ## 2026-11-24 OD-07·OD-08 결정 반영 (docs PR, 단계 진행 아님)
 - 한 일: 사람이 정한 OD-07·OD-08을 결정 대장(확정), 스펙(R2·R9·R13, glossary `JudgmentResult`, 5.13, api `PUT /rules`, testing T11, product 기능 표), 단계 문서(S05 만들 것 4·T11·판단 기록, S09 판정 대상, S12 만들 것 6·수용 기준, steps README의 S05 상태 '대기')에 반영
 - 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
