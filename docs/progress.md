@@ -9,7 +9,7 @@
 - 다음: PR 검토(판단 기록 '꼭 봐 주세요': 배정 연결 지점, 테이블 제약·`raw_path` UNIQUE, 열린 질문: 기본 브랜치 출처·접두사 API) → 병합 뒤 받아들인 스펙 변경 제안을 docs PR로 → S09(배정, 선행 S02·S05·S08. S05는 '결정 대기'라 선행 조건 확인 필요)
 - 막힌 것: 없음. 실제 push 확인은 H-02
 - 참고: S09는 `progress.PendingStudyDayAssignment`를 실제 배정으로 바꾸면 된다(`SolveToAssign`에 기록 ID·사용자·플랫폼 문자열·번호·인정 시각). S06 웹훅 테스트의 `RecordingPushHandler`는 이제 실제 push 처리기를 감싸고 기본은 PROCESSED라, 실제 처리기를 쓰려면 `passThrough()`. 배정 연결 지점은 `RecordingStudyDayAssignment`로 호출을 본다
-- PR: (열면 채움)
+- PR: #18
 
 ## 2026-11-24 S07 후속: 설치 삭제 시각 deleted_at (V6, 같은 세션)
 - 한 일: V6(`github_installations.deleted_at` 추가 → V5 시절 DELETED 행을 `updated_at`으로 백필 → CHECK `(status = 'DELETED') = (deleted_at IS NOT NULL)`). 아는 설치의 deleted(`markDeleted`)와 처음 보는 설치의 deleted(`recordStateIfAbsent`)가 삭제 시각을 채운다. 테스트: 늦은 removed·deleted·created가 삭제 시각을 바꾸지 않음(시계를 앞으로 돌려 확인), CHECK, V5→V6 백필(따로 띄운 컨테이너)
