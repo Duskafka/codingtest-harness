@@ -24,7 +24,7 @@
 1. **설치 이벤트 처리기:** `installation`의 created, deleted, suspend, unsuspend. created는 `account.type == User`이고 `account.id == sender.id`일 때만 그 `github_id`의 사용자에게 연결한다.
 2. **미가입자 설치:** 설치만 저장해 두고, 가입할 때 `github_id`로 연결한다.
 3. **레포 이벤트 처리기:** `installation_repositories`의 added, removed. 연결이 끊기면 비활성으로 바꾼다 (알림은 S13).
-4. **GitHub API 클라이언트:** App JWT(최대 10분) 생성, 설치 토큰(1시간) 발급과 만료 전 갱신 캐시. App private key는 파일 경로나 환경 변수로만 받는다.
+4. **GitHub API 클라이언트:** App JWT(최대 10분) 생성, 설치 토큰(1시간) 발급과 만료 전 갱신 캐시. App private key는 서버 파일 경로로만 받는다 (infra.md 9.6).
 5. **엔드포인트:**
     - `GET /api/github/install-url`: 서명된 1회용 state를 붙인 설치 주소
     - `GET /github/setup`: 연결 상태 안내만. 쿼리의 `installation_id`는 믿지 않는다

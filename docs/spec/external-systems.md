@@ -39,7 +39,8 @@
 - Webhook secret: 충분히 긴 무작위 문자열, 서버 `.env`에만 보관
 - Setup URL: `https://(도메인)/github/setup` + "Redirect on update" 켜기 (레포를 추가·삭제했을 때도 돌아오게)
 - 설치 가능 범위: Any account
-- Private key: 한 번 내려받아 서버에만 보관. 레포에 절대 커밋하지 않기
+- Private key: 한 번 내려받아 서버에만 보관. 레포에 절대 커밋하지 않기. 앱에는 파일 경로(`GITHUB_APP_PRIVATE_KEY_PATH`)로 넘겨요 (9.6)
+- App 이름(slug): 설치 주소 `https://github.com/apps/{slug}/installations/new`에 써요. 서버 `GITHUB_APP_SLUG`에 넣어요 (비밀값 아님, 필수)
 - 개발용 App과 운영용 App을 따로 등록. 개발용 웹훅은 Cloudflare Tunnel의 개발용 호스트명 (또는 smee.io)으로 로컬에 전달
 - 로그인: 이 App의 사용자 인증으로 해요. 별도 OAuth App은 두지 않아요 (OD-02, 결정 제안서 005)
 - Callback URL: `https://(도메인)/login/oauth2/code/github` (개발용 App은 개발 환경 주소)

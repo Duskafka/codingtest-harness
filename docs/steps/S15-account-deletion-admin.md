@@ -18,20 +18,22 @@
 - `docs/spec/processes/5.17-admin-tools.md` 전체
 - `docs/spec/domain-rules.md`: R14, R16
 - `docs/spec/security.md`: 9.8 개인정보 표
+- `docs/spec/data-model.md`: 4.3 테이블 상세의 `users`·`github_installations`·`linked_repositories` 행과 'GitHub 연결 테이블 (S07)'
 - `docs/spec/api.md`: 4.4의 `DELETE /api/me`, 4.5 '만들 것'의 관리자 항목
 - `docs/spec/architecture.md`: '알려진 충돌과 빈 곳' 3번, 7번
 
 ## 만들 것
 
-1. **계정 삭제:** `DELETE /api/me`. 방장인 스터디가 있으면 거절하고 위임하라고 안내한다. 없으면 모든 스터디 탈퇴 → 푸시 구독·연결 레포·풀이 기록 삭제 → `users` 익명화(이름 '탈퇴한 사용자', `github_id` 삭제. 같은 문장에서 `deleted_at`도 채운다, data-model 4.3 `users` CHECK) → 판정과 원장은 익명으로 보존.
+1. **계정 삭제:** `DELETE /api/me`. 방장인 스터디가 있으면 거절하고 위임하라고 안내한다. 없으면 모든 스터디 탈퇴 → 푸시 구독·연결 레포·GitHub App 설치 행·풀이 기록 삭제 → `users` 익명화(이름 '탈퇴한 사용자', `github_id` 삭제. 같은 문장에서 `deleted_at`도 채운다, data-model 4.3 `users` CHECK) → 판정과 원장은 익명으로 보존.
 2. **여러 모듈에 걸친 삭제:** auth가 다른 모듈의 데이터를 지우는 방식을 의존 규칙에 맞게 정한다 (결정 제안서, 알려진 충돌 3번).
-3. **GitHub App 설치:** API로 삭제할지, 사용자에게 제거 방법을 안내할지 정하고 구현한다.
+3. **GitHub App 설치:** 탈퇴하면 API(`DELETE /app/installations/{installation_id}`, App JWT)로 설치를 지운다. 실패하면 제거 방법을 안내한다. 설치 행을 지우기 전에 `installation_id`를 읽어 둔다. 지운 뒤 오는 `installation` deleted 웹훅은 처음 보는 설치로 처리된다(계정 값 없는 행이 남음, S07).
 4. **웹훅 원본 14일 삭제:** `webhook_inbox.payload`를 14일 뒤 지우는 정리 작업 (R16, ShedLock).
 5. **관리자 도구 (P1 부분):** `/admin/**`. 관리자 판별 방식을 정하고 앱에서 역할을 확인한다 (결정 제안서, 알려진 충돌 7번).
     - 수신함 행 다시 처리 (`FAILED`)
     - 특정 스터디·날짜 다시 판정 (결과가 있는 행은 건너뜀)
     - 확인 대기 풀이 다시 분석 (파서를 고친 뒤)
     - 알림 발송 상태 조회
+6. **삭제된 GitHub App 설치 30일 정리:** `github_installations`에서 `deleted_at`이 30일 지난 행의 계정 값(`account_id`·`account_login`·`account_type`·`installed_by_owner`)과 `user_id`를 비우는 정리 작업. 행과 연결 행은 지우지 않는다 (security.md 9.8, data-model 4.3, ShedLock).
 
 ## 만들지 않을 것
 
@@ -41,11 +43,13 @@
 
 ## 수용 기준
 
-- [ ] T30: 계정을 삭제하면 개인정보(GitHub ID, 로그인명, 프로필 사진, 푸시 구독, 연결 레포, 풀이 기록)가 지워지거나 익명화되고, 판정 결과는 남는다
+- [ ] T30: 계정을 삭제하면 개인정보(GitHub ID, 로그인명, 프로필 사진, 푸시 구독, 연결 레포, GitHub App 설치 행, 풀이 기록)가 지워지거나 익명화되고, 판정 결과는 남는다
 - [ ] 방장인 스터디가 있는 사용자의 계정 삭제는 거절된다
 - [ ] 탈퇴한 사용자가 있던 스터디의 다른 멤버 현황과 판정은 그대로다
 - [ ] 같은 GitHub 계정으로 다시 가입하면 새 사용자로 시작한다
 - [ ] 14일이 지난 payload만 지워지고, 행 자체와 다른 컬럼은 남는다
+- [ ] 계정을 삭제하면 GitHub App 설치를 API로 지우고, API가 실패하면 제거 방법을 안내한다
+- [ ] 삭제된 지 30일이 지난 GitHub App 설치 행만 계정 값과 `user_id`가 지워지고, 행과 연결 행은 남는다
 - [ ] 일반 사용자가 `/admin/**`를 호출하면 403이다
 - [ ] 다시 판정은 결과가 이미 있는 멤버 일을 바꾸지 않는다
 - [ ] 다시 분석은 지정한 파서 버전보다 오래된 확인 대기 풀이만 다룬다
@@ -58,4 +62,4 @@
 ## 판단 기록이 필요한 곳
 
 - **결정 제안서:** 여러 모듈에 걸친 삭제 방식 (위 2번), 관리자 판별 방식 (위 5번)
-- GitHub App 설치 처리 (위 3번)
+- GitHub App 설치 삭제 API가 실패할 때: 같은 요청 안에서 다시 시도할지, 탈퇴를 그대로 끝내고 안내할지 (위 3번)
