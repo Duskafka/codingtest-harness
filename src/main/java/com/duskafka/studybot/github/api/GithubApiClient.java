@@ -122,6 +122,12 @@ public class GithubApiClient {
 			log.warn("GitHub 설치 레포 목록 응답이 비었어요: installation={}", installationId);
 			throw new GithubApiUnavailableException();
 		}
+		if (body.totalCount() == null) {
+			// GitHub 스키마에서 total_count는 필수다. 없으면 목록이 완전한지 알 수 없어서, 페이지 크기로 대신 채우지 않는다
+			// (빠진 연결 끊기와 자동 연결이 이 값으로 판단한다, PR #14 2차 리뷰 반영).
+			log.warn("GitHub 설치 레포 목록 응답에 total_count가 없어요: installation={}", installationId);
+			throw new GithubApiUnavailableException();
+		}
 		List<InstalledRepository> repositories = body.repositories() == null ? List.of()
 				: body.repositories()
 					.stream()
@@ -129,7 +135,7 @@ public class GithubApiClient {
 					.map(repo -> new InstalledRepository(repo.id(), repo.fullName(), repo.defaultBranch(),
 							Boolean.TRUE.equals(repo.isPrivate())))
 					.toList();
-		return new RepositoryPage(body.totalCount() != null ? body.totalCount() : repositories.size(), repositories);
+		return new RepositoryPage(body.totalCount(), repositories);
 	}
 
 	private static GithubApiUnavailableException unavailable(String operation, long installationId,

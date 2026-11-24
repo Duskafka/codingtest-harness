@@ -130,6 +130,15 @@ public final class GithubApiStub {
 			.willReturn(repositoriesResponse(totalCount, List.of(repositories))));
 	}
 
+	/** 이 설치 토큰으로 부른 레포 목록이 {@code total_count} 없이 온다 (GitHub 스키마에서는 필수인 값이 빠진 망가진 응답). */
+	public static void stubRepositoriesWithoutTotalCount(String token, Repo... repositories) {
+		server().stubFor(get(urlPathEqualTo("/installation/repositories"))
+			.withHeader("Authorization", equalTo("Bearer " + token))
+			.willReturn(aResponse().withStatus(200)
+				.withHeader("Content-Type", "application/json; charset=utf-8")
+				.withBody(json(Map.of("repository_selection", "selected", "repositories", items(List.of(repositories)))))));
+	}
+
 	/** 레포 목록 조회가 이 상태 코드로 실패한다. */
 	public static void stubRepositoriesFailure(String token, int status) {
 		server().stubFor(get(urlPathEqualTo("/installation/repositories"))
@@ -153,6 +162,13 @@ public final class GithubApiStub {
 
 	private static ResponseDefinitionBuilder repositoriesResponse(int totalCount,
 			List<Repo> repositories) {
+		return aResponse().withStatus(200)
+			.withHeader("Content-Type", "application/json; charset=utf-8")
+			.withBody(json(Map.of("total_count", totalCount, "repository_selection", "selected", "repositories",
+					items(repositories))));
+	}
+
+	private static List<Map<String, Object>> items(List<Repo> repositories) {
 		List<Map<String, Object>> items = new ArrayList<>();
 		for (Repo repo : repositories) {
 			String[] ownerAndName = repo.fullName().split("/", 2);
@@ -160,9 +176,7 @@ public final class GithubApiStub {
 					repo.fullName(), "private", repo.isPrivate(), "default_branch", repo.defaultBranch(), "owner",
 					Map.of("login", ownerAndName[0], "id", 100000001L, "type", "User")));
 		}
-		return aResponse().withStatus(200)
-			.withHeader("Content-Type", "application/json; charset=utf-8")
-			.withBody(json(Map.of("total_count", totalCount, "repository_selection", "selected", "repositories", items)));
+		return items;
 	}
 
 	private static String json(Object value) {

@@ -483,6 +483,22 @@ class GithubRepositoryLinkIntegrationTest extends GithubConnectionTestSupport {
 			.containsOnly(false);
 	}
 
+	@Test
+	@DisplayName("S07: 레포 목록 응답에 total_count가 없으면 503이고, 목록이 완전한지 모르므로 연결을 끊지 않는다 (CodeRabbit 2차 리뷰)")
+	void listWithoutTotalCountFailsAndKeepsLink() {
+		TestUser user = newUser("no-total");
+		long installationId = rows.insertLinkedInstallation(user, clock.instant());
+		long link = rows.insertLink(user, installationId, GithubConnectionRows.newRepoId(), user.login() + "/algo",
+				"ACTIVE", clock.instant());
+		GithubApiStub.stubInstallationToken(installationId, clock.instant().plusSeconds(3600));
+		GithubApiStub.stubRepositoriesWithoutTotalCount(GithubApiStub.tokenFor(installationId, 1),
+				Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/a"));
+
+		assertThat(repositories(user)).hasStatus(HttpStatus.SERVICE_UNAVAILABLE)
+			.hasContentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON);
+		assertThat(rows.link(link).status()).isEqualTo("ACTIVE");
+	}
+
 	/** 다른 요청이 연결을 바꾼 것처럼 다른 DB 연결에서 바꾸고 커밋한다. */
 	private void changeLinkStatus(long linkId, String status) {
 		jdbc.sql("update studybot.linked_repositories set status = :status where id = :id")
