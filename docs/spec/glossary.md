@@ -21,7 +21,7 @@
 | 스터디 일 | `studyDay` (`LocalDate`) | `[D 기준 시각, D+1 기준 시각)` |
 | 시간 계산 | `StudyCalendar` | `common` 모듈. 모든 시간 계산을 여기서 |
 | 멤버 일 | `MemberDay` | 멤버 × 스터디 일. 진행 상황과 판정 결과 |
-| 판정 결과 | `JudgmentResult` | `SUCCESS`, `FAIL`, `EXEMPT_REST`(쉬는 날), `EXEMPT_TICKET`(면제권). 미판정은 `null`. '기수 밖'(R9)을 어떻게 남길지는 OD-07과 함께 정해요 |
+| 판정 결과 | `JudgmentResult` | `SUCCESS`, `FAIL`, `EXEMPT_REST`(쉬는 날), `EXEMPT_TICKET`(면제권). 미판정은 `null`. 기수 밖인 날은 판정하지 않아 결과가 없어요 (R9, OD-07) |
 | 풀이 기록 | `SolveRecord` | 출처: `GITHUB`, `SELF_REPORT`, `RECOVERY`. 상태: `CONFIRMED`, `PENDING_IDENTIFICATION`(확인 대기), `IGNORED` |
 | 스터디별 집계 | `StudyDaySolve` | R5 유니크 제약을 거는 곳 |
 | 문제 식별자 | `ProblemRef` | (플랫폼, 문제 번호). 키는 항상 둘 다 |
