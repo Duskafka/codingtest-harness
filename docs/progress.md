@@ -6,10 +6,19 @@
 - 한 일: 사람이 정한 OD-07·OD-08을 결정 대장(확정), 스펙(R2·R9·R13, glossary `JudgmentResult`, 5.13, api `PUT /rules`, testing T11, product 기능 표), 단계 문서(S05 만들 것 4·T11·판단 기록, S09 판정 대상, S12 만들 것 6·수용 기준, steps README의 S05 상태 '대기')에 반영
 - 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
 - 사람이 정한 것 (2026-11-24, 세션 선택지, 모두 Recommended): 다음 기수 "마지막 날 다음 날 바로", 기수 밖 날 "판정 대상에서 뺀", 규칙 변경 "일부는 다음 기수부터"(기준 시각·기수 길이·기수당 면제권·벌금), 기준 시각이 바뀌는 경계의 길이가 달라지는 하루(18~30시간) "새 기수 첫날"
-- 다음: 이 PR 병합 → S05 남은 일(규칙 변경 API `PUT /rules`, T11) → S09. docs PR #19와 이 파일 맨 위가 겹쳐서 나중에 병합되는 쪽에서 충돌을 푼다
+- 다음: 이 PR 병합 → S05 남은 일(규칙 변경 API `PUT /rules`, T11) → S09. docs PR #19가 먼저 병합돼서(사람이 정함 "#19 먼저") master를 이 브랜치에 병합하고 이 파일 충돌을 풀었다
 - 막힌 것: 없음
 - 참고: spec-reviewer가 찾은 세부 질문 8개(다음 기수 행을 만드는 시점, 새 기수 첫날 계산을 맡을 단계, 유예가 바뀌는 날, 1기 시작 전 변경의 적용 기수 등)는 PR 열린 질문. S05 남은 PR은 `StudyTimeline.currentRule`(규칙 버전이 둘이면 예외)부터 손봐야 함
 - PR: #20
+
+## 2026-11-24 S08 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
+- 한 일: PR #18(병합)의 스펙 변경 제안 1~3을 사람이 골라 문서에 반영. spec-reviewer '수정 필요' 9건 중 5건은 문서를 고침(사람이 고르지 않은 정규화 문장·`return PROCESSED` 빼기, 부작용 문구 바로잡기), 나머지는 PR 근거·열린 질문으로. data-model `solve_records`(표에 `parser_version`·경로 UNIQUE, 새 메모 '풀이 기록 테이블': 경로 UNIQUE의 목적과 부작용, CHECK), `linked_repositories`의 빈 `path_prefix`, 5.4 흐름도와 '확인 대기' 단서(레포 전체, 커밋마다 하나, P1에는 설정 없음), pseudocode `processPush` 순서·확인 대기 분기, 5.3 'push 처리 순서' 1·2(항목 번호는 그대로)
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 사람이 정한 것 (2026-11-24, 세션 선택지): 제안 1 "셋 다 반영", 제안 2 "data-model과 5.4 둘 다", 제안 3 "pseudocode와 5.3 둘 다" (모두 Recommended)
+- 다음: 이 PR 병합 → S09(선행 S05가 '결정 대기'라 OD-07·OD-08을 정하거나 S05를 어떻게 볼지 먼저 정해야 함)
+- 막힌 것: 없음
+- 참고: 5.3 'push 처리 순서'는 코드 주석이 번호(2·3·6)를 가리켜서 항목을 합치기만 하고 번호를 밀지 않았다
+- PR: #19
 
 ## 2026-11-24 S08 push 처리와 풀이 기록 (세션 1/1)
 - 한 일: 만들 것 1~7. V7 `solve_records`(표 + `parser_version`, CHECK, 부분 UNIQUE 둘), `github.push.PushEventHandler`(삭제·연결 없음·기본 브랜치 아님 → IGNORED), `verification.GithubSolveRecorder`(문제마다 CONFIRMED, 식별 못 한 커밋은 접두사 안 첫 후보로 확인 대기 하나, 인정 시각 = 수신함 `received_at`), 배정 연결 지점 `progress.StudyDayAssignment`(새 CONFIRMED마다 같은 트랜잭션, 구현은 아무것도 안 함), 네 이벤트 처리기 필수(`GithubEventHandlers#requireAllEvents`)

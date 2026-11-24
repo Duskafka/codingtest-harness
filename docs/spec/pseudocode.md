@@ -52,10 +52,17 @@ onGithubWebhook(rawBody, headers):
 
 processPush(inbox):
     p = parse(inbox.payload)
-    if p.deleted or p.ref != "refs/heads/" + repo.defaultBranch: return IGNORED
+    if p.deleted: return IGNORED
     repo = activeLinkedRepo(p.repository.id) ?: return IGNORED
+    if p.ref != "refs/heads/" + repo.defaultBranch: return IGNORED   -- 연결 레포를 찾은 뒤 그 레포의 기본 브랜치와 비교
     for c in p.commits:
-        for problem in parser.parse(c.message, c.added + c.modified):
+        parsed = parser.parse(c.message, c.added + c.modified)
+        if parsed.problems is empty:                  -- 확인 대기는 커밋마다 하나 (5.4)
+            path = first(parsed.unidentifiedPaths where inPrefix(path, repo.pathPrefix))   -- 접두사가 비면 레포 전체
+            if path: insert solve_records(repo.user, PENDING_IDENTIFICATION, c.sha, raw_path = path,
+                                          received_at = inbox.receivedAt) on conflict do nothing
+            continue
+        for problem in parsed.problems:
             recordSolve(repo.user, problem, inbox.receivedAt, GITHUB)   -- 인정 시각 = 수신 시각
 ```
 
