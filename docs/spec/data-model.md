@@ -105,8 +105,8 @@ erDiagram
     - `user_id`는 `account_type = 'User'`이고 `installed_by_owner`(created 웹훅의 `account.id == sender.id`)일 때만 채워요. 설치자(sender)의 GitHub ID는 남기지 않아요 (9.8 최소 수집).
     - `account_id`·`account_login`·`account_type`·`installed_by_owner`는 created 웹훅이 채워요. created보다 먼저 온 deleted·suspend·unsuspend로 남긴 행에서는 created가 올 때까지 NULL이에요. 네 값은 모두 있거나 모두 NULL이고(CHECK), 사용자에게 이은 행에는 늘 있어요(CHECK). 삭제된 설치에는 늦게 온 created도 채우지 않아요.
     - `repositories_revision`은 `installation_repositories` removed마다 1씩 올라요. GitHub에서 레포 목록을 읽은 뒤 연결을 저장할 때, 그사이 빠진 레포가 없는지 이 값으로 확인해요.
-    - `deleted_at`은 `DELETED`가 된 시각이에요. `DELETED`일 때만 있어요(CHECK). `updated_at`은 삭제 뒤에 온 웹훅이 바꿀 수 있어서 쓰지 않아요.
-    - 삭제 뒤 30일(`deleted_at` 기준)이 지나면 계정 값 네 개와 `user_id`를 비워요. 행은 지우지 않고 설치 ID·상태·삭제 시각만 남겨요. 그래서 연결 행의 FK는 그대로예요 (9.8, 정리 작업은 S15).
+    - `deleted_at`은 `DELETED`가 된 시각이에요. `DELETED`일 때만, 그리고 늘 있어요(CHECK). `updated_at`은 삭제 뒤에 온 웹훅이 바꿀 수 있어서 30일 기준으로 쓰지 않아요.
+    - 삭제 뒤 30일(`deleted_at` 기준)이 지나면 계정 값 네 개와 `user_id`를 비워요. 행은 지우지 않아요(남는 값은 설치 ID·상태·시각 같은 개인정보가 아닌 값). 그래서 연결 행의 FK는 그대로예요 (9.8, 정리 작업은 S15).
 - `linked_repositories`
     - `(user_id) WHERE status IN ('ACTIVE', 'SUSPENDED')` 부분 UNIQUE: 사용자당 연결 1개 (5.2 '주의할 것'). 정지된 연결도 되살아날 수 있어 함께 세요.
     - `SUSPENDED`는 설치가 정지된 동안의 상태예요. unsuspend면 `ACTIVE`로 돌아가요. 레포 부분 UNIQUE(`status='ACTIVE'`)에는 들어가지 않아서, 그동안 같은 레포가 다른 연결로 `ACTIVE`가 됐으면 되살리지 않고 `INACTIVE`로 둬요.
