@@ -58,13 +58,16 @@ final class StudyResponses {
 
 	}
 
-	/** 규칙 한 버전 (R1). */
-	record RuleResponse(LocalDate effectiveFrom, int dailyGoal, @JsonFormat(pattern = "HH:mm") LocalTime dayBoundary,
+	/**
+	 * 규칙 한 버전 (R1). {@code id}는 규칙을 바꿀 때 {@code basedOnRuleId}로 돌려보낸다. 예정 버전은 규칙을 바꿀 때마다 새로
+	 * 만들어져 ID가 바뀐다.
+	 */
+	record RuleResponse(long id, LocalDate effectiveFrom, int dailyGoal, @JsonFormat(pattern = "HH:mm") LocalTime dayBoundary,
 			int graceMinutes, List<DayOfWeek> restDays, PenaltyType penaltyType, int fineAmount,
 			int exemptionsPerSeason, int reminderOffsetMinutes, SelfReportMode selfReportMode, int seasonLengthDays) {
 
 		static RuleResponse from(StudyRule rule) {
-			return new RuleResponse(rule.getEffectiveFrom(), rule.getDailyGoal(), rule.getDayBoundary(),
+			return new RuleResponse(rule.getId(), rule.getEffectiveFrom(), rule.getDailyGoal(), rule.getDayBoundary(),
 					rule.getGraceMinutes(), List.copyOf(rule.restDays()), rule.getPenaltyType(), rule.getFineAmount(),
 					rule.getExemptionsPerSeason(), rule.getReminderOffsetMinutes(), rule.getSelfReportMode(),
 					rule.getSeasonLengthDays());

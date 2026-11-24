@@ -21,7 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 규칙 변경 (S05 만들 것 4, R2, OD-07, OD-08, T11). 권한은 방장이다 (api.md 4.5).
  *
- * <p>요청은 원하는 규칙 전체다 (사람이 정함, 2026-11-24 "규칙 전체를 받음"). 아직 적용되지 않은 예정 버전을 지우고 원하는 규칙에
+ * <p>요청은 원하는 규칙 전체와, 그 값을 채울 때 출발한 버전 ID다 (사람이 정함, 2026-11-24 "규칙 전체를 받음", "기준 버전 ID를
+ * 받음"). 출발한 버전이 마지막 버전(적용 시작일이 가장 늦은 버전)이 아니면 409다. 예정 버전은 바꿀 때마다 새 ID로 다시 만들어지니
+ * ID가 규칙의 리비전 역할을 한다. 아직 적용되지 않은 예정 버전을 지우고 원하는 규칙에
  * 맞춰 다시 만든다. 이미 적용된 버전(오늘까지)은 고치지 않는다 (과거 판정에 소급하지 않음).
  *
  * <ul>
@@ -50,12 +52,19 @@ public class StudyRuleService {
 
 	private final Clock clock;
 
+	/**
+	 * @param basedOnRuleId 요청이 출발한 규칙 버전 ID. 마지막 버전이어야 한다
+	 * @param desired 원하는 규칙 전체
+	 */
 	@Transactional
-	public void change(long studyId, long actorUserId, RuleSettings desired) {
+	public void change(long studyId, long actorUserId, long basedOnRuleId, RuleSettings desired) {
 		Study study = this.studyRepository.findByIdForUpdate(studyId)
 			.orElseThrow(() -> new NotFoundException("스터디를 찾을 수 없어요."));
 		this.studyAccess.requireOwner(studyId, actorUserId);
 		List<StudyRule> rules = this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(studyId);
+		if (rules.getLast().getId() != basedOnRuleId) {
+			throw new ConflictException("규칙이 그사이 바뀌었거나 예정된 변경을 반영하지 않은 값이에요. 최신 규칙(예정된 변경 포함)을 다시 불러와 주세요.");
+		}
 		List<Season> seasons = this.seasonRepository.findByStudyIdOrderBySeqAsc(studyId);
 		Instant now = this.clock.instant();
 		LocalDate today = StudyTimeline.calendar(rules, study.zoneId()).studyDayOf(now);

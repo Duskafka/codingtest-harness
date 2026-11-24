@@ -89,7 +89,7 @@ class StudyController {
 	@PutMapping("/{studyId}/rules")
 	StudyDetailResponse changeRules(@AuthenticationPrincipal LoginUser loginUser, @PathVariable long studyId,
 			@Valid @RequestBody UpdateRulesRequest request) {
-		this.ruleService.change(studyId, loginUser.userId(), request.toSettings());
+		this.ruleService.change(studyId, loginUser.userId(), request.basedOn(), request.toSettings());
 		return StudyDetailResponse.from(this.queryService.detail(studyId, loginUser.userId()));
 	}
 

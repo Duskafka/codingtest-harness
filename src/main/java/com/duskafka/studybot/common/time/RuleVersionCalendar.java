@@ -17,10 +17,11 @@ import java.util.Objects;
  * 그래서 하루 기준 시각이 바뀌는 날, 지난 버전의 마지막 날은 옛 기준 시각에 끝나고, 새 버전의 첫날이 그때 시작해 새 기준
  * 시각에 끝난다. 새 첫날이 길이 차이를 떠안아 18~30시간이 된다 (R2 '새 기수 첫날', 사람이 정함 2026-11-24).</li>
  * <li>버전이 하나면 {@link StudyCalendar}와 같다. 하루 기준 시각은 {@link StudyCalendar#boundaryOf}로 센다(서머타임 처리 포함).</li>
+ * <li>유예 구간과 판정 시각은 유예 구간이 시작되는 날의 규칙(바뀐 뒤)의 유예를 쓴다 (사람이 정함, 2026-11-24 "바꾼 뒤의 유예").
+ * 날 D의 판정 시각은 {@code startOf(D+1) + D+1의 유예 + 10분}이다.</li>
  * </ul>
  *
- * <p>유예·알림·판정 시각은 여기서 다루지 않는다. 유예가 바뀐 날 어느 버전의 유예를 쓸지가 정해지지 않았다 (PR #20 열린 질문 3).
- * 그때까지 그 계산은 그날의 규칙으로 만든 {@link StudyCalendar}로 한다.
+ * <p>알림 시각은 여기서 다루지 않는다. 알림 오프셋이 바뀐 날 어느 버전을 쓸지는 정하지 않았다 (S13, PR #21 열린 질문).
  */
 public final class RuleVersionCalendar {
 
@@ -105,14 +106,22 @@ public final class RuleVersionCalendar {
 		return day;
 	}
 
-	/** 뼈대: 구현 전. */
+	/**
+	 * 시각이 그 스터디 일이 시작한 뒤 유예 안인지. 유예는 그 구간이 시작되는 날(바뀐 뒤)의 규칙을 쓴다 (사람이 정함, 2026-11-24
+	 * "바꾼 뒤의 유예", 부록 D {@code assignStudyDay}의 {@code rule(N).grace}). 시작은 포함하고 끝은 뺀다.
+	 */
 	public boolean isInGrace(Instant instant) {
-		throw new UnsupportedOperationException("구현 전");
+		LocalDate day = studyDayOf(instant);
+		return instant.isBefore(startOf(day).plus(ruleFor(day).grace()));
 	}
 
-	/** 뼈대: 구현 전. */
+	/**
+	 * 판정 시각: 다음 날 시작 + 다음 날 규칙의 유예 + 판정 여유 10분 (R9). 그날의 늦은 풀이를 받아 주는 유예 구간과 같은 유예를 쓴다
+	 * ({@link #isInGrace}).
+	 */
 	public Instant judgeAt(LocalDate studyDay) {
-		throw new UnsupportedOperationException("구현 전");
+		LocalDate next = studyDay.plusDays(1);
+		return startOf(next).plus(ruleFor(next).grace()).plus(StudyCalendar.JUDGE_MARGIN);
 	}
 
 	/** 시각이 속한 스터디 일의 다음 스터디 일. 가입하면 이날부터 판정하고(R14), 규칙 변경은 이날부터 적용한다(R2). */
