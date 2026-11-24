@@ -2,7 +2,7 @@ package com.duskafka.studybot.github.webhook;
 
 /**
  * GitHub 웹훅 이벤트 한 종류의 처리기. installation·installation_repositories는 S07, push는 S08이 구현한다.
- * 스프링 빈으로 두면 수신기가 이벤트 종류로 찾아 부른다. 이벤트 하나에 처리기는 하나다 (둘이면 앱이 뜨지 않는다).
+ * 스프링 빈으로 두면 수신기가 이벤트 종류로 찾아 부른다. 이벤트 하나에 처리기는 꼭 하나다 (없거나 둘이면 앱이 뜨지 않는다).
  *
  * <p>지킬 것
  * <ul>

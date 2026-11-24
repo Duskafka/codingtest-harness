@@ -4,6 +4,7 @@ import com.duskafka.studybot.IntegrationTest;
 import com.duskafka.studybot.MutableClock;
 import com.duskafka.studybot.github.WebhookTestConfiguration.DatabaseOutage;
 import com.duskafka.studybot.github.WebhookTestConfiguration.RecordingPushHandler;
+import com.duskafka.studybot.github.WebhookTestConfiguration.RecordingStudyDayAssignment;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -58,12 +59,16 @@ abstract class WebhookTestSupport {
 	protected RecordingPushHandler pushHandler;
 
 	@Autowired
+	protected RecordingStudyDayAssignment studyDayAssignment;
+
+	@Autowired
 	protected DatabaseOutage databaseOutage;
 
 	@BeforeEach
 	void resetDoubles() {
 		databaseOutage.stop();
 		pushHandler.reset();
+		studyDayAssignment.reset();
 	}
 
 	@AfterEach

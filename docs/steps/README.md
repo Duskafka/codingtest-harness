@@ -24,7 +24,7 @@
 | [S05](S05-study-membership.md) | 스터디·규칙·기수·초대·멤버십 | P1 | S02, S04 | OD-07, OD-08 | — | 결정 대기 |
 | [S06](S06-webhook-receiver.md) | 웹훅 수신 기반 | P1 | S01 | OD-05, OD-06 (먼저 하는 경우) | — | 완료 |
 | [S07](S07-github-app.md) | GitHub App 연결 | P1 | S04, S06 | — | H-02 | 완료 |
-| [S08](S08-push-to-solve.md) | push 처리와 풀이 기록 | P1 | S03, S06, S07 | — | — | 대기 |
+| [S08](S08-push-to-solve.md) | push 처리와 풀이 기록 | P1 | S03, S06, S07 | — | — | 완료 |
 | [S09](S09-study-day-assignment.md) | 스터디 일 배정과 멤버 일 | P1 | S02, S05, S08 | — | — | 대기 |
 | [S10](S10-today-status.md) | 오늘 현황·내 풀이·확인 대기 지정 | P1 | S09 | — | — | 대기 |
 | [S11](S11-self-report-exemption.md) | 수동 인증과 면제권 | P1 | S09 | OD-09 | — | 대기 |

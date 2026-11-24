@@ -4,6 +4,8 @@ import com.duskafka.studybot.github.webhook.GithubEvent;
 import com.duskafka.studybot.github.webhook.GithubEventHandler;
 import com.duskafka.studybot.github.webhook.GithubWebhookEvent;
 import com.duskafka.studybot.github.webhook.HandlingResult;
+import com.duskafka.studybot.progress.SolveToAssign;
+import com.duskafka.studybot.progress.StudyDayAssignment;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
@@ -15,6 +17,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import javax.sql.DataSource;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -24,8 +27,10 @@ import org.springframework.jdbc.datasource.DelegatingDataSource;
  * 웹훅 통합 테스트용 빈. 웹훅 테스트 클래스는 모두 이 설정 하나만 더해서 Spring 컨텍스트를 함께 쓴다.
  *
  * <ul>
- * <li>{@link RecordingPushHandler}: S08 전까지 push 처리기 자리를 채우는 테스트 처리기. 불린 횟수와 받은 값을 남기고,
- * 테스트가 정한 대로 결과를 돌려주거나 예외를 던진다.</li>
+ * <li>{@link RecordingPushHandler}: 앱의 push 처리기(S08)를 감싸는 테스트 처리기. 불린 횟수와 받은 값을 남기고, 테스트가 정한 대로
+ * 결과를 돌려주거나 예외를 던진다. 기본은 실제 처리기를 부르지 않고 PROCESSED다 (S06 테스트가 수신기만 보게).
+ * S08 테스트는 {@link RecordingPushHandler#passThrough()}로 실제 처리기를 부른다.</li>
+ * <li>{@link RecordingStudyDayAssignment}: 앱의 배정 연결 지점(S08 만들 것 6)을 감싸서 불린 값을 남기고, 정하면 예외를 던진다.</li>
  * <li>{@link DatabaseOutage}: 앱의 DataSource를 감싸서, 켜면 새 DB 연결을 얻지 못하게 한다 (DB 장애 흉내).</li>
  * </ul>
  */
@@ -33,8 +38,13 @@ import org.springframework.jdbc.datasource.DelegatingDataSource;
 public class WebhookTestConfiguration {
 
 	@Bean
-	RecordingPushHandler recordingPushHandler() {
+	static RecordingPushHandler recordingPushHandler() {
 		return new RecordingPushHandler();
+	}
+
+	@Bean
+	static RecordingStudyDayAssignment recordingStudyDayAssignment() {
+		return new RecordingStudyDayAssignment();
 	}
 
 	@Bean
@@ -42,22 +52,41 @@ public class WebhookTestConfiguration {
 		return new DatabaseOutage();
 	}
 
-	/** push 처리기 자리의 테스트 처리기. 테스트마다 {@link #reset()}한다. */
-	public static class RecordingPushHandler implements GithubEventHandler {
+	/**
+	 * push 처리기 자리의 테스트 처리기. 앱의 push 처리기 빈을 감싼 처리기로 바꿔 끼운다 (처리기는 이벤트당 하나라 따로 더하지 않는다).
+	 * 테스트마다 {@link #reset()}한다.
+	 */
+	public static class RecordingPushHandler implements BeanPostProcessor {
 
 		private final List<GithubWebhookEvent> calls = new CopyOnWriteArrayList<>();
 
 		private volatile Function<GithubWebhookEvent, HandlingResult> behavior = event -> HandlingResult.PROCESSED;
 
-		@Override
-		public GithubEvent event() {
-			return GithubEvent.PUSH;
-		}
+		private volatile @Nullable GithubEventHandler real;
 
 		@Override
-		public HandlingResult handle(GithubWebhookEvent event) {
-			calls.add(event);
-			return behavior.apply(event);
+		public Object postProcessAfterInitialization(Object bean, String beanName) {
+			if (bean instanceof GithubEventHandler handler && handler.event() == GithubEvent.PUSH) {
+				if (this.real != null) {
+					throw new IllegalStateException("push 처리기가 둘이에요: " + beanName);
+				}
+				this.real = handler;
+				return new GithubEventHandler() {
+
+					@Override
+					public GithubEvent event() {
+						return GithubEvent.PUSH;
+					}
+
+					@Override
+					public HandlingResult handle(GithubWebhookEvent event) {
+						calls.add(event);
+						return behavior.apply(event);
+					}
+
+				};
+			}
+			return bean;
 		}
 
 		public List<GithubWebhookEvent> calls() {
@@ -68,9 +97,61 @@ public class WebhookTestConfiguration {
 			this.behavior = newBehavior;
 		}
 
+		/** 앱의 실제 push 처리기를 부른다. {@link #willDo}에서 앞뒤로 다른 일을 끼울 때 쓴다. */
+		public HandlingResult delegate(GithubWebhookEvent event) {
+			GithubEventHandler handler = this.real;
+			if (handler == null) {
+				throw new IllegalStateException("앱에 push 처리기가 없어요");
+			}
+			return handler.handle(event);
+		}
+
+		/** 이후 push는 앱의 실제 처리기가 처리한다. */
+		public void passThrough() {
+			this.behavior = this::delegate;
+		}
+
 		public void reset() {
 			calls.clear();
 			behavior = event -> HandlingResult.PROCESSED;
+		}
+
+	}
+
+	/** 배정 연결 지점({@link StudyDayAssignment})을 감싼다. 테스트마다 {@link #reset()}한다. */
+	public static class RecordingStudyDayAssignment implements BeanPostProcessor {
+
+		private final List<SolveToAssign> calls = new CopyOnWriteArrayList<>();
+
+		private volatile @Nullable RuntimeException failure;
+
+		@Override
+		public Object postProcessAfterInitialization(Object bean, String beanName) {
+			if (bean instanceof StudyDayAssignment real) {
+				return (StudyDayAssignment) solve -> {
+					calls.add(solve);
+					RuntimeException toThrow = this.failure;
+					if (toThrow != null) {
+						throw toThrow;
+					}
+					real.assign(solve);
+				};
+			}
+			return bean;
+		}
+
+		public List<SolveToAssign> calls() {
+			return List.copyOf(calls);
+		}
+
+		/** 이후 불리면 이 예외를 던진다. */
+		public void willThrow(RuntimeException exception) {
+			this.failure = exception;
+		}
+
+		public void reset() {
+			calls.clear();
+			failure = null;
 		}
 
 	}

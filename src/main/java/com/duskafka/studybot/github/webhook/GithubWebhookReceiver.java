@@ -109,15 +109,9 @@ public class GithubWebhookReceiver {
 	}
 
 	private HandlingResult handle(GithubWebhookEvent event) {
-		GithubEventHandler handler = handlers.find(event.event()).orElse(null);
-		if (handler == null) {
-			// S06에는 installation 계열·push 처리기가 아직 없다 (S07, S08). 받기는 하되 처리할 것이 없어 IGNORED로 둔다.
-			// 5.3 상태 그림의 IGNORED와 다르게 쓰는 임시 처리다. S08에서 네 이벤트 모두 처리기가 있어야 앱이 뜨게 바꾼다
-			// (사람이 정함, 2026-11-23 S06 세션 "S08에서 처리기 필수로").
-			log.warn("처리기가 없는 웹훅이라 IGNORED로 남겨요: delivery={}, event={}", event.deliveryId(),
-					event.event().headerValue());
-			return HandlingResult.IGNORED;
-		}
+		// 받는 이벤트는 모두 처리기가 있어야 앱이 뜬다 (GithubEventHandlers#requireAllEvents, S08 만들 것 7).
+		GithubEventHandler handler = handlers.find(event.event())
+			.orElseThrow(() -> new IllegalStateException("처리기가 없는 이벤트예요: " + event.event().headerValue()));
 		HandlingResult result = handler.handle(event);
 		if (result == null) {
 			throw new IllegalStateException("처리기가 결과를 돌려주지 않았어요: " + handler.getClass().getName());

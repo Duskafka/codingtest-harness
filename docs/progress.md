@@ -2,6 +2,16 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-24 S08 push 처리와 풀이 기록 (세션 1/1)
+- 한 일: 만들 것 1~7. V7 `solve_records`(표 + `parser_version`, CHECK, 부분 UNIQUE 둘), `github.push.PushEventHandler`(삭제·연결 없음·기본 브랜치 아님 → IGNORED), `verification.GithubSolveRecorder`(문제마다 CONFIRMED, 식별 못 한 커밋은 접두사 안 첫 후보로 확인 대기 하나, 인정 시각 = 수신함 `received_at`), 배정 연결 지점 `progress.StudyDayAssignment`(새 CONFIRMED마다 같은 트랜잭션, 구현은 아무것도 안 함), 네 이벤트 처리기 필수(`GithubEventHandlers#requireAllEvents`)
+- 상태: 빌드 통과 (테스트 500개). 구현 전 새 테스트 36개 중 34개 실패 확인. 조건 빼 보기 5개 모두 해당 테스트 실패. spec-reviewer '통과'(코드 지적 없음, PR 본문 항목은 반영)
+- 사람이 정한 것 (2026-11-24, 세션 선택지): 빈 `path_prefix` "레포 전체로 봄", 확인 대기 "커밋마다 하나", 브랜치 "feat/S08-push-to-solve" (모두 Recommended)
+- PR 열린 질문 결정 (2026-11-24, PR을 연 뒤 세션 선택지): 1 기본 브랜치는 "레포마다 기본 브랜치 (Recommended)"(처음 지시는 "기본 브랜치는 master로 지정해"였고, master만 인정하면 기본 브랜치가 main인 레포는 모두 무시된다고 다시 물어 고름) → 연결 행의 `default_branch`와 비교하는 지금 구현 그대로. 2 경로 접두사 설정은 "지금은 만들지 않음 (Recommended)" → 레포 전체를 보는 지금 동작 유지, 확인 대기가 많이 쌓이면 다시 정함. 코드 변경 없음
+- 다음: PR 검토(판단 기록 '꼭 봐 주세요': 배정 연결 지점, 테이블 제약·`raw_path` UNIQUE) → 병합 뒤 받아들인 스펙 변경 제안을 docs PR로 → S09(배정, 선행 S02·S05·S08. S05는 '결정 대기'라 선행 조건 확인 필요)
+- 막힌 것: 없음. 실제 push 확인은 H-02
+- 참고: S09는 `progress.PendingStudyDayAssignment`를 실제 배정으로 바꾸면 된다(`SolveToAssign`에 기록 ID·사용자·플랫폼 문자열·번호·인정 시각). S06 웹훅 테스트의 `RecordingPushHandler`는 이제 실제 push 처리기를 감싸고 기본은 PROCESSED라, 실제 처리기를 쓰려면 `passThrough()`. 배정 연결 지점은 `RecordingStudyDayAssignment`로 호출을 본다
+- PR: #18
+
 ## 2026-11-24 S07 후속: 설치 삭제 시각 deleted_at (V6, 같은 세션)
 - 한 일: V6(`github_installations.deleted_at` 추가 → V5 시절 DELETED 행을 `updated_at`으로 백필 → CHECK `(status = 'DELETED') = (deleted_at IS NOT NULL)`). 아는 설치의 deleted(`markDeleted`)와 처음 보는 설치의 deleted(`recordStateIfAbsent`)가 삭제 시각을 채운다. 테스트: 늦은 removed·deleted·created가 삭제 시각을 바꾸지 않음(시계를 앞으로 돌려 확인), CHECK, V5→V6 백필(따로 띄운 컨테이너)
 - 상태: 빌드 통과 (테스트 463개). 새 테스트는 V6 없이 실패 확인(컬럼 없음, V6 없음). 백필 UPDATE를 빼면 백필 테스트가 실패하는 것 확인

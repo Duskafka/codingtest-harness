@@ -49,11 +49,14 @@ public class LinkedRepository {
 	@Column(name = "full_name", nullable = false)
 	private String fullName;
 
-	/** 마지막으로 본 기본 브랜치. push 중 이 브랜치만 풀이로 본다 (S08). */
+	/** 마지막으로 본 기본 브랜치. push 중 이 브랜치({@code refs/heads/} + 이 값)만 풀이로 본다 (S08). */
 	@Column(name = "default_branch", nullable = false)
 	private String defaultBranch;
 
-	/** S08에서 쓴다. */
+	/**
+	 * 연결할 때 지정한 경로 접두사. 식별하지 못한 풀이 파일이 이 안에 있으면 확인 대기로 남긴다 (5.4, S08). 비어 있으면 레포 전체다
+	 * (사람이 정함, 2026-11-24 S08 세션 "레포 전체로 봄"). P1에는 정하는 API가 없다.
+	 */
 	@Column(name = "path_prefix")
 	private @Nullable String pathPrefix;
 
