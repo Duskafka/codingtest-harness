@@ -351,6 +351,9 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 		join(owner, studyId, member);
 
 		assertThat(putRules(member, rules(Map.of("dailyGoal", 2)))).hasStatus(HttpStatus.FORBIDDEN);
+		// 권한을 기준 버전보다 먼저 본다. 틀린 기준 버전이어도 409가 아니라 403이다.
+		assertThat(putRules(member, withBasedOn(rules(Map.of("dailyGoal", 2)), Long.MAX_VALUE)))
+			.hasStatus(HttpStatus.FORBIDDEN);
 		assertThat(versions()).hasSize(1);
 	}
 
@@ -362,6 +365,9 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 
 		assertThat(putRules(outsider, rules(Map.of("dailyGoal", 2)))).hasStatus(HttpStatus.NOT_FOUND);
 		assertThat(putRulesTo(owner, otherStudy, rules(Map.of("dailyGoal", 2))))
+			.hasStatus(HttpStatus.NOT_FOUND);
+		// 권한을 기준 버전보다 먼저 본다. 틀린 기준 버전이어도 409가 아니라 404라 스터디가 있는지 드러나지 않는다.
+		assertThat(putRules(outsider, withBasedOn(rules(Map.of("dailyGoal", 2)), Long.MAX_VALUE)))
 			.hasStatus(HttpStatus.NOT_FOUND);
 		assertThat(versions()).hasSize(1);
 	}
@@ -394,6 +400,12 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 			node.put("basedOnRuleId", latestRuleId(targetStudyId));
 		}
 		return putJson(user, "/api/studies/" + targetStudyId + "/rules", JSON.writeValueAsString(node));
+	}
+
+	private static String withBasedOn(String body, long basedOnRuleId) {
+		ObjectNode node = (ObjectNode) JSON.readTree(body);
+		node.put("basedOnRuleId", basedOnRuleId);
+		return JSON.writeValueAsString(node);
 	}
 
 	private long latestRuleId(long targetStudyId) {

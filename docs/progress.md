@@ -6,7 +6,7 @@
 - 한 일: 만들 것 4. `PUT /api/studies/{id}/rules`(`StudyRuleService`), 버전에 걸친 스터디 일 계산 `common.time.RuleVersionCalendar`(기준 시각이 바뀌는 새 기수 첫날 18~30시간), 상세 응답 `upcomingRules`, `StudyTimeline.currentRule`(버전이 둘이면 예외)을 날짜로 고르는 방식으로. 테이블 변경 없음. PR을 연 뒤: `basedOnRuleId` 기준 버전 검사(409), 버전 달력의 `isInGrace`·`judgeAt`(바뀐 뒤의 유예)
 - 상태: 빌드 통과 (테스트 553개). 구현 전 새 테스트 29개 중 28개 실패 확인. 조건 빼 보기 5개 모두 해당 테스트 실패. spec-reviewer '수정 필요' → 테스트 13개 더함(T11 열 항목 분류, 기수 이어 세기, 미리보기, 409), 그중 2개 실패 확인 뒤 고침. PR을 연 뒤 보강 테스트 11개 모두 실패 확인 뒤 구현, 조건 빼 보기 3개 모두 걸림
 - 사람이 정한 것 (2026-11-24, 세션 선택지, 모두 Recommended): 날 계산 "S05에서 스터디 일까지", 1기 시작 전 변경 "모두 1기 시작일부터", 상세 "현재 규칙 + 예정된 변경", 요청 "규칙 전체를 받음". spec-reviewer 뒤: 공개 미리보기 "예정 변경도 보여 줌", 시작 직전 기준 시각을 앞당겨 첫날이 이미 시작되면 "거절 (409)". PR을 연 뒤 장단점 비교로: PUT 기준 "기준 버전 ID를 받음", 유예가 바뀐 날 "바꾼 뒤의 유예"(PR #20 열린 질문 3), 구현 위치 "PR #21 달력에 더함"
-- 다음: PR 검토 → 병합 → 받아들인 스펙 변경 제안을 docs PR로(api.md `upcomingRules`·`basedOnRuleId`, R2 시작 전 변경, R4·R9 바뀐 뒤 유예, S09·S12·S16 문서) → S09. S09 전에 PR #20 열린 질문 1(다음 기수 행 생성 시점)을 정하면 좋음
+- 다음: PR 검토 → 병합 → 받아들인 스펙 변경 제안을 docs PR로(api.md `upcomingRules`·`basedOnRuleId`·규칙 `id`, R2 시작 전 변경, R9 '유예'를 'D+1 규칙의 유예'로 적는 문구 명확화(부록 D와 같아 규칙 변경은 아님), S09·S12·S13·S16 문서) → S09. S09 전에 PR #20 열린 질문 1(다음 기수 행 생성 시점)을 정하면 좋음
 - 막힌 것: 없음
 - 참고: S09·S12는 스터디 일·유예 구간·판정 시각을 `RuleVersionCalendar`로 센다(유예는 구간이 시작되는 날의 규칙). 알림 시각은 버전에 걸쳐 정하지 않았다(S13). 화면은 마지막 버전의 `id`를 `basedOnRuleId`로 보낸다. 세션 재시작 뒤 dockerd가 죽어 있으면 `CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`
 - PR: #21
