@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-24 S07 후속: 설치 삭제 시각 deleted_at (V6, 같은 세션)
+- 한 일: V6(`github_installations.deleted_at` 추가 → V5 시절 DELETED 행을 `updated_at`으로 백필 → CHECK `(status = 'DELETED') = (deleted_at IS NOT NULL)`). 아는 설치의 deleted(`markDeleted`)와 처음 보는 설치의 deleted(`recordStateIfAbsent`)가 삭제 시각을 채운다. 테스트: 늦은 removed·deleted·created가 삭제 시각을 바꾸지 않음(시계를 앞으로 돌려 확인), CHECK, V5→V6 백필(따로 띄운 컨테이너)
+- 상태: 빌드 통과 (테스트 463개). 새 테스트는 V6 없이 실패 확인(컬럼 없음, V6 없음). 백필 UPDATE를 빼면 백필 테스트가 실패하는 것 확인
+- 사람이 정한 것 (2026-11-24, 세션 선택지): '삭제된 지 30일'의 기준 "deleted_at 컬럼", #14가 먼저 병합돼서 "새 후속 PR로 V6", 원격 feat/S07-github-app에 남은 43359e4는 "그대로 둠" (모두 Recommended). docs PR #15의 열린 질문 결정: "계정 값만 비움", "API로 설치 삭제" (S15에서 구현)
+- 다음: 이 PR 병합 → docs PR #15 병합(deleted_at 문서가 이 PR에 기댐) → H-02(실제 App으로 확인) → S08
+- 막힌 것: 없음
+- 참고 (실수와 교훈): #14가 01:47Z에 병합된 것을 모르고, 그 뒤에 feat 브랜치에서 V5를 고친 커밋(43359e4)을 push했다. 로컬 origin/master가 병합 전에 멈춰 있어서 보호 훅도 막지 못했다. **작업을 시작하거나 마이그레이션을 고치기 전에 `git fetch origin master`로 병합 여부를 본다.** 43359e4는 master에 없고, 내용은 이 PR로 옮겼다(V5는 그대로)
+- PR: #16 (docs PR #15보다 먼저 병합). 재발 방지로 세션 시작 때 origin/master를 받아 오는 chore PR #17(사람이 정함 "스크립트 + 훅 패치 제안"). 세션 도중 병합까지 잡는 보호 훅 패치는 #17 본문에 제안만 했고 적용은 사람 몫
+
 ## 2026-11-23 S07 GitHub App 연결 (세션 1/1)
 - 한 일: 만들 것 1~6. V5(`github_installations`, `linked_repositories`), 설치 웹훅 처리기(created·deleted·suspend·unsuspend, removed·added), 가입 때 연결(auth `UserLoggedIn` 커밋 뒤 + 연결 화면에서 다시 claim), GitHub API 클라이언트(App JWT를 JDK로 서명, PKCS#1·#8 키, 설치 토큰 메모리 캐시·만료 5분 전 갱신), `GET /api/github/install-url`(서명된 1회용 state), `GET /github/setup`(302), `GET /api/me/github/repositories`(레포 1개면 자동 연결), `PUT /api/me/linked-repository`
 - 상태: 빌드 통과 (테스트 432개). 구현 전 새 테스트 52개 중 51개 실패 확인. 조건 빼 보기 8개 모두 해당 테스트 실패. spec-reviewer '수정 필요'(코드 지적 없음, PR 본문 3건) → 반영, 고려 10건 중 6건은 코드·테스트로(설치자 ID 대신 `installed_by_owner`, 저장 때 설치 잠금 재확인, 테스트 3개)

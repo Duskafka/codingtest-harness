@@ -42,6 +42,27 @@ class DatabaseSchemaIntegrationTest {
 		insertUser(9001L, null);
 	}
 
+	@Test
+	@DisplayName("S07: GitHub App 설치의 삭제 시각은 DELETED일 때만, 그리고 늘 있어야 한다 (9.8 30일 정리의 기준)")
+	void installationDeletedAtMatchesStatus() {
+		assertThatThrownBy(() -> insertInstallation(9_900_001L, "DELETED", null))
+			.isInstanceOf(DataIntegrityViolationException.class);
+		assertThatThrownBy(() -> insertInstallation(9_900_002L, "ACTIVE", "2026-11-24T00:00:00Z"))
+			.isInstanceOf(DataIntegrityViolationException.class);
+
+		insertInstallation(9_900_003L, "DELETED", "2026-11-24T00:00:00Z");
+		insertInstallation(9_900_004L, "SUSPENDED", null);
+	}
+
+	private void insertInstallation(long installationId, String status, String deletedAt) {
+		jdbc.sql("insert into studybot.github_installations (installation_id, status, created_at, updated_at, deleted_at) "
+				+ "values (:id, :status, now(), now(), cast(:deletedAt as timestamptz))")
+			.param("id", installationId)
+			.param("status", status)
+			.param("deletedAt", deletedAt, java.sql.Types.VARCHAR)
+			.update();
+	}
+
 	private void insertUser(Long githubId, String deletedAt) {
 		jdbc.sql("insert into studybot.users (github_id, github_login, created_at, deleted_at) "
 				+ "values (:githubId, 'schema-test', now(), cast(:deletedAt as timestamptz))")
