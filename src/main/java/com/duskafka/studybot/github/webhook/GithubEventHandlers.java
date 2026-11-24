@@ -22,6 +22,10 @@ class GithubEventHandlers {
 		}
 	}
 
+	/** 뼈대: S08 구현 전. */
+	void requireAllEvents() {
+	}
+
 	Optional<GithubEventHandler> find(GithubEvent event) {
 		return Optional.ofNullable(byEvent.get(event));
 	}
