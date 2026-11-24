@@ -18,7 +18,7 @@
 - `docs/spec/processes/5.17-admin-tools.md` 전체
 - `docs/spec/domain-rules.md`: R14, R16
 - `docs/spec/security.md`: 9.8 개인정보 표
-- `docs/spec/data-model.md`: 4.3 'GitHub 연결 테이블 (S07)'
+- `docs/spec/data-model.md`: 4.3 테이블 상세의 `users`·`github_installations`·`linked_repositories` 행과 'GitHub 연결 테이블 (S07)'
 - `docs/spec/api.md`: 4.4의 `DELETE /api/me`, 4.5 '만들 것'의 관리자 항목
 - `docs/spec/architecture.md`: '알려진 충돌과 빈 곳' 3번, 7번
 
