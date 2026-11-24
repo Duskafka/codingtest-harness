@@ -42,6 +42,11 @@ class GithubApiConfiguration {
 			throw new IllegalStateException(
 					"GitHub App private key 파일 경로가 없어요. GITHUB_APP_PRIVATE_KEY_PATH에 PEM 파일 경로를 넣어 주세요");
 		}
+		if (!properties.hasPlausibleKeyPath()) {
+			// 경로 자리에 키 내용을 넣은 경우다. 값을 메시지·원인 예외에 되풀이하지 않는다 (기동 실패 로그에 키가 남지 않게).
+			throw new IllegalStateException(
+					"GITHUB_APP_PRIVATE_KEY_PATH에는 키 내용이 아니라 PEM 파일 경로를 넣어 주세요");
+		}
 		Path path = Path.of(properties.privateKeyPath());
 		String pem;
 		try {
@@ -50,7 +55,13 @@ class GithubApiConfiguration {
 		catch (IOException ex) {
 			throw new IllegalStateException("GitHub App private key 파일을 읽지 못했어요: " + path, ex);
 		}
-		return PemPrivateKeys.parse(pem);
+		try {
+			return PemPrivateKeys.parse(pem);
+		}
+		catch (IllegalArgumentException ex) {
+			// PemPrivateKeys의 메시지는 고정 문구라 키 내용이 없다. 어느 파일인지 알 수 있게 경로를 더한다.
+			throw new IllegalStateException(ex.getMessage() + ": " + path, ex);
+		}
 	}
 
 }

@@ -55,7 +55,30 @@ class GithubApiConfigurationTest {
 		assertThatThrownBy(() -> GithubApiConfiguration.loadPrivateKey(properties(this.dir.resolve("none.pem").toString())))
 			.isInstanceOf(IllegalStateException.class);
 		assertThatThrownBy(() -> GithubApiConfiguration.loadPrivateKey(properties(broken.toString())))
+			.isInstanceOf(IllegalStateException.class)
+			.hasMessageContaining("broken.pem")
 			.satisfies(ex -> assertThat(String.valueOf(ex.getMessage()) + ex.getCause()).doesNotContain(body.substring(0, 40)));
+	}
+
+	@Test
+	@DisplayName("S07: 경로 자리에 키 내용(PEM)을 넣으면 그 값을 되풀이하지 않고 거절한다 (기동 실패 로그에 키가 남지 않게)")
+	void keyContentInPathIsRejectedWithoutEchoingIt() {
+		String body = GithubAppTestKeys.pkcs1Base64();
+		GithubAppProperties misconfigured = properties(GithubAppTestKeys.pkcs1Pem());
+
+		assertThatThrownBy(() -> GithubApiConfiguration.loadPrivateKey(misconfigured))
+			.isInstanceOf(IllegalStateException.class)
+			.hasMessageContaining("GITHUB_APP_PRIVATE_KEY_PATH")
+			.satisfies(ex -> assertThat(chain(ex)).doesNotContain(body.substring(0, 40)));
+		assertThat(misconfigured.toString()).doesNotContain(body.substring(0, 40));
+	}
+
+	private static String chain(Throwable ex) {
+		StringBuilder text = new StringBuilder();
+		for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+			text.append(cause).append('\n');
+		}
+		return text.toString();
 	}
 
 	private static GithubAppProperties properties(@Nullable String privateKeyPath) {

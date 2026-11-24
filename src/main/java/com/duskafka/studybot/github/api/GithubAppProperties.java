@@ -24,6 +24,22 @@ import org.springframework.validation.annotation.Validated;
 public record GithubAppProperties(@NotBlank String clientId, @NotBlank String slug, @Nullable String privateKeyPath,
 		@DefaultValue("https://api.github.com") URI apiBaseUrl, @DefaultValue("https://github.com") URI webBaseUrl) {
 
+	/**
+	 * 경로 자리에 키 내용(PEM)을 잘못 넣으면 그 값이 로그에 찍히지 않게 가린다. 정상 설정이면 경로를 그대로 보인다.
+	 */
+	@Override
+	public String toString() {
+		String path = !hasText(privateKeyPath) ? "(없음)" : hasPlausibleKeyPath() ? privateKeyPath : "(경로가 아닌 값, 가림)";
+		return "GithubAppProperties[clientId=" + clientId + ", slug=" + slug + ", privateKeyPath=" + path
+				+ ", apiBaseUrl=" + apiBaseUrl + ", webBaseUrl=" + webBaseUrl + "]";
+	}
+
+	/** {@code privateKeyPath}가 키 내용이 아니라 파일 경로로 보이는지. PEM 머리나 줄바꿈이 있으면 경로가 아니다. */
+	boolean hasPlausibleKeyPath() {
+		return privateKeyPath != null && !privateKeyPath.contains("-----BEGIN") && privateKeyPath.indexOf('\n') < 0
+				&& privateKeyPath.indexOf('\r') < 0;
+	}
+
 	static boolean hasText(@Nullable String value) {
 		return value != null && !value.isBlank();
 	}
