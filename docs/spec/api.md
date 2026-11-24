@@ -19,7 +19,7 @@
 | `GET /api/studies`                               | 내 스터디 목록                           | 로그인    | P1   |
 | `GET /api/studies/{id}`                          | 스터디 상세 (현재 규칙, 기수)            | 멤버      | P1   |
 | `PATCH /api/studies/{id}`                        | 이름, 방장 위임                          | 방장      | P1   |
-| `PUT /api/studies/{id}/rules`                    | 규칙 변경 (다음 스터디 일부터)           | 방장      | P1   |
+| `PUT /api/studies/{id}/rules`                    | 규칙 변경 (다음 스터디 일부터, 일부 항목은 다음 기수부터, R2) | 방장      | P1   |
 | `POST /api/studies/{id}/invitations`             | 초대 링크 만들기                         | 방장      | P1   |
 | `GET /api/invitations/{token}`                   | 초대 미리보기 (규칙 요약)                | 공개      | P1   |
 | `POST /api/invitations/{token}/accept`           | 초대 수락                                | 로그인    | P1   |

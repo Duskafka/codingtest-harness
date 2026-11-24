@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-24 OD-07·OD-08 결정 반영 (docs PR, 단계 진행 아님)
+- 한 일: 사람이 정한 OD-07·OD-08을 결정 대장(확정), 스펙(R2·R9·R13, glossary `JudgmentResult`, 5.13, api `PUT /rules`, testing T11, product 기능 표), 단계 문서(S05 만들 것 4·T11·판단 기록, S09 판정 대상, S12 만들 것 6·수용 기준, steps README의 S05 상태 '대기')에 반영
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 사람이 정한 것 (2026-11-24, 세션 선택지, 모두 Recommended): 다음 기수 "마지막 날 다음 날 바로", 기수 밖 날 "판정 대상에서 뺀", 규칙 변경 "일부는 다음 기수부터"(기준 시각·기수 길이·기수당 면제권·벌금), 기준 시각이 바뀌는 경계의 30·18시간 하루 "새 기수 첫날"
+- 다음: 이 PR 병합 → S05 남은 일(규칙 변경 API `PUT /rules`, T11) → S09. docs PR #19와 이 파일 맨 위가 겹쳐서 나중에 병합되는 쪽에서 충돌을 푼다
+- 막힌 것: 없음
+- 참고: 기준 시각이 바뀌는 새 기수 첫날의 시간 계산(`StudyCalendar`)을 어느 단계에서 만들지는 PR 열린 질문. 규칙 버전을 두 적용 시점으로 어떻게 나눠 저장할지는 S05 판단 기록
+- PR: (열면 채움)
+
 ## 2026-11-24 S08 push 처리와 풀이 기록 (세션 1/1)
 - 한 일: 만들 것 1~7. V7 `solve_records`(표 + `parser_version`, CHECK, 부분 UNIQUE 둘), `github.push.PushEventHandler`(삭제·연결 없음·기본 브랜치 아님 → IGNORED), `verification.GithubSolveRecorder`(문제마다 CONFIRMED, 식별 못 한 커밋은 접두사 안 첫 후보로 확인 대기 하나, 인정 시각 = 수신함 `received_at`), 배정 연결 지점 `progress.StudyDayAssignment`(새 CONFIRMED마다 같은 트랜잭션, 구현은 아무것도 안 함), 네 이벤트 처리기 필수(`GithubEventHandlers#requireAllEvents`)
 - 상태: 빌드 통과 (테스트 500개). 구현 전 새 테스트 36개 중 34개 실패 확인. 조건 빼 보기 5개 모두 해당 테스트 실패. spec-reviewer '통과'(코드 지적 없음, PR 본문 항목은 반영)
