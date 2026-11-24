@@ -247,15 +247,17 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 		String deleted = newDeliveryId();
 		String created = newDeliveryId();
 
+		Instant deletedAt = clock.instant();
 		sendSigned("installation", deleted, InstallationPayloads.installation("deleted", installationId, account, account));
+		clock.advance(Duration.ofHours(1));
 		sendSigned("installation", created, InstallationPayloads.installation("created", installationId, account, account));
 
 		assertThat(onlyInboxRow(deleted).status()).isEqualTo("PROCESSED");
 		assertThat(onlyInboxRow(created).status()).isEqualTo("PROCESSED");
 		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("DELETED");
 		assertThat(rows.existingInstallation(installationId).userId()).as("삭제된 설치는 잇지 않는다").isNull();
-		assertThat(rows.existingInstallation(installationId).deletedAt()).as("늦은 created가 삭제 시각을 지우지 않는다")
-			.isEqualTo(clock.instant());
+		assertThat(rows.existingInstallation(installationId).deletedAt()).as("늦은 created가 삭제 시각을 바꾸지 않는다")
+			.isEqualTo(deletedAt);
 	}
 
 	@Test
@@ -264,6 +266,7 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 		TestUser user = rows.newUser("late-after-delete", clock.instant());
 		long installationId = rows.insertLinkedInstallation(user, clock.instant());
 		Account account = Account.user(user.githubId());
+		clock.advance(Duration.ofHours(1));
 		Instant deletedAt = clock.instant();
 		sendSigned("installation", newDeliveryId(),
 				InstallationPayloads.installation("deleted", installationId, account, account));

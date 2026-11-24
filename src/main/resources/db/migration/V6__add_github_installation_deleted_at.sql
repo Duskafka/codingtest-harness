@@ -1,4 +1,5 @@
--- GitHub App 설치가 삭제된 시각 (S07 후속). security.md 9.8 '설치 삭제 뒤 30일이 지나면 계정 값을 지움'(정리 작업은 S15)의 기준이다.
+-- GitHub App 설치가 삭제된 시각 (S07 후속). security.md 9.8 보관 "설치 삭제 뒤 30일(그 뒤 계정 값을 지움)"(docs PR #15로 반영,
+-- 정리 작업은 S15)의 기준이다.
 -- 사람이 정함 (2026-11-24, 세션 선택지): '삭제된 지 30일'의 기준 시각은 "deleted_at 컬럼 (Recommended)".
 -- V5는 master에 들어가서 고치지 않고 새 버전으로 더한다 ("새 후속 PR로 V6 (Recommended)").
 -- updated_at은 삭제 뒤에 늦게 온 installation_repositories removed 웹훅이 바꿀 수 있어 30일 기준으로 쓰지 않는다.
