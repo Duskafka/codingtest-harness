@@ -24,6 +24,17 @@ public interface LinkedRepositoryRepository extends JpaRepository<LinkedReposito
 	Optional<LinkedRepository> findCurrentByUserId(@Param("userId") long userId);
 
 	/**
+	 * push를 받은 레포의 활성 연결 (S08, 5.3 'push 처리 순서' 2). 레포당 하나다 (부분 UNIQUE {@code linked_repositories_active_repo_uk}).
+	 * 정지(SUSPENDED)·끊긴(INACTIVE) 연결은 찾지 않는다.
+	 */
+	@Query("""
+			select l from LinkedRepository l
+			where l.repoId = :repoId
+				and l.status = com.duskafka.studybot.github.persistence.LinkedRepositoryStatus.ACTIVE
+			""")
+	Optional<LinkedRepository> findActiveByRepoId(@Param("repoId") long repoId);
+
+	/**
 	 * 설치의 레포 목록 전체를 봤는데 이 레포가 없다: 목록을 읽기 전에 본 그 연결 행이 아직 활성이면 끊는다. 그사이 그 행이 끊겼거나
 	 * 다른 연결(새 행)이 생겼으면 아무것도 하지 않는다 (PR #14 2차 리뷰 반영).
 	 *
