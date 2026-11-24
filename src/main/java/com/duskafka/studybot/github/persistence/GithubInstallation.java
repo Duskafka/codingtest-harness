@@ -78,6 +78,13 @@ public class GithubInstallation {
 	@Column(name = "updated_at", nullable = false)
 	private Instant updatedAt;
 
+	/**
+	 * DELETED가 된 시각. DELETED일 때만, 그리고 늘 있다 (V6 CHECK). 삭제 뒤 30일이 지나면 계정 값을 지우는 정리 작업(security.md 9.8, S15)의
+	 * 기준이다.
+	 */
+	@Column(name = "deleted_at", insertable = false)
+	private @Nullable Instant deletedAt;
+
 	/** 정지한다. 삭제된 설치는 바꾸지 않는다. 바꿨으면 {@code true}. */
 	public boolean suspend(Instant at) {
 		return changeStatus(InstallationStatus.ACTIVE, InstallationStatus.SUSPENDED, at);
@@ -88,11 +95,12 @@ public class GithubInstallation {
 		return changeStatus(InstallationStatus.SUSPENDED, InstallationStatus.ACTIVE, at);
 	}
 
-	/** 삭제됐다. 되돌리지 않는다. */
+	/** 삭제됐다. 되돌리지 않는다. 삭제 시각을 남긴다. */
 	public void markDeleted(Instant at) {
 		if (this.status != InstallationStatus.DELETED) {
 			this.status = InstallationStatus.DELETED;
 			this.updatedAt = Objects.requireNonNull(at, "at");
+			this.deletedAt = at;
 		}
 	}
 

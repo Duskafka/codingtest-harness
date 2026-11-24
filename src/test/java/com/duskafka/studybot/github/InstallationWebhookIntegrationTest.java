@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.duskafka.studybot.github.GithubConnectionRows.InstallationRow;
 import com.duskafka.studybot.github.GithubConnectionRows.TestUser;
 import com.duskafka.studybot.github.InstallationPayloads.Account;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -125,6 +128,8 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 
 		assertThat(onlyInboxRow(delivery).status()).isEqualTo("PROCESSED");
 		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("DELETED");
+		assertThat(rows.existingInstallation(installationId).deletedAt()).as("9.8 30일 정리의 기준 시각")
+			.isEqualTo(clock.instant());
 		assertThat(rows.link(link).status()).isEqualTo("INACTIVE");
 	}
 
@@ -142,6 +147,7 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 
 		assertThat(onlyInboxRow(suspend).status()).isEqualTo("PROCESSED");
 		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("SUSPENDED");
+		assertThat(rows.existingInstallation(installationId).deletedAt()).isNull();
 		assertThat(rows.link(link).status()).isEqualTo("SUSPENDED");
 
 		String unsuspend = newDeliveryId();
@@ -248,6 +254,30 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 		assertThat(onlyInboxRow(created).status()).isEqualTo("PROCESSED");
 		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("DELETED");
 		assertThat(rows.existingInstallation(installationId).userId()).as("삭제된 설치는 잇지 않는다").isNull();
+		assertThat(rows.existingInstallation(installationId).deletedAt()).as("늦은 created가 삭제 시각을 지우지 않는다")
+			.isEqualTo(clock.instant());
+	}
+
+	@Test
+	@DisplayName("S07: 삭제 뒤에 늦게 온 웹훅(removed, 같은 deleted)은 삭제 시각을 바꾸지 않는다 (9.8 30일 정리의 기준)")
+	void deletedAtStaysWhenLateWebhooksArrive() {
+		TestUser user = rows.newUser("late-after-delete", clock.instant());
+		long installationId = rows.insertLinkedInstallation(user, clock.instant());
+		Account account = Account.user(user.githubId());
+		Instant deletedAt = clock.instant();
+		sendSigned("installation", newDeliveryId(),
+				InstallationPayloads.installation("deleted", installationId, account, account));
+
+		clock.advance(Duration.ofDays(3));
+		sendSigned("installation_repositories", newDeliveryId(),
+				InstallationPayloads.installationRepositories("removed", installationId, account, account, List.of(),
+						List.of(new InstallationPayloads.Repo(GithubConnectionRows.newRepoId(), user.login() + "/gone"))));
+		sendSigned("installation", newDeliveryId(),
+				InstallationPayloads.installation("deleted", installationId, account, account));
+
+		InstallationRow installation = rows.existingInstallation(installationId);
+		assertThat(installation.repositoriesRevision()).as("늦은 removed는 행을 고쳤다").isEqualTo(1);
+		assertThat(installation.deletedAt()).isEqualTo(deletedAt);
 	}
 
 	@Test
@@ -309,6 +339,7 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 		assertThat(onlyInboxRow(deleted).status()).isEqualTo("PROCESSED");
 		InstallationRow installation = rows.existingInstallation(unknown);
 		assertThat(installation.status()).isEqualTo("DELETED");
+		assertThat(installation.deletedAt()).isEqualTo(clock.instant());
 		assertThat(installation.accountId()).isNull();
 		assertThat(installation.accountType()).isNull();
 		assertThat(installation.installedByOwner()).isNull();
