@@ -46,6 +46,16 @@ final class InstallationPayloads {
 		return JSON.writeValueAsBytes(root);
 	}
 
+	/**
+	 * {@code installation.account}가 null인 {@code installation} 이벤트 본문. GitHub 스키마는 이 값에 null을 허용한다
+	 * (rest-api-description의 {@code installation.account}: {@code nullable: true}).
+	 */
+	static byte[] installationWithoutAccount(String action, long installationId, Account sender) {
+		ObjectNode root = (ObjectNode) JSON.readTree(installation(action, installationId, sender, sender));
+		((ObjectNode) root.get("installation")).putNull("account");
+		return JSON.writeValueAsBytes(root);
+	}
+
 	/** {@code installation_repositories} 이벤트 본문. */
 	static byte[] installationRepositories(String action, long installationId, Account account, Account sender,
 			List<Repo> added, List<Repo> removed) {

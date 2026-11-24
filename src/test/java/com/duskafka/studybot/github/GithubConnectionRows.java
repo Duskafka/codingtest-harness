@@ -109,8 +109,8 @@ public final class GithubConnectionRows {
 				""")
 			.param("id", installationId)
 			.query((rs, rowNum) -> new InstallationRow(rs.getLong("installation_id"),
-					(Long) rs.getObject("user_id"), rs.getLong("account_id"), rs.getString("account_login"),
-					rs.getString("account_type"), rs.getBoolean("installed_by_owner"), rs.getString("status"),
+					(Long) rs.getObject("user_id"), (Long) rs.getObject("account_id"), rs.getString("account_login"),
+					rs.getString("account_type"), (Boolean) rs.getObject("installed_by_owner"), rs.getString("status"),
 					rs.getLong("repositories_revision")))
 			.optional();
 	}
@@ -155,8 +155,12 @@ public final class GithubConnectionRows {
 	public record TestUser(long id, long githubId, String login) {
 	}
 
-	public record InstallationRow(long installationId, @Nullable Long userId, long accountId, String accountLogin,
-			String accountType, boolean installedByOwner, String status, long repositoriesRevision) {
+	/**
+	 * 설치 행. 계정 값과 설치자 여부는 created를 아직 못 본 설치(처음 보는 설치의 deleted·suspend·unsuspend로 남긴 행)면 NULL이다.
+	 */
+	public record InstallationRow(long installationId, @Nullable Long userId, @Nullable Long accountId,
+			@Nullable String accountLogin, @Nullable String accountType, @Nullable Boolean installedByOwner, String status,
+			long repositoriesRevision) {
 	}
 
 	public record LinkRow(long id, long userId, long installationId, long repoId, String fullName, String defaultBranch,

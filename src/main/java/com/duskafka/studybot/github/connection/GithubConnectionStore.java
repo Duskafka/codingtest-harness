@@ -34,10 +34,12 @@ class GithubConnectionStore {
 
 	private final Clock clock;
 
+	/** 이 사용자의 지금 설치. 사용자에게 이은 설치에는 계정 값이 늘 있다 (V5의 CHECK, claim은 created를 본 설치만 잇는다). */
 	@Transactional(readOnly = true)
 	Optional<InstallationView> currentInstallation(long userId) {
 		return this.installations.findCurrentByUserId(userId)
-			.map(installation -> new InstallationView(installation.getInstallationId(), installation.getAccountLogin(),
+			.map(installation -> new InstallationView(installation.getInstallationId(),
+					Objects.requireNonNull(installation.getAccountLogin(), "연결된 설치에는 계정 값이 있어요"),
 					installation.getStatus(), installation.getRepositoriesRevision()));
 	}
 

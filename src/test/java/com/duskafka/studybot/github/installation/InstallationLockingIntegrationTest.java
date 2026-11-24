@@ -56,14 +56,14 @@ class InstallationLockingIntegrationTest {
 		try {
 			Future<HandlingResult> deleting = executor.submit(() -> new TransactionTemplate(this.transactionManager)
 				.execute(status -> {
-					HandlingResult result = this.linker.deleted(installationId, null);
+					HandlingResult result = this.linker.deleted(installationId);
 					deleteApplied.countDown();
 					awaitQuietly(commitDelete);
 					return result;
 				}));
 			assertThat(deleteApplied.await(10, TimeUnit.SECONDS)).as("deleted가 먼저 반영됨").isTrue();
 
-			Future<HandlingResult> suspending = executor.submit(() -> this.linker.suspended(installationId, null));
+			Future<HandlingResult> suspending = executor.submit(() -> this.linker.suspended(installationId));
 			await().atMost(Duration.ofSeconds(10)).until(this::someoneWaitsForInstallationLock);
 			commitDelete.countDown();
 

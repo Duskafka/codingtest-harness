@@ -9,22 +9,33 @@
 -- 설치자(sender)의 GitHub ID는 남기지 않는다. 조직 설치나 남이 대신 설치하면 회원이 아닌 사람의 ID라서다 (security.md 9.8 최소 수집).
 -- 행을 고친 시각 updated_at도 표에 없는 컬럼이다 (상태가 언제 바뀌었는지 보려고).
 -- status: ACTIVE, SUSPENDED(installation suspend), DELETED(installation deleted). 삭제해도 행은 남긴다 (계정 삭제 때 지우는 건 S15).
--- 웹훅 전달 순서는 보장되지 않아서, 처음 보는 설치의 deleted·suspend도 그 상태로 행을 남긴다(늦게 온 created가 되살리지 않게).
+-- 웹훅 전달 순서는 보장되지 않아서, 처음 보는 설치의 deleted·suspend·unsuspend도 그 상태로 행을 남긴다(늦게 온 created가 되살리지 않게).
+-- 이때는 설치 ID와 상태만 남기고 계정 값(account_id, account_login, account_type)과 installed_by_owner는 NULL로 둔다.
+-- 그 이벤트의 sender는 정지·삭제한 사람이지 설치한 사람이 아니고, installation.account는 null일 수도 있어서다.
+-- 계정 값과 설치자 여부는 created가 채운다 (5.2 처리 순서 1, PR #14 2차 리뷰 반영). 채울 때 status는 바꾸지 않는다.
+-- NULL인 행은 claim의 조건(installed_by_owner)을 넘지 못해 사용자에게 이어지지 않는다.
 -- repositories_revision은 표에 없는 컬럼이다. installation_repositories removed마다 1 오른다. GitHub에서 레포 목록을 읽은 뒤
 -- 연결을 저장할 때 그사이 빠진 레포가 없는지 이 값으로 본다 (PR #14 리뷰 반영).
 CREATE TABLE studybot.github_installations (
 	installation_id BIGINT      PRIMARY KEY,
 	user_id         BIGINT      REFERENCES studybot.users (id),
-	account_id      BIGINT      NOT NULL,
-	account_login   TEXT        NOT NULL,
-	account_type    TEXT        NOT NULL,
-	installed_by_owner BOOLEAN NOT NULL,
+	account_id      BIGINT,
+	account_login   TEXT,
+	account_type    TEXT,
+	installed_by_owner BOOLEAN,
 	status          TEXT        NOT NULL,
 	repositories_revision BIGINT NOT NULL DEFAULT 0,
 	created_at      TIMESTAMPTZ NOT NULL,
 	updated_at      TIMESTAMPTZ NOT NULL,
 	CONSTRAINT github_installations_status_ck CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED')),
-	CONSTRAINT github_installations_account_type_ck CHECK (account_type <> '')
+	CONSTRAINT github_installations_account_type_ck CHECK (account_type <> ''),
+	-- 계정 값과 설치자 여부는 created가 한꺼번에 채운다: 모두 있거나 모두 NULL이다.
+	CONSTRAINT github_installations_account_ck CHECK (
+		(account_id IS NULL AND account_login IS NULL AND account_type IS NULL AND installed_by_owner IS NULL)
+		OR (account_id IS NOT NULL AND account_login IS NOT NULL AND account_type IS NOT NULL
+			AND installed_by_owner IS NOT NULL)),
+	-- 사용자에게 이은 설치에는 계정 값이 있다 (claim은 계정 주인이 설치한 행만 잇는다).
+	CONSTRAINT github_installations_linked_account_ck CHECK (user_id IS NULL OR account_id IS NOT NULL)
 );
 
 -- 내 설치 찾기, 가입할 때 내 GitHub ID의 설치 찾기

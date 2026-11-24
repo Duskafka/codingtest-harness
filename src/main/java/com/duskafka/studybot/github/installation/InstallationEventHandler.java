@@ -15,8 +15,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * {@code installation} 웹훅 처리기 (S07 만들 것 1·2). created, deleted, suspend, unsuspend를 다루고 나머지 action
- * (예: new_permissions_accepted)은 IGNORED로 둔다. GitHub API를 부르지 않는다. 전달 순서가 바뀌어도 맞게 하려고 모든 action에
- * payload의 계정 값을 넘긴다 ({@link GithubInstallationLinker}).
+ * (예: new_permissions_accepted)은 IGNORED로 둔다. GitHub API를 부르지 않는다. 계정 값과 설치자 여부는 created에서만 읽는다.
+ * 다른 action의 sender는 정지·삭제한 사람이지 설치한 사람이 아니어서다 (5.2 처리 순서 1, {@link GithubInstallationLinker}).
  */
 @Component
 @RequiredArgsConstructor
@@ -38,12 +38,9 @@ class InstallationEventHandler implements GithubEventHandler {
 		return switch (action) {
 			case "created" -> this.linker.created(InstallationPayloads.installationId(payload.installation()),
 					requireAccount(payload));
-			case "deleted" -> this.linker.deleted(InstallationPayloads.installationId(payload.installation()),
-					accountOf(payload));
-			case "suspend" -> this.linker.suspended(InstallationPayloads.installationId(payload.installation()),
-					accountOf(payload));
-			case "unsuspend" -> this.linker.unsuspended(InstallationPayloads.installationId(payload.installation()),
-					accountOf(payload));
+			case "deleted" -> this.linker.deleted(InstallationPayloads.installationId(payload.installation()));
+			case "suspend" -> this.linker.suspended(InstallationPayloads.installationId(payload.installation()));
+			case "unsuspend" -> this.linker.unsuspended(InstallationPayloads.installationId(payload.installation()));
 			default -> HandlingResult.IGNORED;
 		};
 	}
@@ -57,8 +54,8 @@ class InstallationEventHandler implements GithubEventHandler {
 	}
 
 	/**
-	 * payload의 계정 값. 계정 주인이 직접 설치했는지만 남기고 설치자의 GitHub ID는 남기지 않는다. sender가 없으면 설치자를 알 수 없어
-	 * 주인이 설치하지 않은 것으로 본다 (ghost 사용자도 계정과 다르다). 계정 값이 모자라면 비운다.
+	 * created payload의 계정 값. 계정 주인이 직접 설치했는지만 남기고 설치자의 GitHub ID는 남기지 않는다. sender가 없으면 설치자를
+	 * 알 수 없어 주인이 설치하지 않은 것으로 본다 (ghost 사용자도 계정과 다르다). 계정 값이 모자라면 비운다.
 	 */
 	private static @Nullable InstallationAccount accountOf(InstallationEvent payload) {
 		Account account = payload.installation() != null ? payload.installation().account() : null;

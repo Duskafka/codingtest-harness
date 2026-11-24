@@ -271,9 +271,11 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("ACTIVE");
 	}
 
+	// 이 PR에서 처음 쓴 테스트를 2차 리뷰 반영으로 고쳤다(CodeRabbit: 정지·삭제 이벤트의 sender는 설치자가 아님).
+	// 설치자는 created에서만 확인한다(5.2 처리 순서 1). 처음 보는 설치의 unsuspend는 상태만 남기고 잇지 않는다.
 	@Test
-	@DisplayName("S07: 처음 보는 설치의 unsuspend는 활성 설치로 남고, 연결 조건을 넘으면 사용자에게 잇는다")
-	void unknownUnsuspendIsRecordedActiveAndLinked() {
+	@DisplayName("S07: 처음 보는 설치의 unsuspend는 활성 설치로 남고, 사용자에게는 created가 온 뒤에 잇는다")
+	void unknownUnsuspendIsRecordedActiveAndLinkedAfterCreated() {
 		TestUser user = rows.newUser("early-unsuspend", clock.instant());
 		long installationId = GithubConnectionRows.newInstallationId();
 		Account account = Account.user(user.githubId());
@@ -284,12 +286,19 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 
 		assertThat(onlyInboxRow(delivery).status()).isEqualTo("PROCESSED");
 		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("ACTIVE");
+		assertThat(rows.existingInstallation(installationId).userId()).as("unsuspend의 sender는 설치자 증거가 아니다").isNull();
+
+		sendSigned("installation", newDeliveryId(),
+				InstallationPayloads.installation("created", installationId, account, account));
+
+		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("ACTIVE");
 		assertThat(rows.existingInstallation(installationId).userId()).isEqualTo(user.id());
 	}
 
+	// 이 PR에서 처음 쓴 테스트를 2차 리뷰 반영으로 고쳤다. 처음 보는 설치의 deleted는 설치 ID와 상태만 남긴다.
 	@Test
-	@DisplayName("S07: 처음 보는 설치의 deleted는 삭제 이력으로 남는다 (조직·남이 설치한 것도 연결 조건은 같다)")
-	void unknownDeletedIsRecordedWithLinkingRules() {
+	@DisplayName("S07: 처음 보는 설치의 deleted는 삭제 이력으로 남고, 계정·설치자는 created가 올 때까지 비워 둔다")
+	void unknownDeletedIsRecordedWithoutInstaller() {
 		long unknown = GithubConnectionRows.newInstallationId();
 		long owner = GithubConnectionRows.newGithubId();
 		String deleted = newDeliveryId();
@@ -298,9 +307,70 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 				Account.organization(owner), Account.user(GithubConnectionRows.newGithubId())));
 
 		assertThat(onlyInboxRow(deleted).status()).isEqualTo("PROCESSED");
-		assertThat(rows.existingInstallation(unknown).status()).isEqualTo("DELETED");
-		assertThat(rows.existingInstallation(unknown).accountType()).isEqualTo("Organization");
-		assertThat(rows.existingInstallation(unknown).installedByOwner()).isFalse();
+		InstallationRow installation = rows.existingInstallation(unknown);
+		assertThat(installation.status()).isEqualTo("DELETED");
+		assertThat(installation.accountId()).isNull();
+		assertThat(installation.accountType()).isNull();
+		assertThat(installation.installedByOwner()).isNull();
+	}
+
+	@Test
+	@DisplayName("S07: 다른 사람(App 관리자)의 suspend가 created보다 먼저 와도, 주인이 설치했으면 created 뒤에 주인에게 잇는다")
+	void suspendBySomeoneElseBeforeCreatedStillLinksOwner() {
+		TestUser owner = rows.newUser("suspended-by-admin", clock.instant());
+		long installationId = GithubConnectionRows.newInstallationId();
+		Account account = Account.user(owner.githubId());
+		Account admin = Account.user(GithubConnectionRows.newGithubId());
+
+		sendSigned("installation", newDeliveryId(),
+				InstallationPayloads.installation("suspend", installationId, account, admin));
+		sendSigned("installation", newDeliveryId(),
+				InstallationPayloads.installation("created", installationId, account, account));
+
+		InstallationRow installation = rows.existingInstallation(installationId);
+		assertThat(installation.status()).as("먼저 온 정지 상태는 그대로").isEqualTo("SUSPENDED");
+		assertThat(installation.installedByOwner()).isTrue();
+		assertThat(installation.userId()).isEqualTo(owner.id());
+	}
+
+	@Test
+	@DisplayName("S07: 주인의 suspend가 created보다 먼저 와도, created의 설치자가 주인이 아니면 잇지 않는다")
+	void suspendByOwnerBeforeCreatedBySomeoneElseIsNotLinked() {
+		TestUser owner = rows.newUser("suspended-by-owner", clock.instant());
+		long installationId = GithubConnectionRows.newInstallationId();
+		Account account = Account.user(owner.githubId());
+		Account someoneElse = Account.user(GithubConnectionRows.newGithubId());
+
+		sendSigned("installation", newDeliveryId(),
+				InstallationPayloads.installation("suspend", installationId, account, account));
+		sendSigned("installation", newDeliveryId(),
+				InstallationPayloads.installation("created", installationId, account, someoneElse));
+
+		InstallationRow installation = rows.existingInstallation(installationId);
+		assertThat(installation.status()).isEqualTo("SUSPENDED");
+		assertThat(installation.installedByOwner()).isFalse();
+		assertThat(installation.userId()).isNull();
+	}
+
+	@Test
+	@DisplayName("S07: installation.account가 없는 deleted가 created보다 먼저 와도 삭제 이력이 남고, 늦은 created가 되살리지 않는다")
+	void deletedWithoutAccountBeforeCreatedStaysDeleted() {
+		TestUser user = rows.newUser("deleted-no-account", clock.instant());
+		long installationId = GithubConnectionRows.newInstallationId();
+		Account account = Account.user(user.githubId());
+		String deleted = newDeliveryId();
+		String created = newDeliveryId();
+
+		sendSigned("installation", deleted,
+				InstallationPayloads.installationWithoutAccount("deleted", installationId, account));
+		sendSigned("installation", created, InstallationPayloads.installation("created", installationId, account, account));
+
+		assertThat(onlyInboxRow(deleted).status()).isEqualTo("PROCESSED");
+		assertThat(onlyInboxRow(created).status()).isEqualTo("PROCESSED");
+		InstallationRow installation = rows.existingInstallation(installationId);
+		assertThat(installation.status()).isEqualTo("DELETED");
+		assertThat(installation.accountId()).as("계정 값은 created에서 채운다").isEqualTo(user.githubId());
+		assertThat(installation.userId()).as("삭제된 설치는 잇지 않는다").isNull();
 	}
 
 }
