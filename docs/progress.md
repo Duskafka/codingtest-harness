@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-24 S05 남은 일: 규칙 변경 API와 T11 (세션 2)
+- 한 일: 만들 것 4. `PUT /api/studies/{id}/rules`(`StudyRuleService`), 버전에 걸친 스터디 일 계산 `common.time.RuleVersionCalendar`(기준 시각이 바뀌는 새 기수 첫날 18~30시간), 상세 응답 `upcomingRules`, `StudyTimeline.currentRule`(버전이 둘이면 예외)을 날짜로 고르는 방식으로. 테이블 변경 없음
+- 상태: 빌드 통과 (테스트 529개). 구현 전 새 테스트 29개 중 28개 실패 확인. 조건 빼 보기 5개 모두 해당 테스트 실패
+- 사람이 정한 것 (2026-11-24, 세션 선택지, 모두 Recommended): 날 계산 "S05에서 스터디 일까지", 1기 시작 전 변경 "모두 1기 시작일부터", 상세 "현재 규칙 + 예정된 변경", 요청 "규칙 전체를 받음"
+- 다음: PR 검토 → 병합 → S09(선행 S02·S05·S08 완료). S09 전에 PR #20 열린 질문 1(다음 기수 행 생성 시점)·3(유예가 바뀐 날의 유예)을 정하면 좋음
+- 막힌 것: 없음
+- 참고: 유예·알림·판정 시각은 버전에 걸쳐 계산하지 않는다(열린 질문 3). S09·S12는 스터디 일을 `RuleVersionCalendar`로, 그날의 유예 등은 그날 규칙의 `StudyCalendar`로 센다. 세션 재시작 뒤 dockerd가 죽어 있으면 `CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`
+- PR: (열면 채움)
+
 ## 2026-11-24 OD-07·OD-08 결정 반영 (docs PR, 단계 진행 아님)
 - 한 일: 사람이 정한 OD-07·OD-08을 결정 대장(확정), 스펙(R2·R9·R13, glossary `JudgmentResult`, 5.13, api `PUT /rules`, testing T11, product 기능 표), 단계 문서(S05 만들 것 4·T11·판단 기록, S09 판정 대상, S12 만들 것 6·수용 기준, steps README의 S05 상태 '대기')에 반영
 - 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
