@@ -72,3 +72,12 @@ studybot:
       previous-secret: ${GITHUB_WEBHOOK_SECRET_PREVIOUS:}
       # 이보다 큰 본문은 413으로 거절한다 (5.3 '주의할 것' "예: 5MB"). Nginx client_max_body_size도 같이 건다 (S17).
       max-body-size: 5MB
+    # GitHub App (S07, processes 5.2). github.api.GithubAppProperties
+    app:
+      # App JWT의 iss. GitHub는 client ID를 권한다. 로그인용 client ID(GITHUB_APP_CLIENT_ID)와 같은 App이라 같은 값이다 (결정 제안서 005).
+      client-id: ${GITHUB_APP_CLIENT_ID}
+      # 설치 주소 https://github.com/apps/{slug}/installations/new 의 App 이름. 비밀값이 아니다. 없으면 기동이 실패한다.
+      slug: ${GITHUB_APP_SLUG}
+      # private key는 서버 파일 경로로만 받는다 (infra.md 9.6: 권한 400, 읽기 전용 마운트. 사람이 정함 2026-11-24 "파일만").
+      # 키 내용을 환경 변수로 받지 않는다. 없으면 기동이 실패한다. 키 내용은 로그에 찍지 않는다.
+      private-key-path: ${GITHUB_APP_PRIVATE_KEY_PATH:}

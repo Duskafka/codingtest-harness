@@ -1,6 +1,7 @@
 package com.duskafka.studybot.auth.persistence;
 
 import java.time.Instant;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -25,5 +26,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 			""", nativeQuery = true)
 	long upsertByGithubId(@Param("githubId") long githubId, @Param("githubLogin") String githubLogin,
 			@Param("avatarUrl") @Nullable String avatarUrl, @Param("createdAt") Instant createdAt);
+
+	/** GitHub ID로 탈퇴하지 않은 사용자의 ID를 찾는다. */
+	@Query("select u.id from User u where u.githubId = :githubId and u.deletedAt is null")
+	Optional<Long> findActiveIdByGithubId(@Param("githubId") long githubId);
 
 }
