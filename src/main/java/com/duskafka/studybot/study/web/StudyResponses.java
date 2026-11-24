@@ -27,7 +27,7 @@ final class StudyResponses {
 	}
 
 	/**
-	 * 스터디 상세 ({@code GET /api/studies/{id}}, 만들기·{@code PATCH} 응답).
+	 * 스터디 상세 ({@code GET /api/studies/{id}}, 만들기·{@code PATCH}·{@code PUT /rules} 응답).
 	 *
 	 * @param id 스터디 ID
 	 * @param name 이름
@@ -39,17 +39,21 @@ final class StudyResponses {
 	 * @param memberCount 탈퇴하지 않은 멤버 수 (방장 포함)
 	 * @param capacity 정원
 	 * @param rule 지금 적용되는 규칙 (시작 전이면 첫 버전)
+	 * @param upcomingRules 아직 적용되지 않은 예정 버전. 적용 시작일 순서이고 없으면 빈 배열이다. 각 버전은 그날부터의 규칙 전체다
+	 * (R2: 다음 스터디 일부터 / 다음 기수부터, 사람이 정함 2026-11-24 "현재 규칙 + 예정된 변경")
 	 * @param season 지금 기수 (시작 전이면 1기)
 	 */
 	record StudyDetailResponse(long id, String name, StudyMode mode, String timezone, StudyStatus status,
 			MembershipRole myRole, long ownerUserId, long memberCount, int capacity, RuleResponse rule,
-			SeasonResponse season) {
+			List<RuleResponse> upcomingRules, SeasonResponse season) {
 
 		static StudyDetailResponse from(StudyDetail detail) {
 			var study = detail.study();
 			return new StudyDetailResponse(study.getId(), study.getName(), study.getMode(), study.zoneId().getId(),
 					study.getStatus(), detail.myRole(), study.getOwnerId(), detail.memberCount(), StudyLimits.CAPACITY,
-					RuleResponse.from(detail.currentRule()), SeasonResponse.from(detail.currentSeason()));
+					RuleResponse.from(detail.currentRule()),
+					detail.upcomingRules().stream().map(RuleResponse::from).toList(),
+					SeasonResponse.from(detail.currentSeason()));
 		}
 
 	}

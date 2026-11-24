@@ -23,7 +23,8 @@ import java.util.Objects;
  * <li>날짜 계산은 스터디 시간대의 {@link ZonedDateTime}으로 한다 (5.10).</li>
  * </ul>
  *
- * <p>규칙 버전이 바뀌는 날의 경계(OD-08)는 다루지 않는다. 지금은 그날 적용되는 시간 규칙 하나로만 계산한다.
+ * <p>시간 규칙 하나로만 계산한다. 규칙 버전이 여럿이면 스터디 일은 {@link RuleVersionCalendar}로 센다 (기준 시각이 바뀌는 새 기수
+ * 첫날, R2·OD-08). 유예·알림·판정 시각은 그날의 규칙으로 만든 이 달력으로 센다 (유예가 바뀐 날은 PR #20 열린 질문 3).
  */
 public final class StudyCalendar {
 
@@ -109,7 +110,7 @@ public final class StudyCalendar {
 	/**
 	 * 기수의 마지막 스터디 일(포함). 시작일부터 기수 길이만큼 운영한다 (R13). 28일이면 시작일 + 27일.
 	 * 기수 경계일 계산은 여기 한 곳에서 한다 (5.13 '주의할 것'). 날짜만 세므로 시간 규칙과 관계없다.
-	 * 다음 기수를 언제 시작할지는 OD-07이라 아직 없다.
+	 * 다음 기수는 마지막 날 다음 날 바로 시작한다 (R13, OD-07). 그래서 다음 기수 시작일은 이 값 + 1이다.
 	 */
 	public static LocalDate seasonEndDay(LocalDate startDay, int lengthDays) {
 		Objects.requireNonNull(startDay, "startDay");

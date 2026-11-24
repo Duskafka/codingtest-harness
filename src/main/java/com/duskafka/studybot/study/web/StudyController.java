@@ -4,6 +4,7 @@ import com.duskafka.studybot.auth.LoginUser;
 import com.duskafka.studybot.study.service.MembershipService;
 import com.duskafka.studybot.study.service.StudyCreationService;
 import com.duskafka.studybot.study.service.StudyQueryService;
+import com.duskafka.studybot.study.service.StudyRuleService;
 import com.duskafka.studybot.study.service.StudySettingsService;
 import com.duskafka.studybot.study.web.StudyResponses.StudyDetailResponse;
 import com.duskafka.studybot.study.web.StudyResponses.StudySummaryResponse;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,8 +30,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 스터디 API (api.md 4.4, S05 만들 것 1·2·3·7). 권한 검사는 서비스가 {@code StudyAccess}로 한다.
- * 규칙 변경 {@code PUT /api/studies/{id}/rules}는 OD-08이 정해지기 전에는 만들지 않는다 (S05 만들 것 4).
+ * 스터디 API (api.md 4.4, S05 만들 것 1·2·3·4·7). 권한 검사는 서비스가 {@code StudyAccess}로 한다.
  */
 @RestController
 @RequestMapping("/api/studies")
@@ -46,6 +47,8 @@ class StudyController {
 	private final StudySettingsService settingsService;
 
 	private final MembershipService membershipService;
+
+	private final StudyRuleService ruleService;
 
 	/** 스터디 만들기 (권한: 로그인). 201과 스터디 상세. */
 	@PostMapping
@@ -76,6 +79,17 @@ class StudyController {
 	StudyDetailResponse update(@AuthenticationPrincipal LoginUser loginUser, @PathVariable long studyId,
 			@Valid @RequestBody UpdateStudyRequest request) {
 		this.settingsService.update(studyId, loginUser.userId(), request.name(), request.ownerUserId());
+		return StudyDetailResponse.from(this.queryService.detail(studyId, loginUser.userId()));
+	}
+
+	/**
+	 * 규칙 변경 (권한: 방장). 다음 스터디 일 항목은 다음 스터디 일부터, 다음 기수 항목은 다음 기수부터 적용한다 (R2, OD-08).
+	 * 바뀐 스터디 상세를 돌려준다 (예정된 변경은 {@code upcomingRules}).
+	 */
+	@PutMapping("/{studyId}/rules")
+	StudyDetailResponse changeRules(@AuthenticationPrincipal LoginUser loginUser, @PathVariable long studyId,
+			@Valid @RequestBody UpdateRulesRequest request) {
+		this.ruleService.change(studyId, loginUser.userId(), request.toSettings());
 		return StudyDetailResponse.from(this.queryService.detail(studyId, loginUser.userId()));
 	}
 
