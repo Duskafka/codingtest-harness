@@ -115,7 +115,7 @@ public class GithubConnectionService {
 		long installationId = installation.get().installationId();
 		RepositoryPage found = listRepositories(installationId, page + 1, size);
 		if (link != null) {
-			link = followLinkedRepository(user.userId(), link, page, found);
+			link = followLinkedRepository(user.userId(), installationId, link, page, found);
 		}
 		if (link == null && found.totalCount() == 1 && found.repositories().size() == 1) {
 			link = autoLink(user.userId(), installationId, installation.get().repositoriesRevision(),
@@ -136,19 +136,21 @@ public class GithubConnectionService {
 	 * <li>연결한 레포가 목록에 이름·기본 브랜치가 바뀌어 나오면 저장한 값을 고친다 ({@code repo_id}로 같은 레포).</li>
 	 * <li>목록 전체가 이 페이지에 다 보이는데(첫 페이지, 개수 = 전체 수) 연결한 레포가 없으면 연결을 끊는다. '모든 레포'→'고른 레포'로
 	 * 바꾸면 GitHub가 빠진 레포를 알려 주지 않기 때문이다 (사람이 정함, 2026-11-23 "목록이 한 페이지로 다 보일 때만 끊음").
-	 * 목록이 여러 페이지면 판단하지 않는다.</li>
+	 * 목록이 여러 페이지면 판단하지 않는다. 이 설치의 목록이므로 이 설치의 연결만 판단하고, 목록을 읽기 전에 본 그 연결 행만 끊는다
+	 * (PR #14 2차 리뷰 반영).</li>
 	 * <li>GitHub를 기다리는 사이 연결이 바뀌었으면 옛 연결을 쓰지 않고 지금 연결을 다시 읽는다 (PR #14 리뷰 반영).</li>
 	 * </ul>
 	 */
-	private @Nullable LinkView followLinkedRepository(long userId, LinkView link, int page, RepositoryPage found) {
+	private @Nullable LinkView followLinkedRepository(long userId, long installationId, LinkView link, int page,
+			RepositoryPage found) {
 		for (InstalledRepository repository : found.repositories()) {
 			if (repository.id() == link.repoId()) {
 				return this.store.refresh(userId, repository).or(() -> this.store.currentLink(userId)).orElse(null);
 			}
 		}
 		boolean complete = page == 0 && found.repositories().size() == found.totalCount();
-		if (complete && link.status() == LinkedRepositoryStatus.ACTIVE) {
-			return this.store.deactivateMissing(userId, link.repoId()).orElse(null);
+		if (complete && link.status() == LinkedRepositoryStatus.ACTIVE && link.installationId() == installationId) {
+			return this.store.deactivateMissing(userId, link).orElse(null);
 		}
 		return link;
 	}

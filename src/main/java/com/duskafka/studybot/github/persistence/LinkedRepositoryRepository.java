@@ -24,19 +24,23 @@ public interface LinkedRepositoryRepository extends JpaRepository<LinkedReposito
 	Optional<LinkedRepository> findCurrentByUserId(@Param("userId") long userId);
 
 	/**
-	 * 설치의 레포 목록 전체를 봤는데 이 레포가 없다: 이 사용자의 그 레포 활성 연결을 끊는다. 그사이 다른 레포로 바뀌었거나 이미
-	 * 끊겼으면 아무것도 하지 않는다.
+	 * 설치의 레포 목록 전체를 봤는데 이 레포가 없다: 목록을 읽기 전에 본 그 연결 행이 아직 활성이면 끊는다. 그사이 그 행이 끊겼거나
+	 * 다른 연결(새 행)이 생겼으면 아무것도 하지 않는다 (PR #14 2차 리뷰 반영).
 	 *
 	 * 요청 내내 열려 있는 EntityManager(open-in-view)에 옛 상태의 엔티티가 남지 않게 비운다.
 	 *
+	 * @param linkId 목록을 읽기 전에 본 연결 행
+	 * @param installationId 목록을 읽은 설치
 	 * @return 끊었으면 1
 	 */
 	@Modifying(flushAutomatically = true, clearAutomatically = true)
 	@Query(value = """
 			update studybot.linked_repositories set status = 'INACTIVE', updated_at = :now
-			where user_id = :userId and repo_id = :repoId and status = 'ACTIVE'
+			where id = :linkId and user_id = :userId and installation_id = :installationId and repo_id = :repoId
+				and status = 'ACTIVE'
 			""", nativeQuery = true)
-	int deactivateActive(@Param("userId") long userId, @Param("repoId") long repoId, @Param("now") Instant now);
+	int deactivateActive(@Param("linkId") long linkId, @Param("userId") long userId,
+			@Param("installationId") long installationId, @Param("repoId") long repoId, @Param("now") Instant now);
 
 	/** 설치가 삭제됐다: 그 설치의 연결을 모두 끊는다. */
 	@Modifying(flushAutomatically = true)

@@ -6,6 +6,7 @@ import com.duskafka.studybot.github.GithubApiStub.Repo;
 import com.duskafka.studybot.github.GithubConnectionRows.LinkRow;
 import com.duskafka.studybot.github.GithubConnectionRows.TestUser;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -416,6 +417,78 @@ class GithubRepositoryLinkIntegrationTest extends GithubConnectionTestSupport {
 
 		assertThat(body.get("linkedRepository").isNull()).isTrue();
 		assertThat(rows.linksOf(user)).isEmpty();
+	}
+
+	@Test
+	@DisplayName("S07: GitHub를 기다리는 사이 연결이 새 행으로 바뀌면, 목록에 그 레포가 없어도 새 연결은 끊지 않는다 (CodeRabbit 2차 리뷰)")
+	void linkReplacedDuringListIsNotDeactivated() {
+		TestUser user = newUser("replaced-meanwhile");
+		long installationId = rows.insertLinkedInstallation(user, clock.instant());
+		long repoId = GithubConnectionRows.newRepoId();
+		long observed = rows.insertLink(user, installationId, repoId, user.login() + "/algo", "ACTIVE", clock.instant());
+		stubInstallation(installationId, Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/a"),
+				Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/b"));
+		AtomicLong replacement = new AtomicLong();
+		GithubApiStub.beforeNextRepositoriesResponse(() -> {
+			changeLinkStatus(observed, "INACTIVE");
+			replacement.set(rows.insertLink(user, installationId, repoId, user.login() + "/algo", "ACTIVE",
+					clock.instant()));
+		});
+
+		JsonNode body = json(repositories(user));
+
+		assertThat(rows.link(replacement.get()).status()).as("목록을 읽기 전에 본 연결 행만 끊는다").isEqualTo("ACTIVE");
+		assertThat(body.get("linkedRepository").get("repoId").asLong()).isEqualTo(repoId);
+	}
+
+	@Test
+	@DisplayName("S07: 지금 설치의 목록으로는 다른 설치의 연결을 끊지 않는다 (CodeRabbit 2차 리뷰)")
+	void linkOfAnotherInstallationIsNotJudgedByThisList() {
+		TestUser user = newUser("other-installation");
+		long older = GithubConnectionRows.newInstallationId();
+		rows.insertInstallation(older, user.id(), user.githubId(), "User", user.githubId(), "ACTIVE",
+				clock.instant().minusSeconds(3600));
+		long current = rows.insertLinkedInstallation(user, clock.instant());
+		long repoId = GithubConnectionRows.newRepoId();
+		long link = rows.insertLink(user, older, repoId, user.login() + "/algo", "ACTIVE", clock.instant());
+		stubInstallation(current, Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/a"),
+				Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/b"));
+
+		JsonNode body = json(repositories(user));
+
+		assertThat(rows.link(link).status()).isEqualTo("ACTIVE");
+		assertThat(body.get("linkedRepository").get("repoId").asLong()).isEqualTo(repoId);
+	}
+
+	@Test
+	@DisplayName("S07: GitHub를 기다리는 사이 연결이 다른 레포로 바뀌면 옛 연결이 아니라 지금 연결을 보여 준다 (CodeRabbit 리뷰)")
+	void linkChangedDuringListIsReadAgain() {
+		TestUser user = newUser("changed-meanwhile");
+		long installationId = rows.insertLinkedInstallation(user, clock.instant());
+		long before = GithubConnectionRows.newRepoId();
+		long after = GithubConnectionRows.newRepoId();
+		long observed = rows.insertLink(user, installationId, before, user.login() + "/before", "ACTIVE",
+				clock.instant());
+		stubInstallation(installationId, Repo.of(before, user.login() + "/before"),
+				Repo.of(GithubConnectionRows.newRepoId(), user.login() + "/other"));
+		GithubApiStub.beforeNextRepositoriesResponse(() -> {
+			changeLinkStatus(observed, "INACTIVE");
+			rows.insertLink(user, installationId, after, user.login() + "/after", "ACTIVE", clock.instant());
+		});
+
+		JsonNode body = json(repositories(user));
+
+		assertThat(body.get("linkedRepository").get("repoId").asLong()).isEqualTo(after);
+		assertThat(body.get("repositories").get("content")).extracting(node -> node.get("linked").asBoolean())
+			.containsOnly(false);
+	}
+
+	/** 다른 요청이 연결을 바꾼 것처럼 다른 DB 연결에서 바꾸고 커밋한다. */
+	private void changeLinkStatus(long linkId, String status) {
+		jdbc.sql("update studybot.linked_repositories set status = :status where id = :id")
+			.param("status", status)
+			.param("id", linkId)
+			.update();
 	}
 
 	/** 웹훅이 설치를 바꾼 것처럼 다른 연결에서 바꾸고 커밋한다. */

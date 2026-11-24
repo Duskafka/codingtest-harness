@@ -21,11 +21,18 @@ public final class ConnectionViews {
 			long repositoriesRevision) {
 	}
 
-	/** 내 풀이 레포 연결. */
-	public record LinkView(long repoId, String fullName, String defaultBranch, LinkedRepositoryStatus status) {
+	/**
+	 * 내 풀이 레포 연결.
+	 *
+	 * @param id 연결 행 ID. 웹 응답에는 싣지 않는다. 목록을 읽기 전에 본 연결과 같은 행인지 확인할 때 쓴다
+	 * @param installationId 이 연결의 설치. 웹 응답에는 싣지 않는다
+	 */
+	public record LinkView(long id, long installationId, long repoId, String fullName, String defaultBranch,
+			LinkedRepositoryStatus status) {
 
 		static LinkView of(LinkedRepository link) {
-			return new LinkView(link.getRepoId(), link.getFullName(), link.getDefaultBranch(), link.getStatus());
+			return new LinkView(link.getId(), link.getInstallationId(), link.getRepoId(), link.getFullName(),
+					link.getDefaultBranch(), link.getStatus());
 		}
 
 	}

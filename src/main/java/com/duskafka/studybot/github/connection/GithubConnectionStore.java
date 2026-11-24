@@ -106,12 +106,16 @@ class GithubConnectionStore {
 	}
 
 	/**
-	 * 설치의 레포 목록 전체를 봤는데 연결한 레포가 없다('모든 레포'→'고른 레포'로 바꾼 뒤 등): 그 연결을 끊고 지금 연결을 돌려준다
-	 * (사람이 정함, 2026-11-23 "목록이 한 페이지로 다 보일 때만 끊음").
+	 * 설치의 레포 목록 전체를 봤는데 연결한 레포가 없다('모든 레포'→'고른 레포'로 바꾼 뒤 등): 목록을 읽기 전에 본 그 연결 행을 끊고
+	 * 지금 연결을 돌려준다 (사람이 정함, 2026-11-23 "목록이 한 페이지로 다 보일 때만 끊음"). 그사이 그 행이 끊기고 새 연결이
+	 * 생겼으면 새 연결은 건드리지 않는다 (PR #14 2차 리뷰 반영).
+	 *
+	 * @param observed 목록을 읽기 전에 본 연결
 	 */
 	@Transactional
-	Optional<LinkView> deactivateMissing(long userId, long repoId) {
-		this.links.deactivateActive(userId, repoId, this.clock.instant());
+	Optional<LinkView> deactivateMissing(long userId, LinkView observed) {
+		this.links.deactivateActive(observed.id(), userId, observed.installationId(), observed.repoId(),
+				this.clock.instant());
 		return this.links.findCurrentByUserId(userId).map(LinkView::of);
 	}
 
