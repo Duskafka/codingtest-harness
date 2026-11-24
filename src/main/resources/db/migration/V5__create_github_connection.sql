@@ -17,6 +17,8 @@
 -- NULL인 행은 claim의 조건(installed_by_owner)을 넘지 못해 사용자에게 이어지지 않는다.
 -- repositories_revision은 표에 없는 컬럼이다. installation_repositories removed마다 1 오른다. GitHub에서 레포 목록을 읽은 뒤
 -- 연결을 저장할 때 그사이 빠진 레포가 없는지 이 값으로 본다 (PR #14 리뷰 반영).
+-- deleted_at은 DELETED가 된 시각이다(DELETED일 때만 있다, CHECK). 삭제 뒤 30일이 지나면 계정 값을 지우는 정리 작업(security.md 9.8,
+-- S15)의 기준이다. updated_at은 삭제 뒤에도 늦게 온 웹훅이 바꿀 수 있어 기준으로 쓰지 않는다 (사람이 정함 2026-11-24 "deleted_at 컬럼").
 CREATE TABLE studybot.github_installations (
 	installation_id BIGINT      PRIMARY KEY,
 	user_id         BIGINT      REFERENCES studybot.users (id),
@@ -28,7 +30,10 @@ CREATE TABLE studybot.github_installations (
 	repositories_revision BIGINT NOT NULL DEFAULT 0,
 	created_at      TIMESTAMPTZ NOT NULL,
 	updated_at      TIMESTAMPTZ NOT NULL,
+	deleted_at      TIMESTAMPTZ,
 	CONSTRAINT github_installations_status_ck CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED')),
+	-- 삭제는 되돌리지 않는다. 삭제 시각은 DELETED일 때만, 늘 있다.
+	CONSTRAINT github_installations_deleted_at_ck CHECK ((status = 'DELETED') = (deleted_at IS NOT NULL)),
 	CONSTRAINT github_installations_account_type_ck CHECK (account_type <> ''),
 	-- 계정 값과 설치자 여부는 created가 한꺼번에 채운다: 모두 있거나 모두 NULL이다.
 	CONSTRAINT github_installations_account_ck CHECK (

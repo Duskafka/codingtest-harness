@@ -125,6 +125,8 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 
 		assertThat(onlyInboxRow(delivery).status()).isEqualTo("PROCESSED");
 		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("DELETED");
+		assertThat(rows.existingInstallation(installationId).deletedAt()).as("9.8 30일 정리의 기준 시각")
+			.isEqualTo(clock.instant());
 		assertThat(rows.link(link).status()).isEqualTo("INACTIVE");
 	}
 
@@ -142,6 +144,7 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 
 		assertThat(onlyInboxRow(suspend).status()).isEqualTo("PROCESSED");
 		assertThat(rows.existingInstallation(installationId).status()).isEqualTo("SUSPENDED");
+		assertThat(rows.existingInstallation(installationId).deletedAt()).isNull();
 		assertThat(rows.link(link).status()).isEqualTo("SUSPENDED");
 
 		String unsuspend = newDeliveryId();
@@ -309,6 +312,7 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 		assertThat(onlyInboxRow(deleted).status()).isEqualTo("PROCESSED");
 		InstallationRow installation = rows.existingInstallation(unknown);
 		assertThat(installation.status()).isEqualTo("DELETED");
+		assertThat(installation.deletedAt()).isEqualTo(clock.instant());
 		assertThat(installation.accountId()).isNull();
 		assertThat(installation.accountType()).isNull();
 		assertThat(installation.installedByOwner()).isNull();

@@ -55,14 +55,18 @@ public final class GithubConnectionRows {
 		return new TestUser(id, githubId, login + "-" + githubId);
 	}
 
-	/** 설치 행을 바로 넣는다 (웹훅을 거치지 않고 상태를 준비할 때). 설치자가 계정 주인인지는 {@code senderId == accountId}로 정한다. */
+	/**
+	 * 설치 행을 바로 넣는다 (웹훅을 거치지 않고 상태를 준비할 때). 설치자가 계정 주인인지는 {@code senderId == accountId}로 정한다.
+	 * DELETED면 삭제 시각({@code deleted_at})도 {@code createdAt}으로 채운다 (V5 CHECK).
+	 */
 	public void insertInstallation(long installationId, @Nullable Long userId, long accountId, String accountType,
 			long senderId, String status, Instant createdAt) {
 		jdbc.sql("""
 				insert into studybot.github_installations
 					(installation_id, user_id, account_id, account_login, account_type, installed_by_owner, status, created_at,
-					updated_at)
-				values (:installationId, :userId, :accountId, :login, :accountType, :byOwner, :status, :createdAt, :createdAt)
+					updated_at, deleted_at)
+				values (:installationId, :userId, :accountId, :login, :accountType, :byOwner, :status, :createdAt, :createdAt,
+					case when :status = 'DELETED' then cast(:createdAt as timestamptz) end)
 				""")
 			.param("installationId", installationId)
 			.param("userId", userId)
@@ -104,14 +108,15 @@ public final class GithubConnectionRows {
 	public Optional<InstallationRow> installation(long installationId) {
 		return jdbc.sql("""
 				select installation_id, user_id, account_id, account_login, account_type, installed_by_owner, status,
-					repositories_revision
+					repositories_revision, deleted_at
 				from studybot.github_installations where installation_id = :id
 				""")
 			.param("id", installationId)
 			.query((rs, rowNum) -> new InstallationRow(rs.getLong("installation_id"),
 					(Long) rs.getObject("user_id"), (Long) rs.getObject("account_id"), rs.getString("account_login"),
 					rs.getString("account_type"), (Boolean) rs.getObject("installed_by_owner"), rs.getString("status"),
-					rs.getLong("repositories_revision")))
+					rs.getLong("repositories_revision"),
+					rs.getTimestamp("deleted_at") == null ? null : rs.getTimestamp("deleted_at").toInstant()))
 			.optional();
 	}
 
@@ -157,10 +162,11 @@ public final class GithubConnectionRows {
 
 	/**
 	 * 설치 행. 계정 값과 설치자 여부는 created를 아직 못 본 설치(처음 보는 설치의 deleted·suspend·unsuspend로 남긴 행)면 NULL이다.
+	 * {@code deletedAt}은 DELETED일 때만 있다.
 	 */
 	public record InstallationRow(long installationId, @Nullable Long userId, @Nullable Long accountId,
 			@Nullable String accountLogin, @Nullable String accountType, @Nullable Boolean installedByOwner, String status,
-			long repositoriesRevision) {
+			long repositoriesRevision, @Nullable Instant deletedAt) {
 	}
 
 	public record LinkRow(long id, long userId, long installationId, long repoId, String fullName, String defaultBranch,

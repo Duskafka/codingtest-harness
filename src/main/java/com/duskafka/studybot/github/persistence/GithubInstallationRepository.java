@@ -45,14 +45,15 @@ public interface GithubInstallationRepository extends JpaRepository<GithubInstal
 	 * 처음 보는 설치를 이 상태로 남긴다 (created보다 먼저 온 deleted·suspend·unsuspend). 설치 ID와 상태만 남기고 계정 값과
 	 * 설치자 여부는 비워 둔다. 그 이벤트의 sender는 설치한 사람이 아니고 {@code installation.account}는 null일 수 있어서다.
 	 * 이미 있으면 아무것도 바꾸지 않는다. 다른 트랜잭션이 같은 설치를 막 넣었으면 그 커밋을 기다렸다가 0을 돌려준다.
+	 * DELETED로 남기면 삭제 시각({@code deleted_at})도 채운다.
 	 *
 	 * @param status {@link InstallationStatus} 이름
 	 * @return 새로 넣었으면 1
 	 */
 	@Modifying(flushAutomatically = true)
 	@Query(value = """
-			insert into studybot.github_installations (installation_id, status, created_at, updated_at)
-			values (:installationId, :status, :now, :now)
+			insert into studybot.github_installations (installation_id, status, created_at, updated_at, deleted_at)
+			values (:installationId, :status, :now, :now, case when :status = 'DELETED' then cast(:now as timestamptz) end)
 			on conflict (installation_id) do nothing
 			""", nativeQuery = true)
 	int recordStateIfAbsent(@Param("installationId") long installationId, @Param("status") String status,
