@@ -64,7 +64,6 @@ processPush(inbox):
             continue
         for problem in parsed.problems:
             recordSolve(repo.user, problem, inbox.receivedAt, GITHUB)   -- 인정 시각 = 수신 시각
-    return PROCESSED                                  -- 남긴 기록이 없어도 (README만 고친 커밋 등)
 ```
 
 ## 판정 배치 (R9, R10)
