@@ -85,7 +85,7 @@ erDiagram
 | `github_installations`                        | P1   | installation_id, user_id, account_id, account_login, account_type, installed_by_owner, status(ACTIVE/SUSPENDED/DELETED), repositories_revision, created_at, updated_at, deleted_at                               | installation_id UNIQUE. user_id는 서명된 웹훅의 설치자로 연결 (5.2). 아래 'GitHub 연결 테이블' |
 | `linked_repositories`                         | P1   | id, user_id, installation_id, repo_id, full_name, default_branch, path_prefix, status(ACTIVE/SUSPENDED/INACTIVE), created_at, updated_at                                                                         | `repo_id WHERE status='ACTIVE'` 부분 UNIQUE. 이름이 아니라 repo_id로 추적. 아래 'GitHub 연결 테이블' |
 | `webhook_inbox`                               | P1   | id, source(GITHUB/DISCORD/KAKAO), delivery_id, event_type, payload(JSONB), received_at, status, attempts, next_attempt_at, last_error, processed_at                                                               | **(source, delivery_id) UNIQUE**. payload는 14일 뒤 비움 (NULL 허용, 행은 남음, S15) |
-| `solve_records`                               | P1   | id, user_id, source, platform, problem_no, title, received_at, commit_sha, repo_id, inbox_id, raw_path, status(CONFIRMED/PENDING_IDENTIFICATION/IGNORED)                                                          | `(user_id, commit_sha, platform, problem_no)` UNIQUE (commit_sha 있을 때)      |
+| `solve_records`                               | P1   | id, user_id, source, platform, problem_no, title, received_at, commit_sha, repo_id, inbox_id, raw_path, parser_version, status(CONFIRMED/PENDING_IDENTIFICATION/IGNORED)                                          | `(user_id, commit_sha, platform, problem_no)` UNIQUE, `(user_id, commit_sha, raw_path)` UNIQUE (둘 다 commit_sha 있을 때). 아래 '풀이 기록 테이블' |
 | `study_day_solves`                            | P1   | id, study_id, user_id, study_day, solve_record_id, platform, problem_no                                                                                                                                           | **(study_id, user_id, study_day, platform, problem_no) UNIQUE** → R5           |
 | `member_days`                                 | P1   | id, study_id, user_id, study_day, season_id, solved_count, exemption_used_at, result, result_source, judged_at, rule_id, version                                                                                  | **(study_id, user_id, study_day) UNIQUE**. 잠금 대상이자 판정 결과 (5.5, 5.10) |
 | `self_reports`                                | P1   | id, study_id, user_id, study_day, platform, problem_no, evidence_url, memo, status, solve_record_id, decided_by, decided_at, created_at                                                                           | 하루 5건 제한 (R7)                                                             |
@@ -111,6 +111,19 @@ erDiagram
     - `(user_id) WHERE status IN ('ACTIVE', 'SUSPENDED')` 부분 UNIQUE: 사용자당 연결 1개 (5.2 '주의할 것'). 정지된 연결도 되살아날 수 있어 함께 세요.
     - `SUSPENDED`는 설치가 정지된 동안의 상태예요. unsuspend면 `ACTIVE`로 돌아가요. 레포 부분 UNIQUE(`status='ACTIVE'`)에는 들어가지 않아서, 그동안 같은 레포가 다른 연결로 `ACTIVE`가 됐으면 되살리지 않고 `INACTIVE`로 둬요.
     - `INACTIVE`는 레포가 설치에서 빠짐·설치 삭제·다른 레포로 바꿈일 때예요. 되살리지 않아요. 연결을 바꾸거나 끊을 때는 행을 지우지 않고 상태만 바꿔요 (탈퇴 때 지우는 것은 5.16).
+    - `path_prefix`는 확인 대기로 볼 범위예요 (5.4). 비어 있으면 레포 전체가 범위예요. 경로 조각(폴더) 단위로 비교하고(`algorithm`은 `algorithm/…`과 맞고 `algorithms/…`와는 맞지 않음), 비교 전에 파서와 같은 정규화(NFC, 전각 접기)를 하고, 대소문자는 구분해요. P1에는 접두사를 정하는 설정이 없어서 모든 연결이 비어 있어요 (S08).
+
+**풀이 기록 테이블 (S08)**
+
+- `solve_records`
+    - `parser_version`은 기록을 만든 파서 버전이에요. 파서를 고친 뒤 확인 대기를 다시 분석할 대상을 고를 때 써요 (5.4 '만들 것').
+    - `(user_id, commit_sha, raw_path)` UNIQUE는 같은 push를 다시 받았을 때 확인 대기가 늘지 않게 해요. 확인 대기는 플랫폼·번호가 NULL이라 `(user_id, commit_sha, platform, problem_no)` UNIQUE로는 막지 못해요(NULL끼리는 같지 않음). 상태에 기대지 않는 키라서, 확인 대기 행에 나중에 문제를 채워 `CONFIRMED`가 되더라도(S10) 같은 push로 확인 대기가 다시 생기지 않아요. 한 파일은 한 문제로만 식별되니 문제를 식별한 기록끼리는 부딪히지 않아요.
+    - 위 경로 UNIQUE의 부작용: 파서 버전이 바뀐 뒤 같은 push를 다시 처리하면(관리자 재처리, GitHub 재전송) 기존 확인 대기와 같은 경로에서 새로 식별한 `CONFIRMED`는 넣지 않고 넘어가요(배정도 하지 않음). 같은 이유로 한 커밋에 확인 대기가 둘 생길 수 있어요(새 파서가 고른 첫 후보 파일이 다를 때). 확인 대기를 새 파서로 다시 분석하는 일은 5.4의 관리자 명령으로 해요.
+    - CHECK
+        - `source`, `status`, `platform` 값은 정한 목록만이에요(`platform`은 `BOJ`·`PROGRAMMERS`·`LEETCODE`). 플랫폼을 더하려면 마이그레이션이 필요해요.
+        - 플랫폼과 번호는 함께 있거나 함께 비어 있어요. 번호는 0으로 시작하지 않는 숫자예요(`ProblemRef` 정규형). 수동 인증(S11)으로 남기는 기록도 이 형식을 따라야 해요.
+        - `CONFIRMED`는 문제(플랫폼·번호)가 있고, `PENDING_IDENTIFICATION`은 없어요. 그래서 확인 대기 행에 문제를 채우려면 상태도 함께 바꿔야 해요 (S10).
+        - `source = 'GITHUB'`면 `commit_sha`·`repo_id`·`inbox_id`·`raw_path`·`parser_version`이 있어요.
 
 **인덱스 (먼저 만들 것)**
 

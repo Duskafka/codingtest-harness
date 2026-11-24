@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-24 S08 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
+- 한 일: PR #18(병합)의 스펙 변경 제안 1~3을 사람이 골라 문서에 반영. data-model `solve_records`(표에 `parser_version`·경로 UNIQUE, 새 메모 '풀이 기록 테이블': 경로 UNIQUE의 목적과 부작용, CHECK), `linked_repositories`의 빈 `path_prefix`, 5.4 흐름도와 '확인 대기' 단서(레포 전체, 커밋마다 하나, P1에는 설정 없음), pseudocode `processPush` 순서·확인 대기 분기, 5.3 'push 처리 순서' 1·2(항목 번호는 그대로)
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 사람이 정한 것 (2026-11-24, 세션 선택지): 제안 1 "셋 다 반영", 제안 2 "data-model과 5.4 둘 다", 제안 3 "pseudocode와 5.3 둘 다" (모두 Recommended)
+- 다음: 이 PR 병합 → S09(선행 S05가 '결정 대기'라 OD-08을 정하거나 S05를 어떻게 볼지 먼저 정해야 함)
+- 막힌 것: 없음
+- 참고: 5.3 'push 처리 순서'는 코드 주석이 번호(2·3·6)를 가리켜서 항목을 합치기만 하고 번호를 밀지 않았다
+- PR: (열면 채움)
+
 ## 2026-11-24 S08 push 처리와 풀이 기록 (세션 1/1)
 - 한 일: 만들 것 1~7. V7 `solve_records`(표 + `parser_version`, CHECK, 부분 UNIQUE 둘), `github.push.PushEventHandler`(삭제·연결 없음·기본 브랜치 아님 → IGNORED), `verification.GithubSolveRecorder`(문제마다 CONFIRMED, 식별 못 한 커밋은 접두사 안 첫 후보로 확인 대기 하나, 인정 시각 = 수신함 `received_at`), 배정 연결 지점 `progress.StudyDayAssignment`(새 CONFIRMED마다 같은 트랜잭션, 구현은 아무것도 안 함), 네 이벤트 처리기 필수(`GithubEventHandlers#requireAllEvents`)
 - 상태: 빌드 통과 (테스트 500개). 구현 전 새 테스트 36개 중 34개 실패 확인. 조건 빼 보기 5개 모두 해당 테스트 실패. spec-reviewer '통과'(코드 지적 없음, PR 본문 항목은 반영)
