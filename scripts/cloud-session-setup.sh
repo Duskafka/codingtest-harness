@@ -18,9 +18,11 @@ fi
 fetch_timeout_seconds=20
 
 # 보호 경로 훅(.claude/hooks/protect-paths.sh)은 로컬 origin/master를 보고 'master에 들어간 마이그레이션'을 막는다.
-# origin/master가 오래되면 이미 병합된 마이그레이션을 고쳐도 막지 못한다 (S07 후속 PR #16에서 실제로 일어남).
+# origin/master가 오래되면 이미 병합된 마이그레이션을 고쳐도 막지 못한다. 2026-11-24 S07 세션에서 PR #14가 세션 도중
+# 병합된 것을 모르고 V5를 고친 커밋을 feat 브랜치에 push한 일이 있었다(master에는 들어가지 않았고 V6로 대신함).
 # 그래서 세션을 시작·재개할 때 받아 온다. 세션 도중에 병합되는 경우는 여기서 잡지 못한다(훅 쪽 일, 사람이 고침).
 # 사람이 정함 (2026-11-24, 세션 선택지 "스크립트 + 훅 패치 제안"). Docker가 이미 떠 있으면 아래에서 일찍 끝나므로 먼저 부른다.
+# 결과는 stdout으로 낸다. SessionStart 훅이 0으로 끝나면 에이전트 맥락에는 stdout만 들어가고 stderr는 보이지 않는다.
 fetch_master() {
   local repo_root
   repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -32,7 +34,8 @@ fetch_master() {
     fetch=(timeout "$fetch_timeout_seconds" "${fetch[@]}")
   fi
   if ! "${fetch[@]}" >/dev/null 2>&1; then
-    echo "cloud-session-setup: origin/master를 받아 오지 못했어요. 마이그레이션을 고치기 전에 'git fetch origin master'를 직접 하세요." >&2
+    # 동시에 두 번 돌면 한쪽이 ref 잠금 때문에 실패할 수 있다. 다른 쪽이 받아 왔을 수 있어 경고만 한다.
+    echo "cloud-session-setup: origin/master를 받아 오지 못했어요(네트워크 또는 동시 실행). 마이그레이션을 고치기 전에 'git fetch origin master'를 직접 하세요."
     return 0
   fi
   echo "cloud-session-setup: origin/master를 받아 왔어요 ($(git -C "$repo_root" rev-parse --short origin/master))."
