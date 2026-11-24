@@ -82,8 +82,8 @@ erDiagram
 | `seasons`                                     | P1   | id, study_id, seq, start_day, end_day, status                                                                                                                                                                     | (study_id, seq) UNIQUE                                                         |
 | `memberships`                                 | P1   | id, study_id, user_id, role(OWNER/MEMBER), joined_at, judged_from, left_at                                                                                                                                        | `(study_id, user_id) WHERE left_at IS NULL` 부분 UNIQUE → 탈퇴 후 재가입 가능  |
 | `invitations`                                 | P1   | id, study_id, token_hash, expires_at, max_uses, used_count, revoked_at, created_by                                                                                                                                | token_hash UNIQUE. 토큰 원문은 저장하지 않음                                   |
-| `github_installations`                        | P1   | installation_id, user_id, account_id, account_login, status, created_at                                                                                                                                           | installation_id UNIQUE. user_id는 서명된 웹훅의 설치자로 연결 (5.2)            |
-| `linked_repositories`                         | P1   | id, user_id, installation_id, repo_id, full_name, default_branch, path_prefix, status                                                                                                                             | `repo_id WHERE status='ACTIVE'` 부분 UNIQUE. 이름이 아니라 repo_id로 추적      |
+| `github_installations`                        | P1   | installation_id, user_id, account_id, account_login, account_type, installed_by_owner, status(ACTIVE/SUSPENDED/DELETED), repositories_revision, created_at, updated_at                                           | installation_id UNIQUE. user_id는 서명된 웹훅의 설치자로 연결 (5.2). 아래 'GitHub 연결 테이블' |
+| `linked_repositories`                         | P1   | id, user_id, installation_id, repo_id, full_name, default_branch, path_prefix, status(ACTIVE/SUSPENDED/INACTIVE), created_at, updated_at                                                                         | `repo_id WHERE status='ACTIVE'` 부분 UNIQUE. 이름이 아니라 repo_id로 추적. 아래 'GitHub 연결 테이블' |
 | `webhook_inbox`                               | P1   | id, source(GITHUB/DISCORD/KAKAO), delivery_id, event_type, payload(JSONB), received_at, status, attempts, next_attempt_at, last_error, processed_at                                                               | **(source, delivery_id) UNIQUE**. payload는 14일 뒤 비움 (NULL 허용, 행은 남음, S15) |
 | `solve_records`                               | P1   | id, user_id, source, platform, problem_no, title, received_at, commit_sha, repo_id, inbox_id, raw_path, status(CONFIRMED/PENDING_IDENTIFICATION/IGNORED)                                                          | `(user_id, commit_sha, platform, problem_no)` UNIQUE (commit_sha 있을 때)      |
 | `study_day_solves`                            | P1   | id, study_id, user_id, study_day, solve_record_id, platform, problem_no                                                                                                                                           | **(study_id, user_id, study_day, platform, problem_no) UNIQUE** → R5           |
@@ -98,6 +98,17 @@ erDiagram
 | `penalty_ledger`                              | P2   | id, study_id, season_id, user_id, entry_type(CHARGE/REVERSAL/PAYMENT/DEPOSIT/REFUND), amount, member_day_id, appeal_id, memo, created_by, created_at, idempotency_key                                             | **idempotency_key UNIQUE**. 추가만 가능 (UPDATE·DELETE 권한도 회수)            |
 | `settlements`                                 | P2   | id, study_id, period_type(WEEK/SEASON), period_start, period_end, snapshot(JSONB), created_at                                                                                                                     | (study_id, period_type, period_start) UNIQUE                                   |
 | `discord_links`                               | P3   | user_id, discord_user_id, linked_at                                                                                                                                                                               | discord_user_id UNIQUE                                                         |
+
+**GitHub 연결 테이블 (S07)**
+
+- `github_installations`
+    - `user_id`는 `account_type = 'User'`이고 `installed_by_owner`(created 웹훅의 `account.id == sender.id`)일 때만 채워요. 설치자(sender)의 GitHub ID는 남기지 않아요 (9.8 최소 수집).
+    - `account_id`·`account_login`·`account_type`·`installed_by_owner`는 created 웹훅이 채워요. created보다 먼저 온 deleted·suspend·unsuspend로 남긴 행에서는 NULL이에요. 네 값은 모두 있거나 모두 NULL이고(CHECK), 사용자에게 이은 행에는 늘 있어요(CHECK). 삭제된 설치에는 늦게 온 created도 채우지 않아요.
+    - `repositories_revision`은 `installation_repositories` removed마다 1씩 올라요. GitHub에서 레포 목록을 읽은 뒤 연결을 저장할 때, 그사이 빠진 레포가 없는지 이 값으로 확인해요.
+- `linked_repositories`
+    - `(user_id) WHERE status IN ('ACTIVE', 'SUSPENDED')` 부분 UNIQUE: 사용자당 연결 1개 (5.2 '주의할 것'). 정지된 연결도 되살아날 수 있어 함께 세요.
+    - `SUSPENDED`는 설치가 정지된 동안의 상태예요. unsuspend면 `ACTIVE`로 돌아가요. 레포 부분 UNIQUE(`status='ACTIVE'`)에는 들어가지 않아서, 그동안 같은 레포가 다른 연결로 `ACTIVE`가 됐으면 되살리지 않고 `INACTIVE`로 둬요.
+    - `INACTIVE`는 레포가 설치에서 빠짐·설치 삭제·다른 레포로 바꿈일 때예요. 되살리지 않고, 행은 지우지 않아요.
 
 **인덱스 (먼저 만들 것)**
 

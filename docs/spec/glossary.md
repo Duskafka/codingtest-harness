@@ -32,8 +32,8 @@
 | 원장 기록 | `LedgerEntry` | 종류: `CHARGE`, `REVERSAL`, `PAYMENT`, `DEPOSIT`, `REFUND` (P2) |
 | 정산 | `Settlement` | 기간: `WEEK`, `SEASON` (P2) |
 | 웹훅 수신함 | `WebhookInbox` | 출처: `GITHUB`, `DISCORD`, `KAKAO`. 상태: `RECEIVED`, `PROCESSED`, `IGNORED`, `FAILED`, `DEAD` |
-| GitHub 설치 | `GitHubInstallation` | `installationId` |
-| 연결 레포 | `LinkedRepository` | 이름이 아니라 `repoId`로 추적 |
+| GitHub 설치 | `GithubInstallation` | `installationId`. 상태: `ACTIVE`, `SUSPENDED`, `DELETED`. 코드 표기는 S04·S06의 `Github*`에 맞춰요 |
+| 연결 레포 | `LinkedRepository` | 이름이 아니라 `repoId`로 추적. 상태: `ACTIVE`, `SUSPENDED`(설치 정지 동안), `INACTIVE` |
 | 알림 | `Notification` | 종류와 `dedupeKey`는 5.8 표. 상태: `PENDING`, `SENDING`, `SENT`, `FAILED`, `SKIPPED`, `EXPIRED` |
 | 푸시 구독 | `PushSubscription` | `endpoint` UNIQUE |
 
