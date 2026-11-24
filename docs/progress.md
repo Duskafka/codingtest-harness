@@ -9,7 +9,7 @@
 - 다음: 이 PR 병합 → S09(선행 S05가 '결정 대기'라 OD-07·OD-08을 정하거나 S05를 어떻게 볼지 먼저 정해야 함)
 - 막힌 것: 없음
 - 참고: 5.3 'push 처리 순서'는 코드 주석이 번호(2·3·6)를 가리켜서 항목을 합치기만 하고 번호를 밀지 않았다
-- PR: (열면 채움)
+- PR: #19
 
 ## 2026-11-24 S08 push 처리와 풀이 기록 (세션 1/1)
 - 한 일: 만들 것 1~7. V7 `solve_records`(표 + `parser_version`, CHECK, 부분 UNIQUE 둘), `github.push.PushEventHandler`(삭제·연결 없음·기본 브랜치 아님 → IGNORED), `verification.GithubSolveRecorder`(문제마다 CONFIRMED, 식별 못 한 커밋은 접두사 안 첫 후보로 확인 대기 하나, 인정 시각 = 수신함 `received_at`), 배정 연결 지점 `progress.StudyDayAssignment`(새 CONFIRMED마다 같은 트랜잭션, 구현은 아무것도 안 함), 네 이벤트 처리기 필수(`GithubEventHandlers#requireAllEvents`)
