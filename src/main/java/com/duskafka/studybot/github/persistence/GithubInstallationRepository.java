@@ -16,9 +16,11 @@ public interface GithubInstallationRepository extends JpaRepository<GithubInstal
 	 * {@code installation} created: 설치를 사용자 없이 ACTIVE로 남기고 계정 값과 설치자 여부를 적는다. PostgreSQL
 	 * {@code INSERT ... ON CONFLICT} 한 문장이라 같은 설치 이벤트가 동시에 와도 한 행만 남는다.
 	 *
-	 * <p>이미 행이 있으면 상태({@code status})와 사용자({@code user_id})는 바꾸지 않는다. 삭제·정지가 먼저 와서 남긴 행이면
-	 * 그 상태를 지키고(늦게 온 created가 되살리지 않게), 그 행에 비어 있는 계정 값과 설치자 여부만 채운다. 설치자는 created에서만
-	 * 확인하기 때문이다 (5.2 처리 순서 1, PR #14 2차 리뷰 반영). 이미 채워진 행이면(같은 created가 다시 옴) 아무것도 바꾸지 않는다.
+	 * <p>이미 행이 있으면 상태({@code status})와 사용자({@code user_id})는 바꾸지 않는다. 정지·정지 해제가 먼저 와서 남긴 행이면
+	 * 그 상태를 지키고, 그 행에 비어 있는 계정 값과 설치자 여부만 채운다. 설치자는 created에서만 확인하기 때문이다
+	 * (5.2 처리 순서 1, PR #14 2차 리뷰 반영). 삭제가 먼저 와서 남긴 행은 되살리지 않고 계정 값도 채우지 않는다. 다시 쓰이지 않는
+	 * 설치라 가입하지 않은 사람일 수 있는 계정 값을 남길 이유가 없다 (security.md 9.8 최소 수집). 이미 채워진 행이면(같은 created가
+	 * 다시 옴) 아무것도 바꾸지 않는다.
 	 *
 	 * @param installedByOwner 계정 주인이 직접 설치했는지 (created의 {@code account.id == sender.id})
 	 * @return 새로 넣었거나 비어 있던 값을 채웠으면 1
@@ -33,7 +35,7 @@ public interface GithubInstallationRepository extends JpaRepository<GithubInstal
 				set account_id = excluded.account_id, account_login = excluded.account_login,
 					account_type = excluded.account_type, installed_by_owner = excluded.installed_by_owner,
 					updated_at = excluded.updated_at
-				where i.installed_by_owner is null
+				where i.installed_by_owner is null and i.status <> 'DELETED'
 			""", nativeQuery = true)
 	int recordCreated(@Param("installationId") long installationId, @Param("accountId") long accountId,
 			@Param("accountLogin") String accountLogin, @Param("accountType") String accountType,

@@ -369,8 +369,9 @@ class InstallationWebhookIntegrationTest extends WebhookTestSupport {
 		assertThat(onlyInboxRow(created).status()).isEqualTo("PROCESSED");
 		InstallationRow installation = rows.existingInstallation(installationId);
 		assertThat(installation.status()).isEqualTo("DELETED");
-		assertThat(installation.accountId()).as("계정 값은 created에서 채운다").isEqualTo(user.githubId());
 		assertThat(installation.userId()).as("삭제된 설치는 잇지 않는다").isNull();
+		assertThat(installation.accountId()).as("쓰지 않을 계정 값은 남기지 않는다 (9.8 최소 수집)").isNull();
+		assertThat(installation.installedByOwner()).isNull();
 	}
 
 }

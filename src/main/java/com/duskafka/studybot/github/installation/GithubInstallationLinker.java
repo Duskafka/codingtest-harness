@@ -26,8 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <li>상태를 바꾸는 처리는 설치 행을 잠그고 읽는다. 먼저 시작한 처리가 커밋할 때까지 뒤의 처리가 기다린다.</li>
  * <li>GitHub는 전달 순서를 보장하지 않는다. 처음 보는 설치의 deleted·suspend·unsuspend는 설치 ID와 그 상태만 남긴다. 그 이벤트의
  * sender는 정지·삭제한 사람이지 설치한 사람이 아니고({@code installation.account}는 null일 수도 있음), 설치자는 created에서만 확인하기
- * 때문이다 (5.2 처리 순서 1). 늦게 온 created는 상태를 바꾸지 않고 비어 있는 계정 값과 설치자 여부만 채운 뒤 연결 조건을 본다.
- * 그래서 삭제·정지가 되살아나지 않고, 주인이 설치했으면 정지된 설치도 주인에게 이어진다 (PR #14 2차 리뷰 반영).</li>
+ * 때문이다 (5.2 처리 순서 1). 늦게 온 created는 상태를 바꾸지 않고 비어 있는 계정 값과 설치자 여부만 채운 뒤 연결 조건을 본다
+ * (삭제된 설치에는 채우지 않는다). 그래서 삭제·정지가 되살아나지 않고, 주인이 설치했으면 정지된 설치도 주인에게 이어진다
+ * (PR #14 2차 리뷰 반영).</li>
  * <li>레포가 빠지면 연결이 없어도 설치의 레포 목록 리비전을 올린다. 그사이 GitHub에서 읽은 레포 목록으로 연결을 저장하려던 요청은
  * 리비전이 달라 저장하지 않는다 ({@code GithubConnectionStore}).</li>
  * </ul>
@@ -58,7 +59,7 @@ public class GithubInstallationLinker {
 	/**
 	 * {@code installation} created: 설치를 남기고, 연결 조건을 넘으면 이미 가입한 사용자에게 잇는다. 아직 가입하지 않았으면 비워 두고
 	 * 가입할 때 {@link #claim}이 잇는다. 이미 있는 설치(같은 이벤트가 다시 왔거나, 삭제·정지가 먼저 왔음)는 상태를 바꾸지 않고,
-	 * 비어 있던 계정 값과 설치자 여부만 채운다. 삭제된 설치는 잇지 않는다.
+	 * 비어 있던 계정 값과 설치자 여부만 채운다. 삭제된 설치는 채우지도 잇지도 않는다.
 	 */
 	@Transactional
 	HandlingResult created(long installationId, InstallationAccount account) {

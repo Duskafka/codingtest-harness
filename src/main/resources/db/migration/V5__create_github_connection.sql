@@ -13,6 +13,7 @@
 -- 이때는 설치 ID와 상태만 남기고 계정 값(account_id, account_login, account_type)과 installed_by_owner는 NULL로 둔다.
 -- 그 이벤트의 sender는 정지·삭제한 사람이지 설치한 사람이 아니고, installation.account는 null일 수도 있어서다.
 -- 계정 값과 설치자 여부는 created가 채운다 (5.2 처리 순서 1, PR #14 2차 리뷰 반영). 채울 때 status는 바꾸지 않는다.
+-- 삭제된 설치(DELETED)에는 채우지 않는다. 다시 쓰이지 않는 설치라 비회원일 수 있는 계정 값을 남길 이유가 없다 (security.md 9.8).
 -- NULL인 행은 claim의 조건(installed_by_owner)을 넘지 못해 사용자에게 이어지지 않는다.
 -- repositories_revision은 표에 없는 컬럼이다. installation_repositories removed마다 1 오른다. GitHub에서 레포 목록을 읽은 뒤
 -- 연결을 저장할 때 그사이 빠진 레포가 없는지 이 값으로 본다 (PR #14 리뷰 반영).
