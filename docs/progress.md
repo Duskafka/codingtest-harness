@@ -9,7 +9,7 @@
 - 다음: 이 PR과 PR #21 병합(둘 다 이 파일 맨 위를 바꿔서 나중 쪽이 master를 병합해 두 기록을 남김) → PR #21의 스펙 변경 제안 docs PR → S09
 - 막힌 것: 없음
 - 참고: 에이전트가 도출해 문서에 적은 것(사람 확인 필요, PR 본문에 표시): 기수 중 길이 변경·취소 때 예정 행 끝 날짜 다시 세기(PR #21 열린 질문 2), 예정 행이 있어도 적용 기수는 그대로(PR #20 열린 질문 4 뒷부분), 시작 여부·기수 안·이번 기수는 날짜로 판단, 따라잡기 때 되풀이. S12 전에 정할 것: 판정 배치(`judgment`)가 `study`의 기수 행을 바꾸는 방법(architecture 4.2에 `judgment → study` 없음), 기수 시작 처리와 규칙 변경이 겹칠 때의 직렬화 방법(결정 제안서 006은 아직 '제안'). S12 코드 PR에서 고칠 주석: `SeasonStatus`, `Season` 생성자(옛 3.4 라벨), `StudyTimeline.seasonOn`·`nextSeasonStart`. `V3__create_study_tables.sql` 주석도 맞지 않게 되지만 master 마이그레이션이라 고치지 않는다
-- PR: (열면 적음)
+- PR: #22
 
 ## 2026-11-24 OD-07·OD-08 결정 반영 (docs PR, 단계 진행 아님)
 - 한 일: 사람이 정한 OD-07·OD-08을 결정 대장(확정), 스펙(R2·R9·R13, glossary `JudgmentResult`, 5.13, api `PUT /rules`, testing T11, product 기능 표), 단계 문서(S05 만들 것 4·T11·판단 기록, S09 판정 대상, S12 만들 것 6·수용 기준, steps README의 S05 상태 '대기')에 반영
