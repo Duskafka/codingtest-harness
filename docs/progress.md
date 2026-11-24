@@ -9,7 +9,7 @@
 - 다음: 이 PR 병합 → S05 남은 일(규칙 변경 API `PUT /rules`, T11) → S09. docs PR #19와 이 파일 맨 위가 겹쳐서 나중에 병합되는 쪽에서 충돌을 푼다
 - 막힌 것: 없음
 - 참고: spec-reviewer가 찾은 세부 질문 8개(다음 기수 행을 만드는 시점, 새 기수 첫날 계산을 맡을 단계, 유예가 바뀌는 날, 1기 시작 전 변경의 적용 기수 등)는 PR 열린 질문. S05 남은 PR은 `StudyTimeline.currentRule`(규칙 버전이 둘이면 예외)부터 손봐야 함
-- PR: (열면 채움)
+- PR: #20
 
 ## 2026-11-24 S08 push 처리와 풀이 기록 (세션 1/1)
 - 한 일: 만들 것 1~7. V7 `solve_records`(표 + `parser_version`, CHECK, 부분 UNIQUE 둘), `github.push.PushEventHandler`(삭제·연결 없음·기본 브랜치 아님 → IGNORED), `verification.GithubSolveRecorder`(문제마다 CONFIRMED, 식별 못 한 커밋은 접두사 안 첫 후보로 확인 대기 하나, 인정 시각 = 수신함 `received_at`), 배정 연결 지점 `progress.StudyDayAssignment`(새 CONFIRMED마다 같은 트랜잭션, 구현은 아무것도 안 함), 네 이벤트 처리기 필수(`GithubEventHandlers#requireAllEvents`)
