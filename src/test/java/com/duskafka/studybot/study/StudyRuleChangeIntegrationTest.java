@@ -1,14 +1,20 @@
 package com.duskafka.studybot.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import tools.jackson.databind.JsonNode;
@@ -98,6 +104,85 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 				new Version(SEASON_2, 2, LocalTime.MIDNIGHT, 2000, 14));
 	}
 
+	static Stream<Arguments> everyRuleItem() {
+		return Stream.of(arguments("dailyGoal", 2, "daily_goal", "2", true),
+				arguments("graceMinutes", 60, "grace_minutes", "60", true),
+				arguments("restDays", List.of("SATURDAY"), "rest_days", "SATURDAY", true),
+				arguments("reminderOffsetMinutes", 60, "reminder_offset_minutes", "60", true),
+				arguments("selfReportMode", "APPROVAL_REQUIRED", "self_report_mode", "APPROVAL_REQUIRED", true),
+				arguments("dayBoundary", "06:00", "day_boundary", "06:00:00", false),
+				arguments("seasonLengthDays", 14, "season_length_days", "14", false),
+				arguments("exemptionsPerSeason", 2, "exemptions_per_season", "2", false),
+				arguments("penaltyType", "FINE", "penalty_type", "FINE", false),
+				arguments("fineAmount", 2000, "fine_amount", "2000", false));
+	}
+
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("everyRuleItem")
+	@DisplayName("T11: 열 항목마다 R2의 적용 시점대로 다음 스터디 일 또는 다음 기수 시작일의 버전에만 들어간다")
+	void t11EveryItemLandsInItsVersion(String field, Object value, String column, String stored, boolean nextDayItem) {
+		setClock(MID_SEASON);
+		Map<String, String> before = rows().getFirst();
+
+		assertThat(putRules(owner, rules(Map.of(field, value)))).hasStatus(HttpStatus.OK);
+
+		List<Map<String, String>> rows = rows();
+		assertThat(rows).hasSize(2);
+		assertThat(rows.get(0)).isEqualTo(before);
+		Map<String, String> expected = new HashMap<>(before);
+		expected.put("effective_from", (nextDayItem ? NEXT_DAY : SEASON_2).toString());
+		expected.put(column, stored);
+		assertThat(rows.get(1)).isEqualTo(expected);
+	}
+
+	@Test
+	@DisplayName("T11: 열 항목을 모두 바꾸면 다음 스터디 일 버전은 다음 날 항목만 새 값이고 기수 항목은 지금 값, 다음 기수 버전은 모두 새 값이다")
+	void t11AllItemsSplitIntoTwoVersions() {
+		setClock(MID_SEASON);
+		Map<String, String> before = rows().getFirst();
+
+		putRules(owner, rules(Map.of("dailyGoal", 2, "graceMinutes", 60, "restDays", List.of("SATURDAY"),
+				"reminderOffsetMinutes", 60, "selfReportMode", "APPROVAL_REQUIRED", "dayBoundary", "06:00",
+				"seasonLengthDays", 14, "exemptionsPerSeason", 2, "penaltyType", "FINE", "fineAmount", 2000)));
+
+		List<Map<String, String>> rows = rows();
+		assertThat(rows).hasSize(3);
+		assertThat(rows.get(1)).containsEntry("effective_from", NEXT_DAY.toString())
+			.containsEntry("daily_goal", "2")
+			.containsEntry("grace_minutes", "60")
+			.containsEntry("rest_days", "SATURDAY")
+			.containsEntry("reminder_offset_minutes", "60")
+			.containsEntry("self_report_mode", "APPROVAL_REQUIRED")
+			.containsEntry("day_boundary", before.get("day_boundary"))
+			.containsEntry("season_length_days", before.get("season_length_days"))
+			.containsEntry("exemptions_per_season", before.get("exemptions_per_season"))
+			.containsEntry("penalty_type", before.get("penalty_type"))
+			.containsEntry("fine_amount", before.get("fine_amount"));
+		assertThat(rows.get(2)).containsEntry("effective_from", SEASON_2.toString())
+			.containsEntry("daily_goal", "2")
+			.containsEntry("grace_minutes", "60")
+			.containsEntry("rest_days", "SATURDAY")
+			.containsEntry("reminder_offset_minutes", "60")
+			.containsEntry("self_report_mode", "APPROVAL_REQUIRED")
+			.containsEntry("day_boundary", "06:00:00")
+			.containsEntry("season_length_days", "14")
+			.containsEntry("exemptions_per_season", "2")
+			.containsEntry("penalty_type", "FINE")
+			.containsEntry("fine_amount", "2000");
+	}
+
+	@Test
+	@DisplayName("S05: 1기 행이 끝난 뒤(다음 기수 행은 S12가 만듦)에는 기수 길이로 기수를 이어 세서 다음 기수 시작일을 정한다")
+	void nextSeasonIsCountedOnWhenSeasonRowsEnded() {
+		// 12/25 KST. 1기 행은 12/18에 끝났고, 이어 세면 2기는 12/19~2027-01-15, 3기는 2027-01-16부터다.
+		setClock("2026-12-25T03:00:00Z");
+
+		putRules(owner, rules(Map.of("fineAmount", 2000)));
+
+		assertThat(versions()).containsExactly(new Version(SEASON_1, 1, LocalTime.MIDNIGHT, 1000, 28),
+				new Version(LocalDate.parse("2027-01-16"), 1, LocalTime.MIDNIGHT, 2000, 28));
+	}
+
 	@Test
 	@DisplayName("T11: 기수 마지막 날에 바꾸면 다음 스터디 일이 곧 다음 기수 시작일이라 버전 하나에 모두 들어간다")
 	void lastDayOfSeasonMakesOneVersion() {
@@ -121,6 +206,24 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 		assertThat(detail.get("season").get("startDay").asString()).isEqualTo("2026-11-21");
 		assertThat(detail.get("season").get("endDay").asString()).isEqualTo("2026-12-04");
 		assertThat(detail.get("upcomingRules")).isEmpty();
+	}
+
+	@Test
+	@DisplayName("S05: 1기 시작 직전에 기준 시각을 앞당겨 1기 첫날이 이미 시작된 것이 되면 409이고 아무것도 바뀌지 않는다 (사람이 정함, 2026-11-24 \"거절 (409)\")")
+	void boundaryChangeThatWouldStartFirstDayIsRejected() {
+		// 11/21 03:00 KST에 기준 06:00으로 만든다: 오늘은 11/20, 1기 첫날 11/21은 06:00에 시작한다.
+		setClock("2026-11-20T18:00:00Z");
+		TestUser earlyOwner = newUser("dawn-owner");
+		long early = createStudyWithBody(earlyOwner,
+				"{\"name\": \"새벽 스터디\", \"mode\": \"GROUP\", \"rule\": {\"dayBoundary\": \"06:00\"}}");
+		// 11/21 04:00 KST에 00:00으로 바꾸면 1기 첫날이 4시간 전에 시작한 셈이 된다.
+		setClock("2026-11-20T19:00:00Z");
+
+		MvcTestResult result = putJson(earlyOwner, "/api/studies/" + early + "/rules", rules(Map.of("dayBoundary", "00:00")));
+
+		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(json(get(earlyOwner, "/api/studies/" + early)).get("rule").get("dayBoundary").asString())
+			.isEqualTo("06:00");
 	}
 
 	@Test
@@ -178,6 +281,12 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 		setClock("2026-12-18T18:00:00Z");
 		String token = createInvitation(earlyOwner, early, null).get("token").asString();
 		TestUser member = newUser("dawn-member");
+		// 공개 미리보기도 버전이 둘일 때 현재 규칙과 예정된 변경을 보여 준다 (사람이 정함, 2026-11-24 "예정 변경도 보여 줌").
+		JsonNode preview = json(mvc.get().uri("/api/invitations/{token}", token).exchange());
+		assertThat(preview.get("rule").get("dayBoundary").asString()).isEqualTo("06:00");
+		assertThat(preview.get("upcomingRules")).hasSize(1);
+		assertThat(preview.get("upcomingRules").get(0).get("effectiveFrom").asString()).isEqualTo("2026-12-19");
+		assertThat(preview.get("upcomingRules").get(0).get("rule").get("dayBoundary").asString()).isEqualTo("00:00");
 
 		MvcTestResult accepted = accept(member, token);
 
@@ -244,6 +353,25 @@ class StudyRuleChangeIntegrationTest extends StudyTestSupport {
 		node.put("seasonLengthDays", 28);
 		overrides.forEach((key, value) -> node.set(key, JSON.valueToTree(value)));
 		return JSON.writeValueAsString(node);
+	}
+
+	/** 이 스터디의 규칙 버전 행 전체 (값은 문자열로). 적용 시작일 순서. */
+	private List<Map<String, String>> rows() {
+		return jdbc.sql("""
+				select effective_from::text, daily_goal::text, day_boundary::text, grace_minutes::text, rest_days,
+					penalty_type, fine_amount::text, exemptions_per_season::text, reminder_offset_minutes::text,
+					self_report_mode, season_length_days::text
+				from studybot.study_rules where study_id = :studyId order by effective_from
+				""")
+			.param("studyId", studyId)
+			.query((rs, rowNum) -> {
+				Map<String, String> row = new HashMap<>();
+				for (int i = 1; i <= rs.getMetaData().getColumnCount(); i++) {
+					row.put(rs.getMetaData().getColumnLabel(i), rs.getString(i));
+				}
+				return row;
+			})
+			.list();
 	}
 
 	private List<Version> versions() {
