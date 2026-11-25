@@ -17,11 +17,11 @@
 | `DELETE /api/me`                                 | 탈퇴                                     | 로그인    | P1   |
 | `POST /api/studies`                              | 스터디 만들기 (규칙, 첫 기수 포함)       | 로그인    | P1   |
 | `GET /api/studies`                               | 내 스터디 목록                           | 로그인    | P1   |
-| `GET /api/studies/{id}`                          | 스터디 상세 (현재 규칙, 기수)            | 멤버      | P1   |
+| `GET /api/studies/{id}`                          | 스터디 상세 (현재 규칙, 예정된 변경, 기수) | 멤버      | P1   |
 | `PATCH /api/studies/{id}`                        | 이름, 방장 위임                          | 방장      | P1   |
-| `PUT /api/studies/{id}/rules`                    | 규칙 변경 (다음 스터디 일부터, 일부 항목은 다음 기수부터, R2) | 방장      | P1   |
+| `PUT /api/studies/{id}/rules`                    | 규칙 변경 (기준 버전 ID + 규칙 전체. 다음 스터디 일부터, 일부 항목은 다음 기수부터, R2) | 방장      | P1   |
 | `POST /api/studies/{id}/invitations`             | 초대 링크 만들기                         | 방장      | P1   |
-| `GET /api/invitations/{token}`                   | 초대 미리보기 (규칙 요약)                | 공개      | P1   |
+| `GET /api/invitations/{token}`                   | 초대 미리보기 (규칙 요약, 예정된 변경)   | 공개      | P1   |
 | `POST /api/invitations/{token}/accept`           | 초대 수락                                | 로그인    | P1   |
 | `DELETE /api/studies/{id}/members/me`            | 탈퇴                                     | 멤버      | P1   |
 | `DELETE /api/studies/{id}/members/{userId}`      | 멤버 내보내기                            | 방장      | P2   |
@@ -58,6 +58,13 @@
 - 오류 응답은 `application/problem+json`(RFC 9457) 형식으로 통일해요. Spring Boot 3의 `ProblemDetail`을 써요.
 - springdoc-openapi로 명세를 자동 생성하고, 이 명세로 프론트의 API 클라이언트를 만들어요 (7장).
 - 목록 API는 전부 페이지네이션해요 (Supabase egress 보호, 9.4).
+- **규칙 변경과 규칙 버전 (`PUT /api/studies/{id}/rules`, 스터디 상세, 초대 미리보기):** S05(PR #21)에서 정한 응답 모양 가운데 프론트가 꼭 알아야 하는 규칙 버전 부분이에요. 나머지 응답 모양은 머리말대로 단계 PR의 판단 기록에 있어요.
+    - 본문은 그 값을 채울 때 출발한 규칙 버전의 ID(`basedOnRuleId`, 필수)와 규칙 열 항목 전체(R1 표)예요. 바꿀 항목만 보내지 않아요. 빠지거나 범위 밖이면 400이에요.
+    - `basedOnRuleId`가 마지막 버전(예정된 변경이 있으면 마지막 예정 버전)이 아니면 409예요. 화면이 현재 규칙으로 채워 보내 예정된 변경을 모르고 지우거나, 다른 탭·새 방장이 바꾼 규칙을 덮어쓰는 일을 막아요. 예정 버전은 바꿀 때마다 새 ID가 돼서, 409를 받으면 다시 불러와야 해요.
+    - 1기 시작 전에 하루 기준 시각을 앞당겨 1기 첫날이 이미 시작된 것이 되면 409예요 (R2).
+    - 권한을 먼저 봐요. 기준 버전 ID가 틀려도 멤버는 403, 멤버가 아니면 404예요.
+    - 응답은 스터디 상세예요. 스터디 상세의 `rule`(현재 규칙)과 `upcomingRules[]`(예정된 변경, 적용 시작일 순서, 없으면 `[]`)에는 버전 `id`가 있어요.
+    - 초대 미리보기의 `upcomingRules[]`에는 적용 시작일과 규칙 요약만 있어요 (버전 ID·알림 시각 없음).
 
 ## 4.5 로그인과 권한
 

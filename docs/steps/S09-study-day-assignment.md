@@ -22,7 +22,7 @@
 
 ## 만들 것
 
-1. **`assignStudyDay`:** 부록 D대로. 전날 판단에는 전날의 규칙 버전을 쓴다.
+1. **`assignStudyDay`:** 부록 D대로. 전날의 목표·쉬는 날 판단에는 전날의 규칙 버전을 쓴다. 스터디 일과 유예 구간은 `common.time.RuleVersionCalendar`(`studyDayOf`, `isInGrace`)로 센다. 유예는 그 구간이 시작되는 날 N의 규칙을 쓴다 (부록 D `rule(N).grace`, R4).
 2. **멤버 일 잠금:** `INSERT ... ON CONFLICT DO NOTHING` 다음 `SELECT ... FOR UPDATE`. 잠금 순서는 항상 '전날 행 → 오늘 행'.
 3. **판정 대상 여부:** 가입(`judged_from`), 탈퇴(`left_at`), 쉬는 요일을 반영한다. 기수 밖인 날(1기 시작 전 등)은 판정 대상이 아니다 (R9, OD-07). 기수 안인지는 `seasons` 행으로 본다. 다음 기수 행은 이번 기수가 시작될 때 S12 판정 배치가 만들어 두니(5.13), S09 테스트는 필요한 기수 행을 직접 넣는다.
 4. **집계:** `study_day_solves` INSERT(유니크 제약 R5, 충돌은 무시), `member_days.solved_count`를 그 날의 `study_day_solves` 수로 다시 계산한다.
