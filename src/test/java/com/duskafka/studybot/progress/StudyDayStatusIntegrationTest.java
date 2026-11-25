@@ -279,7 +279,7 @@ class StudyDayStatusIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("3.5: 11/20에 가입 → 11/20은 판정하지 않음(요약에서 빠짐), 11/21부터 판정")
+	@DisplayName("3.5: 11/20에 가입 → 11/20은 판정하지 않음(요약에서 빠짐), 11/21부터 판정. 가입 전날에는 멤버로 나오지 않음")
 	void joinedTodayIsNotJudgedUntilTomorrow() {
 		long alice = rows.newUser("s10-old");
 		long carol = rows.newUser("s10-new");
@@ -290,7 +290,9 @@ class StudyDayStatusIntegrationTest {
 		JsonNode joinedDay = ok(today(carol, study.studyId()));
 		setClock(seoul(NOV_21, 12, 0));
 		JsonNode nextDay = ok(today(carol, study.studyId()));
+		JsonNode beforeJoining = ok(day(carol, study.studyId(), NOV_19));
 
+		assertThat(memberIds(beforeJoining)).containsExactly(alice);
 		assertThat(status(joinedDay, carol)).isEqualTo("NOT_JUDGED");
 		assertThat(joinedDay.get("summary").get("remaining").asInt()).isEqualTo(1);
 		assertThat(status(nextDay, carol)).isEqualTo("REMAINING");
@@ -376,6 +378,22 @@ class StudyDayStatusIntegrationTest {
 		assertThat(body.get("inSeason").asBoolean()).isFalse();
 		assertThat(status(body, alice)).isEqualTo("NOT_JUDGED");
 		assertThat(body.get("summary").get("remaining").asInt()).isZero();
+	}
+
+	@Test
+	@DisplayName("마지막 기수 행이 끝난 다음 날(다음 기수 행 없음)은 판정 시작일이 지났어도 판정하지 않는다 (R9)")
+	void dayAfterLastSeasonRowIsNotJudged() {
+		long alice = rows.newUser("s10-after-season");
+		TestStudy study = rows.standardStudy(alice);
+		solveAndAssign(alice, "1000", seoul(LocalDate.of(2026, 11, 29), 10, 0));
+		setClock(seoul(LocalDate.of(2026, 11, 29), 12, 0));
+
+		JsonNode body = ok(today(alice, study.studyId()));
+
+		assertThat(body.get("inSeason").asBoolean()).isFalse();
+		assertThat(status(body, alice)).isEqualTo("NOT_JUDGED");
+		assertThat(member(body, alice).get("solvedCount").asInt()).isEqualTo(1);
+		assertThat(body.get("summary").get("done").asInt()).isZero();
 	}
 
 	// --- 최근 풀이 ---
