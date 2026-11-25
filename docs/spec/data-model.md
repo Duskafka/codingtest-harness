@@ -86,8 +86,8 @@ erDiagram
 | `linked_repositories`                         | P1   | id, user_id, installation_id, repo_id, full_name, default_branch, path_prefix, status(ACTIVE/SUSPENDED/INACTIVE), created_at, updated_at                                                                         | `repo_id WHERE status='ACTIVE'` 부분 UNIQUE. 이름이 아니라 repo_id로 추적. 아래 'GitHub 연결 테이블' |
 | `webhook_inbox`                               | P1   | id, source(GITHUB/DISCORD/KAKAO), delivery_id, event_type, payload(JSONB), received_at, status, attempts, next_attempt_at, last_error, processed_at                                                               | **(source, delivery_id) UNIQUE**. payload는 14일 뒤 비움 (NULL 허용, 행은 남음, S15) |
 | `solve_records`                               | P1   | id, user_id, source, platform, problem_no, title, received_at, commit_sha, repo_id, inbox_id, raw_path, parser_version, status(CONFIRMED/PENDING_IDENTIFICATION/IGNORED)                                          | `(user_id, commit_sha, platform, problem_no)` UNIQUE, `(user_id, commit_sha, raw_path)` UNIQUE (둘 다 commit_sha 있을 때). 아래 '풀이 기록 테이블' |
-| `study_day_solves`                            | P1   | id, study_id, user_id, study_day, solve_record_id, platform, problem_no                                                                                                                                           | **(study_id, user_id, study_day, platform, problem_no) UNIQUE** → R5           |
-| `member_days`                                 | P1   | id, study_id, user_id, study_day, season_id, solved_count, exemption_used_at, result, result_source, judged_at, rule_id, version                                                                                  | **(study_id, user_id, study_day) UNIQUE**. 잠금 대상이자 판정 결과 (5.5, 5.10) |
+| `study_day_solves`                            | P1   | id, study_id, user_id, study_day, solve_record_id, platform, problem_no                                                                                                                                           | **(study_id, user_id, study_day, platform, problem_no) UNIQUE** → R5. 아래 '멤버 일 테이블' |
+| `member_days`                                 | P1   | id, study_id, user_id, study_day, season_id, solved_count, exemption_used_at, result, result_source, judged_at, rule_id, version                                                                                  | **(study_id, user_id, study_day) UNIQUE**. 잠금 대상이자 판정 결과 (5.5, 5.10). 아래 '멤버 일 테이블' |
 | `self_reports`                                | P1   | id, study_id, user_id, study_day, platform, problem_no, evidence_url, memo, status, solve_record_id, decided_by, decided_at, created_at                                                                           | 하루 5건 제한 (R7)                                                             |
 | `notifications`                               | P1   | id, type, channel, study_id, user_id, study_day, dedupe_key, payload(JSONB), status, attempts, next_attempt_at, locked_until, sent_at, expires_at, last_error                                                     | **dedupe_key UNIQUE** → 같은 알림 중복 생성 방지 (5.8)                         |
 | `push_subscriptions`                          | P1   | id, user_id, endpoint, p256dh, auth, user_agent, created_at, last_success_at, failure_count                                                                                                                       | endpoint UNIQUE                                                                |
@@ -124,6 +124,21 @@ erDiagram
         - 플랫폼과 번호는 함께 있거나 함께 비어 있어요. 번호는 0으로 시작하지 않는 숫자예요(`ProblemRef` 정규형). 수동 인증(S11)으로 남기는 기록도 이 형식을 따라야 해요.
         - `CONFIRMED`는 문제(플랫폼·번호)가 있고, `PENDING_IDENTIFICATION`은 없어요. 그래서 확인 대기 행에 문제를 채우려면 상태도 함께 바꿔야 해요 (S10).
         - `source = 'GITHUB'`면 `commit_sha`·`repo_id`·`inbox_id`·`raw_path`·`parser_version`이 있어요.
+
+**멤버 일 테이블 (S09)**
+
+- `member_days`
+    - `solved_count`는 그날의 `study_day_solves` 행 수예요. 배정할 때 더하지 않고 다시 세요 (부록 D `recordSolve`, S09 만들 것 4).
+    - `season_id`는 그날을 담은 기수 행이에요. 기수 밖인 날(1기 시작 전 등)은 비어 있고(FK, NULL 허용), 그날은 판정하지 않아요 (R9, OD-07).
+    - R9로 판정하지 않는 날(1기 시작 전 같은 기수 밖인 날 등)에도 풀이가 오면 그날 행에 기록해요. 결과는 남기지 않아요.
+    - `result`·`result_source`·`judged_at`·`rule_id`는 판정(S12)이 채워요. `rule_id`는 판정에 쓴 규칙 버전이에요(FK, NULL 허용). 1기 시작 전 규칙 변경은 첫 버전을 지우고 다시 만들어서, 판정하지 않는 날의 행에는 채우지 않아요.
+    - CHECK
+        - `result`는 glossary `JudgmentResult` 값(`SUCCESS`, `FAIL`, `EXEMPT_REST`, `EXEMPT_TICKET`)이거나 비어 있어요(미판정).
+        - `solved_count >= 0`
+        - `result_source`는 값이 정해지지 않아 CHECK가 없어요. 값은 S12에서 정해요.
+- `study_day_solves`
+    - `solve_record_id`는 그날에 센 풀이 기록이에요(FK).
+    - 플랫폼·번호는 풀이 기록의 값을 그대로 옮겨요. 플랫폼 CHECK는 두지 않아요(풀이 기록 쪽에 있음).
 
 **인덱스 (먼저 만들 것)**
 
