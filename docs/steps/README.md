@@ -26,7 +26,7 @@
 | [S07](S07-github-app.md) | GitHub App 연결 | P1 | S04, S06 | — | H-02 | 완료 |
 | [S08](S08-push-to-solve.md) | push 처리와 풀이 기록 | P1 | S03, S06, S07 | — | — | 완료 |
 | [S09](S09-study-day-assignment.md) | 스터디 일 배정과 멤버 일 | P1 | S02, S05, S08 | — | — | 완료 |
-| [S10](S10-today-status.md) | 오늘 현황·내 풀이·확인 대기 지정 | P1 | S09 | — | — | 대기 |
+| [S10](S10-today-status.md) | 오늘 현황·내 풀이·확인 대기 지정 | P1 | S09 | — | — | 완료 |
 | [S11](S11-self-report-exemption.md) | 수동 인증과 면제권 | P1 | S09 | OD-09 | — | 대기 |
 | [S12](S12-daily-judgment.md) | 판정 배치와 기수 자동 연장 | P1 | S11 | OD-07 | — | 대기 |
 | [S13](S13-notification-webpush.md) | 알림 기반과 웹 푸시 | P1 | S11 | OD-11 | H-04 | 대기 |
