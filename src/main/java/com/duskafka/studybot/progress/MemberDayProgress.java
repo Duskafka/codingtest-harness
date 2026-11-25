@@ -27,7 +27,19 @@ public record MemberDayProgress(MemberDayStatus status, @Nullable ExemptReason e
 	 */
 	public static MemberDayProgress evaluate(boolean judged, boolean restDay, int dailyGoal, int solvedCount,
 			boolean exemptionUsed) {
-		throw new UnsupportedOperationException("S10 구현 전");
+		if (!judged) {
+			return new MemberDayProgress(MemberDayStatus.NOT_JUDGED, null);
+		}
+		if (restDay) {
+			return new MemberDayProgress(MemberDayStatus.EXEMPT, ExemptReason.REST_DAY);
+		}
+		if (solvedCount >= dailyGoal) {
+			return new MemberDayProgress(MemberDayStatus.DONE, null);
+		}
+		if (exemptionUsed) {
+			return new MemberDayProgress(MemberDayStatus.EXEMPT, ExemptReason.TICKET);
+		}
+		return new MemberDayProgress(MemberDayStatus.REMAINING, null);
 	}
 
 }

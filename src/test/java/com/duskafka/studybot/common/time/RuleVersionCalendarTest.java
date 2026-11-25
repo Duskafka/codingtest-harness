@@ -189,6 +189,21 @@ class RuleVersionCalendarTest {
 	}
 
 	@Test
+	@DisplayName("S10: 유예 구간이 끝나는 시각은 다음 날 시작 + 다음 날 규칙의 유예다. 판정 시각은 그 10분 뒤다")
+	void graceEndIsNextDayStartPlusNextDayGrace() {
+		RuleVersionCalendar calendar = RuleVersionCalendar
+			.of(List.of(version("2026-11-21", rule(SEOUL, "00:00", 30)), version("2026-12-19", rule(SEOUL, "06:00", 60))));
+
+		assertThat(calendar.graceEndOf(day("2026-11-25"))).isEqualTo(at("2026-11-26T00:30:00+09:00"));
+		assertThat(calendar.isInGrace(calendar.graceEndOf(day("2026-11-25")).minusNanos(1))).isTrue();
+		assertThat(calendar.isInGrace(calendar.graceEndOf(day("2026-11-25")))).isFalse();
+		// 기수 경계: 새 첫날 시작(옛 기준 시각) + 새 유예.
+		assertThat(calendar.graceEndOf(day("2026-12-18"))).isEqualTo(at("2026-12-19T01:00:00+09:00"));
+		assertThat(calendar.graceEndOf(SEASON_2)).isEqualTo(at("2026-12-20T07:00:00+09:00"));
+		assertThat(calendar.judgeAt(SEASON_2)).isEqualTo(calendar.graceEndOf(SEASON_2).plusSeconds(600));
+	}
+
+	@Test
 	@DisplayName("S05: 버전이 없거나, 적용 시작일이 겹치거나, 시간대가 다르면 만들 수 없다")
 	void rejectsInvalidVersions() {
 		assertThatIllegalArgumentException().isThrownBy(() -> RuleVersionCalendar.of(List.of()));

@@ -1,6 +1,7 @@
 package com.duskafka.studybot.progress.persistence;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,9 +10,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 멤버 일 행을 만들고 잠그고 센 수를 고친다 (5.5 '만들 것', S09 만들 것 2·4).
+ * 멤버 일 행을 만들고 잠그고 센 수를 고친다 (5.5 '만들 것', S09 만들 것 2·4). 현황을 위해 하루치를 읽는다 (S10).
  *
- * <p>엔티티를 거치지 않고 네이티브 쿼리만 쓴다. open-in-view로 요청 내내 열려 있는 EntityManager에 앞서 읽은 엔티티가 남아 있으면,
+ * <p>쓰기와 잠금은 엔티티를 거치지 않고 네이티브 쿼리만 쓴다. open-in-view로 요청 내내 열려 있는 EntityManager에 앞서 읽은 엔티티가 남아 있으면,
  * 잠금 쿼리가 행을 잠그더라도 그 엔티티를 DB 값으로 다시 채우지 않고 그대로 돌려준다 (S07 PR #14 리뷰,
  * {@code GithubInstallationRepository#lockCurrentState}). 모두 쓰기 트랜잭션 안에서 부른다.
  */
@@ -61,6 +62,18 @@ public interface MemberDayRepository extends JpaRepository<MemberDay, Long> {
 			where m.id = :id
 			""", nativeQuery = true)
 	int recountSolved(@Param("id") long id);
+
+	/**
+	 * 스터디 하루의 멤버 일 행들 (S10 현황). 조회 전용 DTO로 읽어 엔티티를 영속성 컨텍스트에 올리지 않는다. 인덱스
+	 * {@code member_days_study_day_ix}를 쓴다. 잠그지 않는다.
+	 */
+	@Query("""
+			select new com.duskafka.studybot.progress.persistence.MemberDayRow(m.userId, m.solvedCount, m.exemptionUsedAt,
+				m.result)
+			from MemberDay m
+			where m.studyId = :studyId and m.studyDay = :studyDay
+			""")
+	List<MemberDayRow> findDayRows(@Param("studyId") long studyId, @Param("studyDay") LocalDate studyDay);
 
 	/** 잠그고 읽은 멤버 일의 지금 값 중 배정에 필요한 것. */
 	interface LockedMemberDay {

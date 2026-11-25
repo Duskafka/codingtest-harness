@@ -116,12 +116,20 @@ public final class RuleVersionCalendar {
 	}
 
 	/**
+	 * 그 스터디 일의 늦은 풀이를 받아 줄 수 있는 유예 구간이 끝나는 시각: 다음 날 시작 + 다음 날 규칙의 유예 (R4, {@link #isInGrace}).
+	 * 이 시각 전에 온 풀이는 조건이 맞으면 그날로 간다 (R4). 끝 시각 자체는 유예 밖이다.
+	 */
+	public Instant graceEndOf(LocalDate studyDay) {
+		LocalDate next = studyDay.plusDays(1);
+		return startOf(next).plus(ruleFor(next).grace());
+	}
+
+	/**
 	 * 판정 시각: 다음 날 시작 + 다음 날 규칙의 유예 + 판정 여유 10분 (R9). 그날의 늦은 풀이를 받아 주는 유예 구간과 같은 유예를 쓴다
-	 * ({@link #isInGrace}).
+	 * ({@link #graceEndOf}).
 	 */
 	public Instant judgeAt(LocalDate studyDay) {
-		LocalDate next = studyDay.plusDays(1);
-		return startOf(next).plus(ruleFor(next).grace()).plus(StudyCalendar.JUDGE_MARGIN);
+		return graceEndOf(studyDay).plus(StudyCalendar.JUDGE_MARGIN);
 	}
 
 	/** 시각이 속한 스터디 일의 다음 스터디 일. 가입하면 이날부터 판정하고(R14), 규칙 변경은 이날부터 적용한다(R2). */

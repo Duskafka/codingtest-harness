@@ -50,6 +50,15 @@ public final class TestApi {
 		return this.mvc.get().uri(uri, uriVariables).with(as(userId)).exchange();
 	}
 
+	/** 이 사용자로 로그인한 GET. 쿼리 값은 인코딩하지 않고 요청 파라미터로 붙인다 (이름, 값, 이름, 값, ...). */
+	public MvcTestResult getWithParams(long userId, String uri, String... namesAndValues) {
+		MockMvcRequestBuilder request = this.mvc.get().uri(uri).with(as(userId));
+		for (int i = 0; i + 1 < namesAndValues.length; i += 2) {
+			request = request.param(namesAndValues[i], namesAndValues[i + 1]);
+		}
+		return request.exchange();
+	}
+
 	/** 로그인하지 않은 GET. */
 	public MvcTestResult getAnonymous(String uri, Object... uriVariables) {
 		return this.mvc.get().uri(uri, uriVariables).exchange();

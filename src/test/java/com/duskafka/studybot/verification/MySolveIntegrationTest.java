@@ -133,8 +133,8 @@ class MySolveIntegrationTest {
 		long inside = rows.solve(alice, "BOJ", "1001", seoul(NOV_20, 10, 0));
 		rows.solve(alice, "BOJ", "1002", seoul(NOV_20, 12, 0));
 
-		MvcTestResult result = mySolves(alice,
-				"?from=2026-11-20T10:00:00%2B09:00&to=2026-11-20T12:00:00%2B09:00");
+		MvcTestResult result = api.getWithParams(alice, "/api/me/solves", "from", "2026-11-20T10:00:00+09:00", "to",
+				"2026-11-20T12:00:00+09:00");
 
 		assertThat(result).hasStatus(HttpStatus.OK);
 		assertThat(ids(TestApi.json(result))).containsExactly(inside);
@@ -312,6 +312,26 @@ class MySolveIntegrationTest {
 		assertThat(rows.solveRecord(pending)).isEqualTo(new SolveRecordRow("CONFIRMED", "BOJ", "1000"));
 		assertThat(rows.studyDaySolves(study.studyId(), alice)).extracting(StudyDaySolveRow::problemNo)
 			.containsExactly("1000");
+	}
+
+	@Test
+	@DisplayName("같은 커밋에 그 문제의 기록이 이미 있으면 409이고 그대로다 (UNIQUE 위반 500 대신)")
+	void sameProblemInTheSameCommitIsConflict() {
+		long alice = rows.newUser("s10-same-commit");
+		TestStudy study = rows.standardStudy(alice);
+		long confirmed = rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_20, 23, 50));
+		long pending = rows.pendingSolve(alice, seoul(NOV_20, 23, 50), "algorithm/a.py");
+		jdbc.sql("""
+				update studybot.solve_records set commit_sha = (select commit_sha from studybot.solve_records where id = :confirmed)
+				where id = :pending
+				""").param("confirmed", confirmed).param("pending", pending).update();
+
+		MvcTestResult result = identify(alice, pending, BOJ_1000);
+
+		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(rows.solveRecord(pending).status()).isEqualTo("PENDING_IDENTIFICATION");
+		assertThat(rows.studyDaySolves(study.studyId(), alice)).isEmpty();
+		assertThat(identify(alice, pending, "{\"platform\": \"BOJ\", \"problemNo\": \"1001\"}")).hasStatus(HttpStatus.OK);
 	}
 
 	@ParameterizedTest
