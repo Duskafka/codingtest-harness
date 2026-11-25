@@ -6,7 +6,8 @@
 - 한 일: 만들 것 1~6. V8(`member_days`, `study_day_solves`), study 공개 API `MemberStudies`·`MemberStudy`(활성 멤버십, 버전 달력, 버전별 목표, 기수 기간, R9 판정 대상), progress `AssignmentPlan`(R4 계획·결정), `StudyDayAssigner`(S08 배정 연결 지점의 실제 구현, `PendingStudyDayAssignment` 삭제). 잠글 행(후보 전날 + 오늘)을 모든 스터디에 걸쳐 (스터디 일, 스터디 ID) 순서로 `INSERT ON CONFLICT` → `SELECT FOR UPDATE`(네이티브) 뒤 결정, `study_day_solves` 넣으면 센 수를 다시 셈. 결정 제안서 007(기록용, 부록 D 순서의 교착 시나리오)
 - 상태: 빌드 통과 (테스트 592개). 구현 전 새 테스트 38개 모두 실패 확인. 조건 빼 보기 10개 모두 해당 테스트 실패(FOR UPDATE를 빼면 '전날 행이 이미 있을 때' T7만 잡혀 그 테스트를 더함). spec-reviewer '수정 필요'(코드 지적 없음, 필수 3건은 PR 본문·인계 기록) → 반영
 - 사람이 정한 것 (2026-11-25, 세션 선택지, 모두 Recommended): 브랜치 "feat/S09-study-day-assignment", 탈퇴 "활성 멤버십만"(탈퇴한 뒤 들어온 풀이는 탈퇴한 날을 포함해 어느 날에도 세지 않음)
-- 다음: PR 검토(판단 기록 '꼭 봐 주세요': V8 컬럼·제약, 잠금 순서·007 '결정', 판정 대상이 아닌 날에도 기록, 탈퇴 처리가 R4·R14 문구와 다름) → 병합 → 스펙 변경 제안 1~3 docs PR → S10 또는 S11
+- PR 열린 질문 결정 (2026-11-25, 지시 "내가 정해야 할 것의 선택지와 그 선택지의 장단점을 비교해서 제시하면 내가 선택할게", 세션 선택지, 모두 Recommended): 유예 안 같은 문제 "지금대로, Q2와 함께 정함", 결정 제안서 007 "A 행 잠금 + 전역 순서"(007 '결정'에 받아 적음, 상태 확정), S10 확인 대기의 가입 전 인정 시각 "지금대로 그날에 기록", 스펙 변경 제안 "1 잠금 순서 (5.5, 부록 D)", "2 V8 제약 메모 (data-model)", "3 탈퇴 문구 (R4·R14)" 모두 반영
+- 다음: PR 검토 → 병합 → docs PR: 스펙 변경 제안 1~3과 결정 대장(제안서 목록에 007, ADR-006 행) 반영 → S10 또는 S11
 - 막힌 것: 없음
 - 참고: S10·S11·S12는 멤버 일을 `progress.persistence.MemberDayRepository`(네이티브 `insertIfAbsent`·`lock`·`recountSolved`)로 다룬다. 판정(S12)은 한 트랜잭션에 행 하나만 잠그거나 날짜 오름차순으로(007). 판정하지 않는 날(가입한 날, 1기 전)에도 행이 있을 수 있고 `season_id`가 NULL일 수 있다. S12가 `rule_id`·`result_source`·`judged_at`을 채운다. S15는 `study_day_solves.solve_record_id` FK 때문에 풀이 기록보다 먼저 지워야 한다. 열린 질문: 유예 안 같은 문제(덜 세거나 이틀을 채움, Q2와 이어짐), S10 확인 대기 지정의 가입 전 인정 시각. 첫 빌드는 Maven Central 429로 두 번 실패, 다시 돌려 통과
 - PR: #24
