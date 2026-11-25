@@ -19,6 +19,7 @@ import com.duskafka.studybot.study.persistence.StudyRuleRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -91,11 +92,14 @@ public class InvitationService {
 		}
 		Study study = this.studyRepository.findById(invitation.getStudyId())
 			.orElseThrow(() -> new NotFoundException(NOT_FOUND_DETAIL));
-		StudyRule rule = StudyTimeline
-			.currentRule(this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(study.getId()));
-		Season season = StudyTimeline.seasonOn(this.seasonRepository.findByStudyIdOrderBySeqAsc(study.getId()),
-				StudyTimeline.calendar(rule, study.zoneId()).studyDayOf(now));
-		return new InvitationPreview(study, rule, season, invitation.getExpiresAt());
+		List<StudyRule> rules = this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(study.getId());
+		LocalDate today = StudyTimeline.calendar(rules, study.zoneId()).studyDayOf(now);
+		// 가입하면 다음 스터디 일부터 판정하는데, 그날부터 예정된 변경이 적용될 수 있어 예정된 변경도 보여 준다
+		// (5.1 '가입 전에 규칙을 보여줘야', 사람이 정함 2026-11-24 "예정 변경도 보여 줌").
+		StudyRule rule = StudyTimeline.ruleOn(rules, today);
+		Season season = StudyTimeline.seasonOn(this.seasonRepository.findByStudyIdOrderBySeqAsc(study.getId()), today);
+		return new InvitationPreview(study, rule, StudyTimeline.upcoming(rules, rule), season,
+				invitation.getExpiresAt());
 	}
 
 	/**
@@ -141,13 +145,14 @@ public class InvitationService {
 	}
 
 	/**
-	 * 가입 다음 스터디 일 (R14, 5.1 처리 순서 3). 스터디가 시작하기 전에 가입해도 그대로다. 시작 전 날은 1기 밖이라
-	 * R9의 '기수 밖'(면제)이고, 그 날을 어떻게 남길지는 OD-07과 함께 정한다 (glossary '판정 결과').
+	 * 가입 다음 스터디 일 (R14, 5.1 처리 순서 3). 규칙 버전에 걸친 달력으로 센다 (기준 시각이 바뀌는 새 기수 첫날 포함, R2).
+	 * 스터디가 시작하기 전에 가입해도 그대로다. 시작 전 날은 기수 밖이라 판정 대상이 아니다 (R9, OD-07). 판정하는 쪽(S09·S12)이
+	 * 기수도 함께 본다.
 	 */
 	private LocalDate judgedFrom(Study study, Instant joinedAt) {
-		StudyRule rule = StudyTimeline
-			.currentRule(this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(study.getId()));
-		return StudyTimeline.calendar(rule, study.zoneId()).nextStudyDayOf(joinedAt);
+		return StudyTimeline
+			.calendar(this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(study.getId()), study.zoneId())
+			.nextStudyDayOf(joinedAt);
 	}
 
 	private Invitation find(String token) {
@@ -179,10 +184,17 @@ public class InvitationService {
 	 * 초대 미리보기.
 	 * @param study 스터디
 	 * @param currentRule 지금 적용되는 규칙 버전
+	 * @param upcomingRules 아직 적용되지 않은 예정 버전 (적용 시작일 순서)
 	 * @param currentSeason 지금 기수
 	 * @param expiresAt 초대 만료 시각
 	 */
-	public record InvitationPreview(Study study, StudyRule currentRule, Season currentSeason, Instant expiresAt) {
+	public record InvitationPreview(Study study, StudyRule currentRule, List<StudyRule> upcomingRules,
+			Season currentSeason, Instant expiresAt) {
+
+		public InvitationPreview {
+			upcomingRules = List.copyOf(upcomingRules);
+		}
+
 	}
 
 	/**

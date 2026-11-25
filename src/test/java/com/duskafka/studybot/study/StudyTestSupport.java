@@ -99,6 +99,13 @@ abstract class StudyTestSupport {
 			.exchange();
 	}
 
+	protected MvcTestResult putJson(TestUser user, String uri, String body) {
+		return withCsrf(mvc.put().uri(uri)).with(as(user))
+			.contentType(MediaType.APPLICATION_JSON)
+			.content(body)
+			.exchange();
+	}
+
 	protected MvcTestResult delete(TestUser user, String uri) {
 		return withCsrf(mvc.delete().uri(uri)).with(as(user)).exchange();
 	}

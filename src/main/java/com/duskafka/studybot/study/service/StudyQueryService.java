@@ -13,6 +13,8 @@ import com.duskafka.studybot.study.persistence.StudyRule;
 import com.duskafka.studybot.study.persistence.StudyRuleRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -49,11 +51,12 @@ public class StudyQueryService {
 		Study study = this.studyRepository.findById(studyId)
 			.orElseThrow(() -> new NotFoundException("스터디를 찾을 수 없어요."));
 		Instant now = this.clock.instant();
-		StudyRule rule = StudyTimeline.currentRule(this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(studyId));
-		Season season = StudyTimeline.seasonOn(this.seasonRepository.findByStudyIdOrderBySeqAsc(studyId),
-				StudyTimeline.calendar(rule, study.zoneId()).studyDayOf(now));
+		List<StudyRule> rules = this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(studyId);
+		LocalDate today = StudyTimeline.calendar(rules, study.zoneId()).studyDayOf(now);
+		StudyRule rule = StudyTimeline.ruleOn(rules, today);
+		Season season = StudyTimeline.seasonOn(this.seasonRepository.findByStudyIdOrderBySeqAsc(studyId), today);
 		long memberCount = this.membershipRepository.countByStudyIdAndLeftAtIsNull(studyId);
-		return new StudyDetail(study, me.role(), memberCount, rule, season);
+		return new StudyDetail(study, me.role(), memberCount, rule, StudyTimeline.upcoming(rules, rule), season);
 	}
 
 }
