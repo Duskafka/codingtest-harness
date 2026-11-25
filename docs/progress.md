@@ -9,7 +9,7 @@
 - 다음: 이 PR 병합 → S10 또는 S11 (선행 S09 완료)
 - 막힌 것: 없음
 - 참고: 가입 전 인정 시각을 물을 때 에이전트가 붙인 설명 "판정에 영향 없다"는 같은 스터디에 다시 가입한 사람에게는 틀렸다(옛 멤버십으로 판정하는 날일 수 있음). 사람에게 알리고 '배정할 때의 멤버십'을 따로 물어 정함. S10·S12·Q2에 더한 줄은 결정을 다음 단계에 전하는 문장이다 (PR 본문에 표시)
-- PR: #
+- PR: #25
 
 ## 2026-11-25 S09 스터디 일 배정과 멤버 일 (세션 1/1)
 - 한 일: 만들 것 1~6. V8(`member_days`, `study_day_solves`), study 공개 API `MemberStudies`·`MemberStudy`(활성 멤버십, 버전 달력, 버전별 목표, 기수 기간, R9 판정 대상), progress `AssignmentPlan`(R4 계획·결정), `StudyDayAssigner`(S08 배정 연결 지점의 실제 구현, `PendingStudyDayAssignment` 삭제). 잠글 행(후보 전날 + 오늘)을 모든 스터디에 걸쳐 (스터디 일, 스터디 ID) 순서로 `INSERT ON CONFLICT` → `SELECT FOR UPDATE`(네이티브) 뒤 결정, `study_day_solves` 넣으면 센 수를 다시 셈. 결정 제안서 007(기록용, 부록 D 순서의 교착 시나리오)
