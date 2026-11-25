@@ -16,7 +16,8 @@
 
 - `docs/spec/frontend.md` 전체
 - `docs/spec/product.md`: 2.5 사용자 여정, 2.6 화면 목록, 2.7 알림·공유 채널
-- `docs/spec/api.md`: 4.4 표, 4.5의 CSRF 항목
+- `docs/spec/api.md`: 4.4 표와 '규칙 변경' 메모, 4.5의 CSRF 항목
+- `docs/spec/domain-rules.md`: R2
 - `docs/spec/processes/5.08-deadline-reminder.md`: 서비스 워커, iPhone, 권한 요청 시점
 - `docs/spec/processes/5.09-share-kakao-discord.md`
 - `docs/spec/security.md`: 9.7 '입력과 출력'
@@ -30,6 +31,8 @@
     3. GitHub 연결(5)
     4. 오늘 현황(6), 내 풀이(7), 면제권(8)
     5. 스터디 설정(9), 알림 설정(10)
+        - 규칙 폼은 마지막 예정 버전(`upcomingRules`의 마지막, 없으면 `rule`)으로 채우고, 그 `id`를 `basedOnRuleId`로 보낸다. 409를 받으면 상세를 다시 불러온다 (api.md 4.4 '규칙 변경').
+        - 예정된 변경과 적용 시작일(다음 스터디 일부터 / 다음 기수부터)을 보여 준다. 하루 기준 시각이 바뀌면 새 기수 첫날의 길이가 달라진다(18~30시간)고 안내한다 (R2).
 3. **PWA:** 매니페스트, 서비스 워커. 서비스 워커는 `push` 이벤트로 알림을 띄우고, 알림을 누르면 오늘 현황을 연다. 오프라인 캐시는 하지 않는다.
 4. **알림 권한:** 첫 방문이 아니라 스터디에 가입한 직후처럼 이유가 분명할 때, 사용자가 버튼을 눌렀을 때 요청한다. iPhone은 홈 화면에 추가하라는 안내를 넣는다.
 5. **카카오톡 공유:** JavaScript SDK로 공유 카드를 보낸다. 공유가 안 되는 환경에서는 '텍스트 복사'.

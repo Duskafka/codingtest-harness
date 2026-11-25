@@ -24,7 +24,7 @@
 ## 만들 것
 
 1. **OD-11 결정 제안서 (먼저):** Java 웹 푸시 라이브러리를 유지보수 상태, Java 25·Boot 4 호환, VAPID(RFC 8292)와 메시지 암호화(RFC 8291) 지원으로 비교한다. 사람이 정하기 전에는 웹 푸시 발송(6번)을 만들지 않는다. 1~5번은 진행해도 된다.
-2. **알림 생성 스케줄러 (1분마다, ShedLock):** 알림 시각이 지났는데 아직 만들지 않은 (스터디, 날)을 찾아 대상(미달성, 면제권 없음, 쉬는 날 아님)에게 `REMINDER`, 대상이 있으면 방장에게 `SHARE_PROMPT`를 만든다. `dedupe_key` UNIQUE, 만료 = 그날 마감. 마감이 지났으면 만들지 않는다. 진행 지점은 `studies.last_reminded_day`.
+2. **알림 생성 스케줄러 (1분마다, ShedLock):** 알림 시각은 그날 D의 마감에서 D 규칙의 알림 오프셋을 뺀 시각이다. `common.time.RuleVersionCalendar`에 `reminderAt(D)` = `startOf(D+1)` − D 규칙의 알림 오프셋을 더해 센다. 오늘 바꾼 오프셋은 다음 스터디 일부터 적용된다 (R2). 알림 시각이 지났는데 아직 만들지 않은 (스터디, 날)을 찾아 대상(미달성, 면제권 없음, 쉬는 날 아님)에게 `REMINDER`, 대상이 있으면 방장에게 `SHARE_PROMPT`를 만든다. `dedupe_key` UNIQUE, 만료 = 그날 마감. 마감이 지났으면 만들지 않는다. 진행 지점은 `studies.last_reminded_day`.
 3. **발송기 (5초마다):** `PENDING`이고 시각이 된 행을 `FOR UPDATE SKIP LOCKED`로 가져와 `SENDING`(잠금 만료 시각)으로 먼저 커밋한다. 만료됐으면 `EXPIRED`, 그새 풀었거나 면제권을 썼으면 `SKIPPED`. 잠금이 만료된 `SENDING`은 `PENDING`으로 되돌린다.
 4. **규칙 변경 알림 `RULE_CHANGED`:** 규칙이 바뀌면 멤버에게. study → notification 방향이라 의존 규칙에 맞는 방식으로 (알려진 충돌 5번).
 5. **푸시 구독 API:** `GET /api/push/vapid-public-key`, `POST /api/me/push-subscriptions`, `DELETE /api/me/push-subscriptions/{id}`. 구독 주소는 알려진 푸시 서비스 도메인만 받는다 (T28).
