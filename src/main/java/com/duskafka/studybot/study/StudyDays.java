@@ -1,5 +1,6 @@
 package com.duskafka.studybot.study;
 
+import com.duskafka.studybot.common.error.BadRequestException;
 import com.duskafka.studybot.common.error.NotFoundException;
 import com.duskafka.studybot.common.time.RuleVersionCalendar;
 import com.duskafka.studybot.common.time.StudyCalendar;
@@ -34,6 +35,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class StudyDays {
 
+	static final String FUTURE_DAY_DETAIL = "아직 오지 않은 날이에요.";
+
+	static final String BEFORE_STUDY_DETAIL = "스터디가 생기기 전 날이에요.";
+
 	private final StudyRepository studyRepository;
 
 	private final StudyRuleRepository ruleRepository;
@@ -54,6 +59,8 @@ public class StudyDays {
 	 * 판정한다 (R14 '탈퇴한 날 다시 가입하면 그날 판정에도 들어가요').</li>
 	 * </ul>
 	 *
+	 * <p>고를 수 있는 날은 스터디를 만든 날부터 오늘까지다. 그 밖이면 400이다 (아직 오지 않은 날, 스터디가 생기기 전 날).
+	 *
 	 * @param date 스터디 일. {@code null}이면 오늘
 	 */
 	@Transactional(readOnly = true)
@@ -64,6 +71,12 @@ public class StudyDays {
 		RuleVersionCalendar calendar = StudyTimeline.calendar(rules, study.zoneId());
 		LocalDate today = calendar.studyDayOf(this.clock.instant());
 		LocalDate day = date == null ? today : date;
+		if (day.isAfter(today)) {
+			throw new BadRequestException(FUTURE_DAY_DETAIL);
+		}
+		if (day.isBefore(calendar.studyDayOf(study.getCreatedAt()))) {
+			throw new BadRequestException(BEFORE_STUDY_DETAIL);
+		}
 		Long seasonId = seasonIdOn(this.seasonRepository.findByStudyIdOrderBySeqAsc(studyId), day);
 		Instant startsAt = calendar.startOf(day);
 		Instant endsAt = calendar.startOf(day.plusDays(1));

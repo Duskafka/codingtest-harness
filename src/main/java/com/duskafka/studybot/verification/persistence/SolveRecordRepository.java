@@ -65,13 +65,16 @@ public interface SolveRecordRepository extends JpaRepository<SolveRecord, Long> 
 	Page<MySolveRow> findMine(@Param("userId") long userId, @Param("from") @Nullable Instant from,
 			@Param("to") @Nullable Instant to, Pageable pageable);
 
-	/** 풀이 기록 하나를 내 풀이 한 줄로 읽는다. 엔티티를 영속성 컨텍스트에 올리지 않으니 앞서 네이티브로 고친 값을 그대로 읽는다. */
+	/**
+	 * 이 사용자의 풀이 기록 하나를 내 풀이 한 줄로 읽는다. 엔티티를 영속성 컨텍스트에 올리지 않으니 앞서 네이티브로 고친 값을 그대로
+	 * 읽는다.
+	 */
 	@Query("""
 			select new com.duskafka.studybot.verification.persistence.MySolveRow(s.id, s.source, s.status, s.platform,
 				s.problemNo, s.title, s.receivedAt, s.rawPath)
-			from SolveRecord s where s.id = :id
+			from SolveRecord s where s.id = :id and s.userId = :userId
 			""")
-	Optional<MySolveRow> findRow(@Param("id") long id);
+	Optional<MySolveRow> findRow(@Param("id") long id, @Param("userId") long userId);
 
 	/** 풀이 기록들을 내 풀이 줄로 읽는다 (S10 현황의 최근 풀이, 조회 포트). 쿼리 한 번이다. */
 	@Query("""
@@ -103,16 +106,17 @@ public interface SolveRecordRepository extends JpaRepository<SolveRecord, Long> 
 			@Param("problemNo") String problemNo);
 
 	/**
-	 * 확인 대기 기록에 문제를 채우고 {@code CONFIRMED}로 바꾼다 (R6, S10 만들 것 4, data-model '풀이 기록 테이블'). 확인 대기가 아니면
-	 * 바꾸지 않는다. 제목은 모르므로 비워 둔다.
+	 * 이 사용자의 확인 대기 기록에 문제를 채우고 {@code CONFIRMED}로 바꾼다 (R6, S10 만들 것 4, data-model '풀이 기록 테이블'). 확인
+	 * 대기가 아니면 바꾸지 않는다. 제목은 모르므로 비워 둔다.
 	 *
 	 * @return 바뀐 행 수
 	 */
 	@Modifying
 	@Query(value = """
 			update studybot.solve_records set platform = :platform, problem_no = :problemNo, status = 'CONFIRMED'
-			where id = :id and status = 'PENDING_IDENTIFICATION'
+			where id = :id and user_id = :userId and status = 'PENDING_IDENTIFICATION'
 			""", nativeQuery = true)
-	int identify(@Param("id") long id, @Param("platform") String platform, @Param("problemNo") String problemNo);
+	int identify(@Param("id") long id, @Param("userId") long userId, @Param("platform") String platform,
+			@Param("problemNo") String problemNo);
 
 }

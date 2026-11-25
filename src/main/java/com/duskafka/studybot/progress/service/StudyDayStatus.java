@@ -15,7 +15,8 @@ import org.jspecify.annotations.Nullable;
  *
  * @param day 그날의 규칙·시각·기수
  * @param members 그날 멤버였던 사람들의 상태 (가입 순서)
- * @param recentSolves 그날 센 풀이 중 최근 것 (수신 시각이 늦은 것부터, {@link StudyDayStatusService#RECENT_SOLVES_LIMIT}개까지)
+ * @param recentSolves 그날 센 풀이 중 최근에 배정한 {@link StudyDayStatusService#RECENT_SOLVES_LIMIT}개를 수신 시각이 늦은 것부터.
+ * 확인 대기를 나중에 지정한 풀이는 수신 시각이 일러도 최근에 배정한 것이라 들어올 수 있다
  */
 public record StudyDayStatus(StudyDayContext day, List<MemberStatus> members, List<RecentSolve> recentSolves) {
 

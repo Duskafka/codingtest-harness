@@ -40,7 +40,7 @@ public interface MemberDayRepository extends JpaRepository<MemberDay, Long> {
 	 */
 	@Query(value = """
 			select id as "id", solved_count as "solvedCount", (exemption_used_at is not null) as "exemptionUsed",
-				(result is not null) as "judged"
+				(result is not null) as "judged", coalesce(result = 'FAIL', false) as "failed"
 			from studybot.member_days
 			where study_id = :studyId and user_id = :userId and study_day = :studyDay
 			for update
@@ -85,6 +85,9 @@ public interface MemberDayRepository extends JpaRepository<MemberDay, Long> {
 		boolean getExemptionUsed();
 
 		boolean getJudged();
+
+		/** 실패로 판정됐는지 ({@code result = 'FAIL'}). 확인 대기 지정(S10)이 본다. */
+		boolean getFailed();
 
 	}
 

@@ -35,7 +35,7 @@ final class StudyDayResponses {
 	 * @param inSeason 기수 안인지. 기수 밖이면 아무도 판정하지 않는다 (R9)
 	 * @param summary 판정 대상 멤버의 상태별 수
 	 * @param members 그날 멤버였던 사람들 (가입 순서)
-	 * @param recentSolves 그날 센 풀이 중 최근 것 (수신 시각이 늦은 것부터, 50개까지)
+	 * @param recentSolves 그날 센 풀이 중 최근에 배정한 50개를 수신 시각이 늦은 것부터
 	 */
 	record StudyDayStatusResponse(long studyId, LocalDate studyDay, boolean today, Instant startsAt, Instant endsAt,
 			Instant graceEndsAt, int dailyGoal, boolean restDay, boolean inSeason, Summary summary,
@@ -64,7 +64,9 @@ final class StudyDayResponses {
 	 * 가입한 날, 기수 밖). 지금 센 수로 정한다
 	 * @param exemptReason 면제일 때 까닭: {@code REST_DAY}(쉬는 날) / {@code TICKET}(면제권). 아니면 {@code null}
 	 * @param exemptionUsed 면제권을 썼는지. 목표를 채워 완료여도 참이다 (5.7 "면제권 사용" 표시)
-	 * @param result 판정 결과 ({@code SUCCESS}, {@code FAIL}, {@code EXEMPT_REST}, {@code EXEMPT_TICKET}). 판정 전이면 {@code null}
+	 * @param result 판정 결과 ({@code SUCCESS}, {@code FAIL}, {@code EXEMPT_REST}, {@code EXEMPT_TICKET}). 판정 전이면 {@code null}.
+	 * 있으면 화면은 {@code status}보다 이것을 먼저 보여 준다 (이의로 결과가 바뀌면 센 수와 어긋날 수 있다, P2)
+	 * @param role 지금 역할. 지난 날 상세에서도 그날의 역할이 아니라 지금(마지막 멤버십의) 역할이다
 	 */
 	record MemberResponse(long userId, String login, @Nullable String avatarUrl, MembershipRole role,
 			MemberDayStatus status, @Nullable ExemptReason exemptReason, boolean exemptionUsed, int solvedCount,

@@ -2,7 +2,6 @@ package com.duskafka.studybot.progress.service;
 
 import com.duskafka.studybot.auth.UserDirectory;
 import com.duskafka.studybot.auth.UserProfile;
-import com.duskafka.studybot.common.error.BadRequestException;
 import com.duskafka.studybot.progress.MemberDayProgress;
 import com.duskafka.studybot.progress.SolveDetail;
 import com.duskafka.studybot.progress.SolveRecordDetails;
@@ -43,8 +42,6 @@ public class StudyDayStatusService {
 	/** 최근 풀이를 몇 개까지 줄지. 큰 응답을 만들지 않는다 (9.4 Supabase egress). S10 PR 판단 기록. */
 	public static final int RECENT_SOLVES_LIMIT = 50;
 
-	static final String FUTURE_DAY_DETAIL = "아직 오지 않은 날이에요.";
-
 	private final StudyAccess studyAccess;
 
 	private final StudyDays studyDays;
@@ -64,15 +61,11 @@ public class StudyDayStatusService {
 		return statusOf(this.studyDays.load(studyId, null));
 	}
 
-	/** 특정 날 상세. 멤버가 아니면 404, 아직 오지 않은 날이면 400. */
+	/** 특정 날 상세. 멤버가 아니면 404, 아직 오지 않은 날이나 스터디가 생기기 전 날이면 400 ({@link StudyDays#load}). */
 	@Transactional(readOnly = true)
 	public StudyDayStatus day(long studyId, long userId, LocalDate studyDay) {
 		this.studyAccess.requireMember(studyId, userId);
-		StudyDayContext day = this.studyDays.load(studyId, studyDay);
-		if (studyDay.isAfter(day.today())) {
-			throw new BadRequestException(FUTURE_DAY_DETAIL);
-		}
-		return statusOf(day);
+		return statusOf(this.studyDays.load(studyId, studyDay));
 	}
 
 	private StudyDayStatus statusOf(StudyDayContext day) {

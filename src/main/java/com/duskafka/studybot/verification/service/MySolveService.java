@@ -18,6 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 내 풀이 목록과 확인 대기 지정 (S10 만들 것 3·4, api.md 4.4). 풀이 기록은 사용자 ID로 범위를 묶어 읽고 고친다 (api.md 4.5 '주의할 것').
+ *
+ * <p>확인 대기 지정의 잠금 순서: 풀이 기록 행 → 멤버 일 행들(결정 제안서 007의 전역 순서). 풀이 기록과 멤버 일을 함께 잠그는 다른 흐름
+ * (수동 인증 철회 S11 등)도 이 순서를 따라야 교착이 나지 않는다 (S10 PR 판단 기록).
  */
 @Service
 @RequiredArgsConstructor
@@ -51,8 +54,8 @@ public class MySolveService {
 	 * <li>내 풀이 기록을 잠근다. 없거나 남의 것이면 404 (T19). 확인 대기가 아니면 409.</li>
 	 * <li>같은 커밋에 그 문제의 기록이 이미 있으면 409 (UNIQUE 위반으로 500이 나지 않게).</li>
 	 * <li>문제를 채우고 {@code CONFIRMED}로 바꾼다.</li>
-	 * <li>지금 속한 스터디마다 원래 수신 시각으로 배정한다 (R14 '늦게 배정하는 풀이도 배정할 때의 멤버십으로'). 어느 스터디에서든 배정할
-	 * 날이 판정됐으면 409이고 3번까지 모두 롤백된다 ({@link StudyDayAssignment#assignIdentified}).</li>
+	 * <li>지금 속한 스터디마다 원래 수신 시각으로 배정한다 (R14 '늦게 배정하는 풀이도 배정할 때의 멤버십으로'). 어느 스터디에서든 받은
+	 * 시각 기준으로 배정했을 날이 판정됐으면 409이고 3번까지 모두 롤백된다 ({@link StudyDayAssignment#assignIdentified}).</li>
 	 * </ol>
 	 *
 	 * @return 바뀐 풀이
@@ -68,10 +71,10 @@ public class MySolveService {
 		if (this.solveRecords.existsSameProblemInCommit(solveId, platform, problem.problemNo())) {
 			throw new ConflictException(SAME_PROBLEM_IN_COMMIT_DETAIL);
 		}
-		if (this.solveRecords.identify(solveId, platform, problem.problemNo()) != 1) {
+		if (this.solveRecords.identify(solveId, userId, platform, problem.problemNo()) != 1) {
 			throw new IllegalStateException("잠근 확인 대기 기록을 바꾸지 못했어요: " + solveId);
 		}
-		MySolveRow identified = this.solveRecords.findRow(solveId)
+		MySolveRow identified = this.solveRecords.findRow(solveId, userId)
 			.orElseThrow(() -> new IllegalStateException("바꾼 풀이 기록이 없어요: " + solveId));
 		this.studyDayAssignment.assignIdentified(
 				new SolveToAssign(solveId, userId, platform, problem.problemNo(), identified.receivedAt()));
