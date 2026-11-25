@@ -17,6 +17,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -226,6 +231,75 @@ class MySolveIntegrationTest {
 
 		assertThat(rows.studyDaySolves(study.studyId(), alice)).extracting(StudyDaySolveRow::studyDay)
 			.containsExactly(NOV_21);
+	}
+
+	@Test
+	@DisplayName("유예 안에 받은 확인 대기의 전날이 FAIL로 판정됐으면 409이고 그대로다. 받은 시각에는 전날로 갔을 풀이다 "
+			+ "(사람이 정함, 2026-11-25 \"FAIL이면 409\")")
+	void graceSolveWithPreviousDayFailedIsConflict() {
+		long alice = rows.newUser("s10-grace-fail");
+		TestStudy study = rows.standardStudy(alice);
+		long pending = rows.pendingSolve(alice, seoul(NOV_21, 0, 20), "algorithm/a.py");
+		rows.markJudged(study.studyId(), alice, NOV_20, "FAIL");
+
+		MvcTestResult result = identify(alice, pending, BOJ_1000);
+
+		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(TestApi.json(result).get("detail").asString()).contains("이의");
+		assertThat(rows.solveRecord(pending).status()).isEqualTo("PENDING_IDENTIFICATION");
+		assertThat(rows.studyDaySolves(study.studyId(), alice)).isEmpty();
+		assertThat(rows.memberDay(study.studyId(), alice, NOV_21)).isEmpty();
+	}
+
+	@Test
+	@DisplayName("유예 안에 받은 확인 대기의 전날이 성공·면제권 면제로 판정됐으면 받은 날(11/21)에 반영된다")
+	void graceSolveWithPreviousDayJudgedOtherwiseCountsOnReceivedDay() {
+		long alice = rows.newUser("s10-grace-success");
+		TestStudy success = rows.standardStudy(alice);
+		TestStudy ticket = rows.standardStudy(alice);
+		rows.putMemberDay(success.studyId(), alice, NOV_20, 1, "SUCCESS", null);
+		rows.putMemberDay(ticket.studyId(), alice, NOV_20, 0, "EXEMPT_TICKET", seoul(NOV_20, 9, 0));
+		long pending = rows.pendingSolve(alice, seoul(NOV_21, 0, 20), "algorithm/a.py");
+
+		assertThat(identify(alice, pending, BOJ_1000)).hasStatus(HttpStatus.OK);
+
+		assertThat(rows.studyDaySolves(success.studyId(), alice)).extracting(StudyDaySolveRow::studyDay)
+			.containsExactly(NOV_21);
+		assertThat(rows.studyDaySolves(ticket.studyId(), alice)).extracting(StudyDaySolveRow::studyDay)
+			.containsExactly(NOV_21);
+	}
+
+	@Test
+	@DisplayName("같은 확인 대기를 동시에 두 번 지정해도 한 번만 바뀐다 (하나는 200, 하나는 409)")
+	void concurrentIdentificationChangesOnce() throws Exception {
+		long alice = rows.newUser("s10-concurrent");
+		TestStudy study = rows.standardStudy(alice);
+		long pending = rows.pendingSolve(alice, seoul(NOV_20, 23, 50), "algorithm/a.py");
+		CountDownLatch start = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		try {
+			List<Future<Integer>> results = new ArrayList<>();
+			for (String problemNo : List.of("1000", "1001")) {
+				results.add(executor.submit(() -> {
+					start.await();
+					return identify(alice, pending, "{\"platform\": \"BOJ\", \"problemNo\": \"" + problemNo + "\"}")
+						.getResponse()
+						.getStatus();
+				}));
+			}
+			start.countDown();
+			List<Integer> statuses = new ArrayList<>();
+			for (Future<Integer> future : results) {
+				statuses.add(future.get(30, TimeUnit.SECONDS));
+			}
+
+			assertThat(statuses).containsExactlyInAnyOrder(200, 409);
+		}
+		finally {
+			executor.shutdownNow();
+		}
+		assertThat(rows.studyDaySolves(study.studyId(), alice)).hasSize(1);
+		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isEqualTo(1);
 	}
 
 	@Test

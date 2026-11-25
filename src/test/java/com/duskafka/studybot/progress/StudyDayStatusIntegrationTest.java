@@ -454,6 +454,21 @@ class StudyDayStatusIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("스터디가 생기기 전 날과 끝값 날짜는 400 (스터디는 10/01에 생김)")
+	void dayBeforeStudyCreationIsBadRequest() {
+		long alice = rows.newUser("s10-before-creation");
+		TestStudy study = rows.standardStudy(alice);
+		setClock(seoul(NOV_20, 12, 0));
+
+		assertThat(day(alice, study.studyId(), LocalDate.of(2026, 9, 30))).hasStatus(HttpStatus.BAD_REQUEST);
+		assertThat(day(alice, study.studyId(), LocalDate.of(2026, 10, 1))).hasStatus(HttpStatus.OK);
+		assertThat(api.get(alice, "/api/studies/{studyId}/days/{date}", study.studyId(), "-999999999-01-01"))
+			.hasStatus(HttpStatus.BAD_REQUEST);
+		assertThat(api.get(alice, "/api/studies/{studyId}/days/{date}", study.studyId(), "+999999999-12-31"))
+			.hasStatus(HttpStatus.BAD_REQUEST);
+	}
+
+	@Test
 	@DisplayName("날짜 형식이 틀리면 400")
 	void malformedDateIsBadRequest() {
 		long alice = rows.newUser("s10-bad-date");
