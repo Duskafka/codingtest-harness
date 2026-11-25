@@ -55,7 +55,7 @@
 
 ## 주의할 것
 
-- 정원 동시성: `UPDATE invitations SET used_count = used_count + 1 WHERE id = ? AND used_count < max_uses`의 영향받은 행 수로 판단한다 (5.1).
+- 정원 동시성: 수락·위임·탈퇴·규칙 변경은 먼저 스터디 행을 잠근다 (결정 제안서 006). 초대 사용 횟수는 함께 `UPDATE invitations SET used_count = used_count + 1 WHERE id = ? AND used_count < max_uses`의 영향받은 행 수로 판단한다 (5.1).
 - 스터디 시간대는 만들 때 정하고 바꾸지 않는다 (5.1).
 - 가입 전에 규칙 요약을 보여 줘야 한다. 미리보기 응답에 규칙 요약을 담는다.
 
