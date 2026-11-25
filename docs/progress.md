@@ -9,7 +9,7 @@
 - 다음: PR 검토(판단 기록 '꼭 봐 주세요': V8 컬럼·제약, 잠금 순서·007 '결정', 판정 대상이 아닌 날에도 기록, 탈퇴 처리가 R4·R14 문구와 다름) → 병합 → 스펙 변경 제안 1~3 docs PR → S10 또는 S11
 - 막힌 것: 없음
 - 참고: S10·S11·S12는 멤버 일을 `progress.persistence.MemberDayRepository`(네이티브 `insertIfAbsent`·`lock`·`recountSolved`)로 다룬다. 판정(S12)은 한 트랜잭션에 행 하나만 잠그거나 날짜 오름차순으로(007). 판정하지 않는 날(가입한 날, 1기 전)에도 행이 있을 수 있고 `season_id`가 NULL일 수 있다. S12가 `rule_id`·`result_source`·`judged_at`을 채운다. S15는 `study_day_solves.solve_record_id` FK 때문에 풀이 기록보다 먼저 지워야 한다. 열린 질문: 유예 안 같은 문제(덜 세거나 이틀을 채움, Q2와 이어짐), S10 확인 대기 지정의 가입 전 인정 시각. 첫 빌드는 Maven Central 429로 두 번 실패, 다시 돌려 통과
-- PR: #
+- PR: #24
 
 ## 2026-11-25 PR #21 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #21(병합)의 스펙 변경 제안 1~6을 문서에 반영. api.md 4.4(표 세 줄, '규칙 변경' 메모: `basedOnRuleId` + 규칙 전체, 400·409, 권한 먼저, `rule`·`upcomingRules[]`의 버전 `id`, 미리보기), R2(1기 시작 전 변경), R4·R9·5.10·5.5(유예 구간·판정 시각은 D+1(= N) 규칙의 유예), 5.8 REMINDER 시점, S09 만들 것 1, S12 만들 것 2, S13 만들 것 2(알림 시각), S16 화면 4·9·읽을 문서, product 화면 4. spec-reviewer 지적으로 시간 계산을 `StudyCalendar` 하나로 적은 곳(5.5, architecture 4.2·6장, glossary)과 부록 D `assignStudyDay`·알림 생성도 버전 달력에 맞춤
