@@ -13,7 +13,7 @@ planStudyDay(study, user, t):                      -- 잠그기 전: 바뀌지 �
     N = cal.studyDayOf(t)
     prev = N - 1
     if cal.isInGrace(t)                            -- startOf(N) + rule(N).grace
-       and cal.isJudgeTarget(user, prev)           -- 가입·기수 (탈퇴하지 않은 멤버십만 여기 온다, R14)
+       and cal.isJudgeTarget(user, prev)           -- 가입·기수. 가입일은 배정할 때의 멤버십 (R14)
        and not isRestDay(rule(prev), prev):
         return plan(N, candidate = prev)
     return plan(N, candidate = none)
