@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
- * S09 테스트가 DB를 직접 준비하고 읽는 도우미. 사용자·스터디·규칙 버전·기수·멤버십·풀이 기록을 넣고, 멤버 일과 스터디별 집계를 읽는다.
+ * S09·S10 테스트가 DB를 직접 준비하고 읽는 도우미. 사용자·스터디·규칙 버전·기수·멤버십·풀이 기록을 넣고, 멤버 일과 스터디별 집계를 읽는다.
  * 기수 행은 S12가 만들기 전이라 테스트가 직접 넣는다 (S09 만들 것 3).
  *
  * <p>테스트끼리 DB를 공유하므로 GitHub ID는 JVM 안에서 겹치지 않게 새로 받고(다른 테스트 도우미의 범위와 겹치지 않는 11,000,000부터),
@@ -129,6 +129,20 @@ public final class StudyDayRows {
 			.single();
 	}
 
+	/** 가입 시각을 정해 멤버십을 넣고 ID를 돌려준다 (역할 MEMBER). 현황은 가입 시각으로 그날 멤버였는지 본다 (S10). */
+	public long join(long studyId, long userId, Instant joinedAt, LocalDate judgedFrom) {
+		return jdbc.sql("""
+				insert into studybot.memberships (study_id, user_id, role, joined_at, judged_from)
+				values (:studyId, :userId, 'MEMBER', :joinedAt, :judgedFrom) returning id
+				""")
+			.param("studyId", studyId)
+			.param("userId", userId)
+			.param("joinedAt", Timestamp.from(joinedAt))
+			.param("judgedFrom", judgedFrom)
+			.query(Long.class)
+			.single();
+	}
+
 	/** 탈퇴시킨다 ({@code left_at}). */
 	public void leave(long membershipId, Instant leftAt) {
 		jdbc.sql("update studybot.memberships set left_at = :leftAt where id = :id")
@@ -169,6 +183,83 @@ public final class StudyDayRows {
 			.param("receivedAt", Timestamp.from(receivedAt))
 			.query(Long.class)
 			.single();
+	}
+
+	/**
+	 * push로 문제를 식별한 풀이 기록을 넣고 ID를 돌려준다 (출처 GITHUB, 제목 있음). 수신함 행도 함께 넣는다. 배정 연결 지점은 부르지
+	 * 않는다.
+	 */
+	public long githubSolve(long userId, String platform, String problemNo, String title, Instant receivedAt) {
+		return insertGithubSolve(userId, platform, problemNo, title, receivedAt, "solutions/" + problemNo + "/Main.java",
+				"CONFIRMED");
+	}
+
+	/**
+	 * push로 받았지만 문제를 식별하지 못한 확인 대기 풀이 기록을 넣고 ID를 돌려준다 (5.4, S08). 수신함 행도 함께 넣는다.
+	 *
+	 * @param rawPath 원본 경로
+	 */
+	public long pendingSolve(long userId, Instant receivedAt, String rawPath) {
+		return insertGithubSolve(userId, null, null, null, receivedAt, rawPath, "PENDING_IDENTIFICATION");
+	}
+
+	private long insertGithubSolve(long userId, @Nullable String platform, @Nullable String problemNo,
+			@Nullable String title, Instant receivedAt, String rawPath, String status) {
+		long inboxId = jdbc.sql("""
+				insert into studybot.webhook_inbox (source, delivery_id, event_type, received_at, status, processed_at)
+				values ('GITHUB', :deliveryId, 'push', :receivedAt, 'PROCESSED', :receivedAt) returning id
+				""")
+			.param("deliveryId", java.util.UUID.randomUUID().toString())
+			.param("receivedAt", Timestamp.from(receivedAt))
+			.query(Long.class)
+			.single();
+		return jdbc.sql("""
+				insert into studybot.solve_records (user_id, source, platform, problem_no, title, received_at, commit_sha, repo_id,
+					inbox_id, raw_path, parser_version, status)
+				values (:userId, 'GITHUB', :platform, :problemNo, :title, :receivedAt, :commitSha, 1, :inboxId, :rawPath, 1,
+					:status)
+				returning id
+				""")
+			.param("userId", userId)
+			.param("platform", platform)
+			.param("problemNo", problemNo)
+			.param("title", title)
+			.param("receivedAt", Timestamp.from(receivedAt))
+			.param("commitSha", java.util.UUID.randomUUID().toString().replace("-", ""))
+			.param("inboxId", inboxId)
+			.param("rawPath", rawPath)
+			.param("status", status)
+			.query(Long.class)
+			.single();
+	}
+
+	/** 풀이 기록의 상태·플랫폼·번호. */
+	public SolveRecordRow solveRecord(long solveRecordId) {
+		return jdbc.sql("select status, platform, problem_no from studybot.solve_records where id = :id")
+			.param("id", solveRecordId)
+			.query((rs, rowNum) -> new SolveRecordRow(rs.getString("status"), rs.getString("platform"),
+					rs.getString("problem_no")))
+			.single();
+	}
+
+	/**
+	 * 그날 멤버 일을 판정된 것으로 만든다 (판정 배치 S12 전이라 테스트가 직접 채운다). 행이 없으면 만든다. 센 수와 면제권은 그대로 둔다.
+	 *
+	 * @param result 판정 결과 (예: {@code FAIL})
+	 */
+	public void markJudged(long studyId, long userId, LocalDate studyDay, String result) {
+		jdbc.sql("""
+				insert into studybot.member_days (study_id, user_id, study_day, solved_count, result, judged_at)
+				values (:studyId, :userId, :studyDay, 0, :result, :judgedAt)
+				on conflict (study_id, user_id, study_day) do update set result = excluded.result,
+					judged_at = excluded.judged_at
+				""")
+			.param("studyId", studyId)
+			.param("userId", userId)
+			.param("studyDay", studyDay)
+			.param("result", result)
+			.param("judgedAt", Timestamp.from(JOINED_AT))
+			.update();
 	}
 
 	/** 멤버 일 행을 바로 넣는다 (전날이 이미 판정됐거나, 면제권을 썼거나, 이미 센 상태를 준비할 때). */
@@ -240,6 +331,10 @@ public final class StudyDayRows {
 	/** 멤버 일 행. */
 	public record MemberDayRow(LocalDate studyDay, @Nullable Long seasonId, int solvedCount,
 			@Nullable Instant exemptionUsedAt, @Nullable String result, int version) {
+	}
+
+	/** 풀이 기록의 상태와 문제. */
+	public record SolveRecordRow(String status, @Nullable String platform, @Nullable String problemNo) {
 	}
 
 	/** 스터디별 집계 행. */

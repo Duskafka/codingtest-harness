@@ -57,6 +57,12 @@ class StudyDayAssigner implements StudyDayAssignment {
 		}
 	}
 
+	@Override
+	@Transactional(propagation = Propagation.MANDATORY)
+	public void assignIdentified(SolveToAssign solve) {
+		throw new UnsupportedOperationException("S10 구현 전");
+	}
+
 	/** 잠글 행을 모든 스터디에 걸쳐 모아 정해진 순서로 만들고 잠근다. */
 	private Map<MemberDayKey, LockedMemberDay> lockInOrder(long userId, List<AssignmentPlan> plans) {
 		List<MemberDayKey> keys = MemberDayKey

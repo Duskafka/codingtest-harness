@@ -21,4 +21,10 @@ public interface StudyDayAssignment {
 	/** 새 풀이 하나를 배정한다. */
 	void assign(SolveToAssign solve);
 
+	/**
+	 * 확인 대기에 멤버가 문제를 지정한 풀이 하나를 원래 수신 시각으로 배정한다 (R6, S10 만들 것 4). 배정하는 방법은 {@link #assign}과 같다.
+	 * 다만 어느 스터디에서든 배정할 날이 이미 판정됐으면 아무 데도 넣지 않고 409({@code ConflictException})를 던진다.
+	 */
+	void assignIdentified(SolveToAssign solve);
+
 }
