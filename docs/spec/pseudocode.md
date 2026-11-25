@@ -9,9 +9,9 @@
 
 ```
 assignStudyDay(study, user, t):
-    cal = StudyCalendar(study)
+    cal = RuleVersionCalendar(study)               -- 규칙 버전에 걸친 달력 (common.time)
     N = cal.studyDayOf(t)
-    if t >= cal.boundaryOf(N) + rule(N).grace:     -- 유예 밖
+    if not cal.isInGrace(t):                       -- 유예 밖. startOf(N) + rule(N).grace
         return N
     prev = N - 1
     md = lockMemberDay(study, user, prev)          -- INSERT ON CONFLICT DO NOTHING + SELECT FOR UPDATE
@@ -102,11 +102,11 @@ every minute with ShedLock:                          -- 생성
     day = cal.studyDayOf(now)
     if study.lastRemindedDay == day: continue
     if now < cal.reminderAt(day): continue
-    if now >= cal.boundaryOf(day + 1): continue      -- 마감이 지났으면 만들지 않음
+    if now >= cal.startOf(day + 1): continue         -- 마감이 지났으면 만들지 않음
     transaction:
         for m in judgeTargets(study, day)
                  where not rest day and exemption not used and solvedCount < goal:
-            insert notifications(REMINDER, m, day, expiresAt = boundaryOf(day + 1)) on conflict do nothing
+            insert notifications(REMINDER, m, day, expiresAt = cal.startOf(day + 1)) on conflict do nothing
         if any targets:
             insert notifications(SHARE_PROMPT, owner, day) on conflict do nothing
             if study.discordEnabled: insert notifications(DISCORD_STATUS, study, day) on conflict do nothing
