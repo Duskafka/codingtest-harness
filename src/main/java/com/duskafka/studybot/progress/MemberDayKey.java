@@ -29,7 +29,7 @@ record MemberDayKey(long studyId, LocalDate studyDay, @Nullable Long seasonId) {
 
 	/** 잠글 행들을 잠그는 순서로 정렬하고 겹치는 행을 뺀다. */
 	static List<MemberDayKey> inLockOrder(Collection<MemberDayKey> keys) {
-		throw new UnsupportedOperationException("S09 구현 전");
+		return keys.stream().distinct().sorted(LOCK_ORDER).toList();
 	}
 
 }

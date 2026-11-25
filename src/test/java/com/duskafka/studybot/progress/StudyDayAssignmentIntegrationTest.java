@@ -345,6 +345,25 @@ class StudyDayAssignmentIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("T7: 전날 멤버 일 행이 이미 있어도(행을 만드는 INSERT가 서로를 기다리지 않음) 동시 배정은 전날 1, 오늘 1. 20번 반복")
+	void t7ConcurrentSolvesWithExistingPreviousRow() throws Exception {
+		for (int round = 0; round < 20; round++) {
+			long user = rows.newUser("t7-row-" + round);
+			TestStudy study = rows.standardStudy(user);
+			rows.putMemberDay(study.studyId(), user, NOV_20, 0, null, null);
+			long first = rows.solve(user, "BOJ", "1000", NOV_21_0005);
+			long second = rows.solve(user, "BOJ", "1001", NOV_21_0005);
+
+			runConcurrently(List.of(
+					() -> inTransaction(List.of(toAssign(first, user, "1000", NOV_21_0005))),
+					() -> inTransaction(List.of(toAssign(second, user, "1001", NOV_21_0005)))));
+
+			assertThat(rows.solvedCount(study.studyId(), user, NOV_20)).as("round %d 전날", round).isEqualTo(1);
+			assertThat(rows.solvedCount(study.studyId(), user, NOV_21)).as("round %d 오늘", round).isEqualTo(1);
+		}
+	}
+
+	@Test
 	@DisplayName("S09: 스터디 2개 사용자에게 유예 안 push(문제 2개)와 유예 밖 push가 동시에 와도 교착 없이 끝나고 수가 맞는다 (결정 제안서 007, 15번 반복)")
 	void mixedConcurrentPushesAcrossTwoStudiesDoNotDeadlock() throws Exception {
 		for (int round = 0; round < 15; round++) {

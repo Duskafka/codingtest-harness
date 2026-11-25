@@ -38,17 +38,37 @@ record AssignmentPlan(long studyId, LocalDate today, @Nullable Long todaySeasonI
 
 	/** 잠그기 전에 셀 수 있는 것만으로 계획을 세운다. */
 	static AssignmentPlan of(MemberStudy study, Instant receivedAt) {
-		throw new UnsupportedOperationException("S09 구현 전");
+		Objects.requireNonNull(study, "study");
+		Objects.requireNonNull(receivedAt, "receivedAt");
+		LocalDate today = study.studyDayOf(receivedAt);
+		Long todaySeasonId = study.seasonIdOn(today);
+		LocalDate previous = today.minusDays(1);
+		if (study.isInGrace(receivedAt) && study.isJudgedOn(previous) && !study.isRestDay(previous)) {
+			return new AssignmentPlan(study.studyId(), today, todaySeasonId, previous, study.seasonIdOn(previous),
+					study.dailyGoalOn(previous));
+		}
+		return new AssignmentPlan(study.studyId(), today, todaySeasonId, null, null, 0);
 	}
 
 	/** 잠가야 할 멤버 일 행: 후보 전날(있으면)과 N. */
 	List<MemberDayKey> rowsToLock() {
 		List<MemberDayKey> rows = new ArrayList<>(2);
 		if (this.previous != null) {
-			rows.add(new MemberDayKey(this.studyId, this.previous, this.previousSeasonId));
+			rows.add(rowOf(this.previous));
 		}
-		rows.add(new MemberDayKey(this.studyId, this.today, this.todaySeasonId));
+		rows.add(rowOf(this.today));
 		return rows;
+	}
+
+	/** 후보 전날이나 N의 멤버 일 행. */
+	MemberDayKey rowOf(LocalDate day) {
+		if (day.equals(this.today)) {
+			return new MemberDayKey(this.studyId, this.today, this.todaySeasonId);
+		}
+		if (day.equals(this.previous)) {
+			return new MemberDayKey(this.studyId, day, this.previousSeasonId);
+		}
+		throw new IllegalArgumentException("이 계획이 잠그는 날이 아니에요: " + day);
 	}
 
 	/**
@@ -57,7 +77,14 @@ record AssignmentPlan(long studyId, LocalDate today, @Nullable Long todaySeasonI
 	 * @param previousDay 잠근 전날 행. 후보 전날이 없으면 {@code null}
 	 */
 	LocalDate decide(@Nullable MemberDayState previousDay) {
-		throw new UnsupportedOperationException("S09 구현 전");
+		LocalDate candidate = this.previous;
+		if (candidate == null) {
+			return this.today;
+		}
+		Objects.requireNonNull(previousDay, "후보 전날이 있으면 잠근 전날 행을 넘겨야 해요");
+		boolean previousTakesIt = !previousDay.judged() && !previousDay.exemptionUsed()
+				&& previousDay.solvedCount() < this.previousGoal;
+		return previousTakesIt ? candidate : this.today;
 	}
 
 }
