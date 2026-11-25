@@ -7,8 +7,8 @@ import java.util.Objects;
  * 배정할 풀이 ({@link StudyDayAssignment}).
  *
  * <p>progress는 verification을 의존하지 않아서(architecture.md 4.2: verification → progress) 문제 식별자를
- * verification의 {@code ProblemRef} 대신 문자열 두 개로 받는다. {@code ProblemRef}를 common으로 옮길지는 S09가 정한다
- * (S03 인계 기록).
+ * verification의 {@code ProblemRef} 대신 문자열 두 개로 받는다. 배정은 문제를 해석하지 않고 {@code study_day_solves}에 그대로 옮겨
+ * 같은 날 같은 문제인지만 보므로 {@code ProblemRef}를 common으로 옮기지 않았다 (S09 PR 판단 기록).
  *
  * @param solveRecordId 풀이 기록 ID ({@code solve_records.id})
  * @param userId 푼 사용자

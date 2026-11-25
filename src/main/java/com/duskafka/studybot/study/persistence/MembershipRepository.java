@@ -1,5 +1,6 @@
 package com.duskafka.studybot.study.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,5 +29,16 @@ public interface MembershipRepository extends JpaRepository<Membership, Long> {
 			select count(m) from Membership m where m.userId = :userId and m.leftAt is null
 			""")
 	Page<MyStudyRow> findMyStudies(@Param("userId") long userId, Pageable pageable);
+
+	/**
+	 * 사용자의 탈퇴하지 않은 멤버십 중 활성 스터디의 것, 스터디 ID 순서 (풀이 배정, S09). 스터디마다 탈퇴하지 않은 멤버십은 하나다
+	 * (부분 UNIQUE).
+	 */
+	@Query("""
+			select m from Membership m join Study s on s.id = m.studyId
+			where m.userId = :userId and m.leftAt is null and s.status = com.duskafka.studybot.study.persistence.StudyStatus.ACTIVE
+			order by m.studyId
+			""")
+	List<Membership> findActiveInActiveStudies(@Param("userId") long userId);
 
 }
