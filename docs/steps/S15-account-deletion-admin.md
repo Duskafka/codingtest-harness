@@ -21,6 +21,7 @@
 - `docs/spec/data-model.md`: 4.3 테이블 상세의 `users`·`github_installations`·`linked_repositories` 행과 'GitHub 연결 테이블 (S07)'
 - `docs/spec/api.md`: 4.4의 `DELETE /api/me`, 4.5 '만들 것'의 관리자 항목
 - `docs/spec/architecture.md`: '알려진 충돌과 빈 곳' 3번, 7번
+- `docs/decisions/006-study-membership-serialization.md`: 계정 삭제도 멤버십을 바꾸니 같은 스터디 행 잠금을 잡는다 (선택지 A의 단점 칸)
 
 ## 만들 것
 

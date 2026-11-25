@@ -75,6 +75,7 @@ flowchart TD
     verification --> progress
     progress --> study
     judgment --> progress
+    judgment --> study
     judgment --> ledger
     appeal --> judgment
     notification --> progress
@@ -153,3 +154,4 @@ flowchart TD
 | 8 | springdoc 명세를 운영에서 노출할지 정해져 있지 않아요 (4.4, 9.7). | S01 | 판단 기록 → **다룸:** PR #1 판단 기록 'springdoc 명세의 노출 범위' (기본 꺼짐, 운영 배포도 끔) |
 | 9 | P1 '미인증 횟수 × 금액 표시'(2.3)를 보여 줄 엔드포인트가 4.4에 없어요. | S12 | 판단 기록 (현황 응답에 포함하는 방식 등) |
 | 10 | 면제권을 쓰면 '알림 대상에서 제외'(5.7)한다고 하지만, 별도 호출 대신 발송 직전 재확인(5.8)으로 충족돼요. 충돌은 아니고 해석이에요. | S11, S13 | 없음 |
+| 11 | 판정 배치(judgment)는 study의 규칙 버전·멤버십·기수를 읽고, 진행 지점(`studies.last_judged_day`)과 기수 상태·다음 기수 행을 써야 하는데 judgment → study 화살표가 없었어요 (5.10, 5.13). | S12 | **다룸:** judgment → study 화살표 추가 (사람이 정함 2026-11-25, PR #22) |

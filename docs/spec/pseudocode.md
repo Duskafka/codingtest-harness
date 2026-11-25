@@ -71,6 +71,9 @@ processPush(inbox):
 ```
 every 5 minutes with ShedLock:
   for study in activeStudies:
+    startSeasons(study)       -- 예정이면서 시작일이 된 기수는 ACTIVE, 마지막 기수 행이 시작했으면 다음 기수 행(SCHEDULED)을 만듦 (5.13)
+                              -- 마지막 행의 시작일이 오늘보다 뒤가 될 때까지 되풀이. 길이는 그 시작일의 규칙, 끝 날짜는 StudyCalendar.seasonEndDay
+                              -- 스터디 행 잠금, 판정과 따로 짧은 트랜잭션 (결정 제안서 006)
     day = study.lastJudgedDay + 1
     while cal.judgeAt(day) <= now:                   -- 기준 시각 + 유예 + 10분
         for member in judgeTargets(study, day):
