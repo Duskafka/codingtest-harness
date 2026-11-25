@@ -10,7 +10,6 @@ import com.duskafka.studybot.study.persistence.Season;
 import com.duskafka.studybot.study.persistence.SeasonRepository;
 import com.duskafka.studybot.study.persistence.Study;
 import com.duskafka.studybot.study.persistence.StudyRepository;
-import com.duskafka.studybot.study.persistence.StudyRule;
 import com.duskafka.studybot.study.persistence.StudyRuleRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -51,21 +50,7 @@ public class StudyCreationService {
 
 		Study study = this.studyRepository.save(new Study(newStudy.name(), newStudy.mode(), ownerId, zoneId, now));
 		long studyId = study.getId();
-		this.ruleRepository.save(StudyRule.builder()
-			.studyId(studyId)
-			.effectiveFrom(start)
-			.dailyGoal(rule.dailyGoal())
-			.dayBoundary(rule.dayBoundary())
-			.graceMinutes(rule.graceMinutes())
-			.restDays(rule.restDays())
-			.penaltyType(rule.penaltyType())
-			.fineAmount(rule.fineAmount())
-			.exemptionsPerSeason(rule.exemptionsPerSeason())
-			.reminderOffsetMinutes(rule.reminderOffsetMinutes())
-			.selfReportMode(rule.selfReportMode())
-			.seasonLengthDays(rule.seasonLengthDays())
-			.createdAt(now)
-			.build());
+		this.ruleRepository.save(rule.toVersion(studyId, start, now));
 		this.seasonRepository
 			.save(new Season(studyId, 1, start, StudyCalendar.seasonEndDay(start, rule.seasonLengthDays()), now));
 		this.membershipRepository.save(new Membership(studyId, ownerId, MembershipRole.OWNER, now, start));

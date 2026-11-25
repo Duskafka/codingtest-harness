@@ -29,7 +29,8 @@ import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 
 /**
- * 스터디 규칙의 한 버전 (data-model.md 4.3 {@code study_rules}, R1, R2). 버전은 고치지 않고 새로 더한다.
+ * 스터디 규칙의 한 버전 (data-model.md 4.3 {@code study_rules}, R1, R2). 그날부터의 규칙 전체를 담는다. 적용된 버전은 고치지 않고,
+ * 규칙을 바꾸면 아직 적용 전인 예정 버전만 지우고 다시 만든다 ({@code study.service.StudyRuleService}).
  * 범위는 R1 표이고, 요청 검증과 DB CHECK가 지킨다.
  */
 @Entity
