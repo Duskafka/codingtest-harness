@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-25 S10 오늘 현황·내 풀이·확인 대기 지정 (세션 1/1)
+- 한 일: 만들 것 1~5. `GET /api/studies/{id}/today`·`/days/{date}`(progress: 그날 멤버였던 사람의 DONE/REMAINING/EXEMPT/NOT_JUDGED, 판정 결과, 최근 배정 50개를 수신 시각 순서로, 출처 = 수동 표시 자리), `GET /api/me/solves`(확인 대기 포함, from·to 오프셋 있는 ISO 8601, 크기 50까지), `PATCH /api/me/solves/{id}`(verification: 내 확인 대기 잠금 → 문제 채움 → `StudyDayAssignment#assignIdentified`). study `StudyDays`·`StudyDayContext`, auth `UserDirectory#profilesOf`, progress 조회 포트 `SolveRecordDetails`(verification 구현), `RuleVersionCalendar#graceEndOf`. 테이블 변경 없음
+- 상태: 빌드 통과 (테스트 651개). 구현 전 새 테스트 52개 중 49개 실패(통과 3개는 엔드포인트가 없어도 404인 T19, 조건 빼 보기로 확인). 조건 빼 보기 17개 모두 해당 테스트 실패(3개는 처음에 빠져 테스트를 더함). `/today`는 멤버 3명·30명 모두 9문장. 측정(18만 행): p50 11.5ms·p95 19.4ms, 주요 쿼리는 인덱스 사용. spec-reviewer '수정 필요'(코드 위반 없음, 필수 1: 아래 R6 해석) → 사람에게 물어 반영, 고려 11건 중 6건 코드·설명 반영, 나머지는 PR 판단 기록·열린 질문
+- 사람이 정한 것 (2026-11-25, 지시 "S10 시작해", 세션 선택지, 모두 Recommended): 브랜치 "feat/S10-today-status", 일부 스터디만 판정된 날 "전부 409, 아무것도 안 바꿈", 최근 풀이 "조회 포트". spec-reviewer 뒤: 유예 안 확인 대기의 전날이 이미 FAIL "FAIL이면 409"(받은 시각에는 전날로 갔을 풀이, R6. 전날이 성공·면제면 받은 날로)
+- 다음: PR 검토 → 병합 → 받아들인 스펙 변경 제안을 docs PR로(R6 늦은 지정의 '그날' 한 줄, glossary `MemberDayStatus`·`ExemptReason`) → S11(수동 인증과 면제권, OD-09)
+- 막힌 것: 없음
+- 참고: S11·S12에 넘길 것 — 확인 대기 지정은 풀이 기록 행 → 멤버 일 행들(007 전역 순서) 순서로 잠근다. 풀이 기록과 멤버 일을 함께 잠그는 흐름(수동 인증 철회 등)은 같은 순서를 따라야 교착이 없다. 409의 '판정됐다'는 그 사용자 멤버 일의 `result`로 본다(가입 전·기수 밖 날은 결과가 없어 409 없이 기록, 판정에 영향 없음). S12가 `last_judged_day`로 바꿀지 PR 열린 질문. 현황 `status`는 지금 센 수로 정하고 판정 결과는 `result`로 따로 준다(S12가 금액 표시를 더할 자리). 409 세 가지(판정된 날·확인 대기 아님·같은 커밋 같은 문제)는 `detail` 문장으로만 구분된다(PR 열린 질문). 웹훅 테스트의 배정 대역은 익명 클래스가 됐다. 새 테스트는 `TestApi`(로그인·CSRF 요청 도우미)와 `StudyDayRows`(githubSolve·pendingSolve·markJudged)를 쓴다
+- PR: #
+
 ## 2026-11-25 S09 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #24(병합)의 스펙 변경 제안 1~3과 결정을 문서에 반영. 5.5(흐름도: 판정 대상·쉬는 날을 잠그기 전에, 잠금 순서 (스터디 일, 스터디 ID), 한 트랜잭션의 풀이는 같은 인정 시각, 배정할 때의 멤버십만), 부록 D(`planStudyDay`·`assignStudyDay`·`recordSolve`), data-model '멤버 일 테이블 (S09)' 메모(CHECK, NULL 허용 FK, 판정하지 않는 날의 행), R4·R14(배정할 때의 멤버십, 탈퇴 뒤 다시 가입하기 전까지는 세지 않음, 같은 날 다시 가입하면 다시 셈, 전날 판정 대상도 배정할 때의 가입일), Q2(유예 안 같은 문제도 함께 정함), 결정 대장(제안서 007, ADR-006 행), S09 만들 것 1·2·읽을 문서, S10 주의할 것·읽을 문서(R14), S12 읽을 문서(007, R14)·주의할 것(같은 날 재가입)·판단 기록(새 제안서). PR 열린 질문 두 개도 반영: 3.4 멤버 일 진입 문구('첫 풀이' → '풀이 배정'), '판정 대상'을 R9 뜻으로 맞춤(R4 세 번째 조건, S09 만들 것 3)
 - 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎). spec-reviewer 1차 '수정 필요'(필수 2: Q2 서술 조건 빠짐, 같은 날 재가입이 새 R14 문장과 부딪힘) → Q2 고치고 재가입·탈퇴 기준·S12 제안서를 사람에게 물어 반영. 2차 '수정 필요'(필수 1: 재가입한 멤버의 다음 날 유예 안 풀이를 R4·R9는 탈퇴한 날로, 코드는 다음 날로) → 사람에게 물어 반영, 고려 4건 반영
@@ -138,22 +147,10 @@
 - PR: #10
 
 ## 2026-11-22 S04 로그인과 세션 구현 (세션 1, 이어서)
-- 한 일: '만들 것' 2~8. GitHub App 사용자 인증 로그인(`/user`에서 id·login·avatar만, users native upsert), DB 세션(`studybot.SPRING_SESSION`), 세션 쿠키 `__Host-Http-SESSION` 빈 설정과 30일 롤링 필터, `csrf.spa()`, `/webhooks/**` 별도 체인, 401·403 problem+json, `GET /api/me`, `POST /logout` 204, 토큰 미저장 저장소. 첫 엔티티·마이그레이션이라 Lombok(`lombok.config`)·`studybot` 스키마 설정도 함
-- 상태: 빌드 통과 (테스트 238개). 구현 전 새 테스트 27개 중 25개 실패 확인. spec-reviewer 1차 지적 8건 반영(스타터 이름, github_id NULL 허용 + CHECK, 만료 경계·비로그인 로그아웃·Actuator POST 테스트, 엔티티 ArchUnit 규칙). 2차 지적 6건 반영(세션에 접속 IP를 남기지 않음, setter 규칙을 `set[A-Z].*`로, Actuator POST 검사를 404로, 만료 테스트를 JVM 시각 기준으로, data-model CHECK를 스펙 변경 제안 2번으로). Chromium 157로 `http://localhost`·`127.0.0.1`에서 `__Host-Http-` 쿠키 저장 확인
-- 사람이 정한 것 (PR을 연 뒤, 2026-11-22): 열린 질문 1은 "주석만 더함"(S01 Actuator 테스트의 POST 줄에 주석만, 기대값 그대로, `4abdee6`). 스펙 변경 제안 1(architecture 4.1 Nginx 목록에 `/logout`·`/github/setup`·`/actuator/health`)은 "세 경로 추가", 제안 2(data-model 4.3 `users`에 '탈퇴하지 않은 사용자는 github_id 필수' CHECK)는 "받아들임"
-- 다음: PR 검토와 병합 → 병합 뒤 `docs/` 브랜치의 문서 전용 PR로 위 스펙 변경 제안 1·2를 반영(근거는 위 선택지 원문과 날짜) → S05(스터디·멤버십, OD-07·OD-08 결정 필요) 또는 S06(웹훅 수신). S06은 `/webhooks/**` 체인(CSRF 끔, STATELESS)을 그대로 쓰고, S07은 `/github/setup`에 로그인 규칙을 더해야 함
-- 막힌 것: 없음. 실제 GitHub 로그인 확인은 사람 할 일 H-02(개발용 App, 콜백 URL `/login/oauth2/code/github`, 환경 변수 `GITHUB_APP_CLIENT_ID`·`GITHUB_APP_CLIENT_SECRET`)
-- 참고: 사람이 정한 것 — 기존 `ErrorResponseIntegrationTest` 4개는 요청에만 `user()`·`csrf()`를 붙임(기대값 그대로). Boot 4.1은 MockMvc 환경에서 `server.servlet.session.cookie.*`를 쓰지 않아 쿠키를 빈으로 정함. Lombok 1.18.48은 `@SuperBuilder`를 `flagUsage`로 막지 못함. 공유 테스트 컨텍스트에서 `csrf()` 후처리기를 쓰면 뒤 테스트의 XSRF-TOKEN 쿠키가 사라짐(쿠키로 토큰을 받을 것). XSRF-TOKEN의 Secure는 요청이 HTTPS일 때만 붙어서 S17에서 프록시 헤더 설정이 필요함. 작업 프로세스가 다시 시작된 뒤 dockerd가 containerd 시작 대기 시간 초과로 죽어 있으면 `CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`를 다시 실행하면 됨
-- PR: #9
+- 요약: GitHub App 사용자 인증 로그인, DB 세션(`studybot.SPRING_SESSION`), `__Host-Http-SESSION` 쿠키 빈과 30일 롤링 필터, `csrf.spa()`, `/webhooks/**` 별도 체인, `GET /api/me`, `POST /logout`, 토큰 미저장. 공유 테스트 컨텍스트에서 `csrf()` 후처리기를 쓰지 말고 쿠키로 토큰을 받을 것. dockerd가 죽어 있으면 `CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`. 빌드 통과(238개). PR: #9
 
 ## 2026-11-22 S04 로그인과 세션: OD-02 결정 제안서와 결정 반영 (세션 1)
-- 한 일: S04 '만들 것' 1. 결정 제안서 005(GitHub 로그인 방식, A 별도 OAuth App / B GitHub App 사용자 인증 / C 설치 중 인증 비교, 추천 B). 사람이 B를 고른 뒤 같은 PR에서 005 '결정'·'검토 메모'를 받아 적고, 결정 대장(OD-02, 제안서 목록, ADR-002)·스펙(external-systems 4.6, infra 9.6, architecture '로그인' 행, api.md 머리·4.5, 5.02)·단계 문서(S04, steps/README의 H-02·H-03·S04 행)에 반영. S04 상태는 '대기'
-- 상태: 빌드 통과 (테스트 189개, 제안서 커밋 때). 반영은 문서만 바꿔 다시 돌리지 않음 (CI가 돎). 첫 빌드는 Maven Central 429로 실패했고, 다시 돌려 통과
-- 결정: OD-02 = B (추천 그대로). H-03은 H-02에 합침. 랜딩 '받는 정보' 문구(product.md 2.5)는 지금 그대로
-- 다음: PR #8 병합 → S04 '만들 것' 2부터 (새 브랜치 `feat/S04-login-session`)
-- 막힌 것: 없음 (H-02는 실제 로그인 확인 때만 필요)
-- 참고: 사람이 이번 세션에서 답한 것 — 추천 기준은 보안·운영 단순성(OD-01과 같음), 브랜치는 `docs/OD-02-github-login`. S04에서 정할 것(005 '양쪽 공통'): 토큰을 남기지 않는 구성(Boot 기본 `InMemoryOAuth2AuthorizedClientService`가 토큰을 메모리에 둠), PKCE가 붙는지 테스트(Spring Security 7.x는 `requireProofKey` 기본값이 `true`), 신원 확인 직후 토큰 취소 여부. 세션 시작 때 로컬 `origin/master`가 오래돼 PR #7 병합을 늦게 봤음. 시작할 때 `git fetch origin master`부터 하기
-- PR: #8
+- 요약: 결정 제안서 005(GitHub 로그인 방식), 사람이 B(GitHub App 사용자 인증)를 고름. 결정 대장·스펙·단계 문서에 반영, H-03은 H-02에 합침. 시작할 때 `git fetch origin master`부터 하기. PR: #8
 
 ## 2026-11-22 OD-01·OD-05·OD-06 결정 반영 (docs PR, 단계 진행 아님)
 - 요약: 결정 대장(OD-05·06 확정, 제안서 003·004, D22)과 스펙(architecture '세션'·'Lombok', infra 9.4 `studybot`, data-model, api 4.5, security)·단계 문서(S04·S06·S17)에 반영. 문서만 바꿈. PR: #7
