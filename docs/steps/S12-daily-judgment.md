@@ -16,12 +16,12 @@
 
 - `docs/spec/processes/5.10-daily-judgment.md` 전체
 - `docs/spec/processes/5.13-season.md`: P1 부분 (만들 것, 주의할 것)
-- `docs/spec/domain-rules.md`: R2, R8, R9, R13, 3.4의 '멤버 일'·'기수' 상태, 3.5 판정 예시
+- `docs/spec/domain-rules.md`: R2, R8, R9, R13, R14, 3.4의 '멤버 일'·'기수' 상태, 3.5 판정 예시
 - `docs/spec/pseudocode.md`: '판정 배치'
 - `docs/spec/data-model.md`: `member_days`, `studies.last_judged_day`, `seasons`, `shedlock`
 - `docs/spec/architecture.md`: 4.2 모듈 구조, '알려진 충돌과 빈 곳' 2번, 9번, 11번
 - `docs/decisions/006-study-membership-serialization.md`: '결정' (스터디 행 잠금의 범위)
-- `docs/decisions/007-study-day-assignment-locking.md`: '결정' (멤버 일 잠금 순서. 배정과 같은 행을 잠근다)
+- `docs/decisions/007-study-day-assignment-locking.md`: '결정'과 '추천과 이유' (멤버 일 잠금 순서. 판정은 한 트랜잭션에 행 하나만 잠그고, 여러 날을 잠그면 날짜 오름차순으로)
 
 ## 만들 것
 
@@ -70,5 +70,5 @@
 
 ## 판단 기록이 필요한 곳
 
-- **결정 제안서 (기록용):** 판정 시점과 따라잡기 설계 (계획서 ADR-006 주제의 나머지 절반, S09 제안서에 이어서 써도 됨)
+- **결정 제안서 (기록용):** 판정 시점과 따라잡기 설계 (계획서 ADR-006 주제의 나머지 절반. 새 결정 제안서로 쓴다. S09의 결정 제안서 007은 확정)
 - 현황 응답에 정산 표시를 더하는 방식

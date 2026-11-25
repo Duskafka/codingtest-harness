@@ -29,12 +29,13 @@ assignStudyDay(plan, md):                          -- 잠근 뒤: md는 잠근 �
 recordSolve(user, problem, receivedAt, source):
     solve = insert solve_records(...) on conflict do nothing
     if solve was duplicate: return
-    plans = [planStudyDay(study, user, receivedAt) for study in activeStudiesOf(user)]   -- 탈퇴하지 않은 멤버십
+    plans = [planStudyDay(study, user, receivedAt) for study in activeStudiesOf(user)]   -- 배정할 때 탈퇴하지 않은 멤버십 (R14)
     rows = 모든 plan의 (후보 전날, N) 행, (스터디 일, 스터디 ID) 순서로 정렬               -- 결정 제안서 007
-    for row in rows:                               -- 한 트랜잭션, 전날로 배정해도 N 행을 잠금
+    for row in rows:                               -- 한 트랜잭션(풀이들의 인정 시각이 같음), 전날로 배정해도 N 행을 잠금
         locked[row] = lockMemberDay(row.study, user, row.day)   -- INSERT ON CONFLICT DO NOTHING + SELECT FOR UPDATE
     for plan in plans:
-        day = assignStudyDay(plan, locked[(plan.study, plan.candidate)])
+        md = plan.candidate ? locked[(plan.study, plan.candidate)] : none
+        day = assignStudyDay(plan, md)
         if insert study_day_solves(plan.study, user, day, problem) on conflict do nothing:
             member_days.solvedCount = count(study_day_solves where study, user, day)
 ```

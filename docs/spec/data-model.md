@@ -128,16 +128,16 @@ erDiagram
 **멤버 일 테이블 (S09)**
 
 - `member_days`
-    - `solved_count`는 그날의 `study_day_solves` 행 수예요. 배정할 때 더하지 않고 다시 세요 (5.5).
+    - `solved_count`는 그날의 `study_day_solves` 행 수예요. 배정할 때 더하지 않고 다시 세요 (부록 D `recordSolve`, S09 만들 것 4).
     - `season_id`는 그날을 담은 기수 행이에요. 기수 밖인 날(1기 시작 전 등)은 비어 있고(FK, NULL 허용), 그날은 판정하지 않아요 (R9, OD-07).
-    - 판정하지 않는 날(가입한 날, 1기 시작 전)에도 풀이가 오면 그날 행에 기록해요. 결과는 남기지 않아요 (R9).
-    - `result`·`result_source`·`judged_at`·`rule_id`는 판정(S12)이 채워요. `rule_id`는 판정에 쓴 규칙 버전이에요(FK, NULL 허용). 1기 시작 전 규칙 변경은 첫 버전을 지우고 다시 만들어서, 판정하지 않는 날의 행에는 채우지 않아요. 판정하는 날의 버전은 지워지지 않아요 (R2 소급 없음).
+    - 판정하지 않는 날(가입 전·가입한 날, 1기 시작 전 같은 기수 밖인 날)에도 풀이가 오면 그날 행에 기록해요. 결과는 남기지 않아요 (R9).
+    - `result`·`result_source`·`judged_at`·`rule_id`는 판정(S12)이 채워요. `rule_id`는 판정에 쓴 규칙 버전이에요(FK, NULL 허용). 1기 시작 전 규칙 변경은 첫 버전을 지우고 다시 만들어서, 판정하지 않는 날의 행에는 채우지 않아요.
     - CHECK
         - `result`는 glossary `JudgmentResult` 값(`SUCCESS`, `FAIL`, `EXEMPT_REST`, `EXEMPT_TICKET`)이거나 비어 있어요(미판정).
         - `solved_count >= 0`
         - `result_source`는 값이 정해지지 않아 CHECK가 없어요. 값은 S12에서 정해요.
 - `study_day_solves`
-    - `solve_record_id`는 그날에 센 풀이 기록이에요(FK). 같은 날 같은 문제의 기록이 여럿이면 먼저 배정한 것이에요.
+    - `solve_record_id`는 그날에 센 풀이 기록이에요(FK).
     - 플랫폼·번호는 풀이 기록의 값을 그대로 옮겨요. 플랫폼 CHECK는 두지 않아요(풀이 기록 쪽에 있음).
 
 **인덱스 (먼저 만들 것)**
