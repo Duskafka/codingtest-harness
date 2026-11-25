@@ -21,6 +21,7 @@
 - `docs/spec/data-model.md`: `member_days`, `studies.last_judged_day`, `seasons`, `shedlock`
 - `docs/spec/architecture.md`: 4.2 모듈 구조, '알려진 충돌과 빈 곳' 2번, 9번, 11번
 - `docs/decisions/006-study-membership-serialization.md`: '결정' (스터디 행 잠금의 범위)
+- `docs/decisions/007-study-day-assignment-locking.md`: '결정' (멤버 일 잠금 순서. 배정과 같은 행을 잠근다)
 
 ## 만들 것
 

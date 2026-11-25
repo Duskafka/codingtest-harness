@@ -8,27 +8,34 @@
 ## 스터디 일 배정과 풀이 기록 (R4, R5)
 
 ```
-assignStudyDay(study, user, t):
+planStudyDay(study, user, t):                      -- 잠그기 전: 바뀌지 않는 조건만 본다
     cal = RuleVersionCalendar(study)               -- 규칙 버전에 걸친 달력 (common.time)
     N = cal.studyDayOf(t)
-    if not cal.isInGrace(t):                       -- 유예 밖. startOf(N) + rule(N).grace
-        return N
     prev = N - 1
-    md = lockMemberDay(study, user, prev)          -- INSERT ON CONFLICT DO NOTHING + SELECT FOR UPDATE
-    if md.result is null
-       and cal.isJudgeTarget(user, prev)           -- 가입·탈퇴·기수·쉬는 날
+    if cal.isInGrace(t)                            -- startOf(N) + rule(N).grace
+       and cal.isJudgeTarget(user, prev)           -- 가입·기수 (탈퇴하지 않은 멤버십만 여기 온다, R14)
+       and not isRestDay(rule(prev), prev):
+        return plan(N, candidate = prev)
+    return plan(N, candidate = none)
+
+assignStudyDay(plan, md):                          -- 잠근 뒤: md는 잠근 후보 전날 행
+    if plan.candidate
+       and md.result is null
        and md.exemptionUsedAt is null
-       and md.solvedCount < rule(prev).dailyGoal:
-        return prev
-    return N
+       and md.solvedCount < rule(plan.candidate).dailyGoal:
+        return plan.candidate
+    return plan.N
 
 recordSolve(user, problem, receivedAt, source):
     solve = insert solve_records(...) on conflict do nothing
     if solve was duplicate: return
-    for study in activeStudiesOf(user):            -- 한 트랜잭션, 잠금 순서: 전날 → 오늘
-        day = assignStudyDay(study, user, receivedAt)
-        lockMemberDay(study, user, day)
-        if insert study_day_solves(study, user, day, problem) on conflict do nothing:
+    plans = [planStudyDay(study, user, receivedAt) for study in activeStudiesOf(user)]   -- 탈퇴하지 않은 멤버십
+    rows = 모든 plan의 (후보 전날, N) 행, (스터디 일, 스터디 ID) 순서로 정렬               -- 결정 제안서 007
+    for row in rows:                               -- 한 트랜잭션, 전날로 배정해도 N 행을 잠금
+        locked[row] = lockMemberDay(row.study, user, row.day)   -- INSERT ON CONFLICT DO NOTHING + SELECT FOR UPDATE
+    for plan in plans:
+        day = assignStudyDay(plan, locked[(plan.study, plan.candidate)])
+        if insert study_day_solves(plan.study, user, day, problem) on conflict do nothing:
             member_days.solvedCount = count(study_day_solves where study, user, day)
 ```
 
