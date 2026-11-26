@@ -652,19 +652,80 @@ class SelfReportIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("철회: 그 스터디 일 밖(전날 밤, 다음 날 유예)에 받은 같은 문제 push로는 바꿔 끼우지 않는다")
+	@DisplayName("철회: 그 스터디 일 밖(전날 밤, 다음 날 유예가 끝난 시각)에 받은 같은 문제 push로는 바꿔 끼우지 않는다. 유예 끝 시각은 유예 밖이라 "
+			+ "철회를 막지도 않는다")
 	void withdrawDoesNotUsePushOutsideTheDay() {
 		long alice = rows.newUser("s11-replace-outside");
 		TestStudy study = rows.standardStudy(alice);
 		long reportId = id(submit(alice, study.studyId(), report(NOV_20, "1000")));
 		rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_19, 23, 59));
-		rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_21, 0, 0));
-		clock.setInstant(seoul(NOV_21, 0, 20));
+		rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_21, 0, 30));
+		clock.setInstant(seoul(NOV_21, 0, 35));
 
 		assertThat(withdraw(alice, study.studyId(), reportId)).hasStatus(HttpStatus.NO_CONTENT);
 
 		assertThat(rows.studyDaySolves(study.studyId(), alice)).isEmpty();
 		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isZero();
+	}
+
+	@Test
+	@DisplayName("철회 (사람이 정함 \"그런 push가 있으면 철회를 막음\"): 목표 1. 같은 문제 push가 다음 날 유예 안(00:00, 경계)에 와서 다음 날로 "
+			+ "셌으면 철회는 409 SAME_PROBLEM_PUSHED_IN_GRACE이고 그대로다 (철회하면 그날이 실패할 수 있음)")
+	void withdrawIsBlockedWhenPushArrivedInNextDayGraceGoalOne() {
+		long alice = rows.newUser("s11-block-goal1");
+		TestStudy study = rows.standardStudy(alice);
+		clock.setInstant(seoul(NOV_20, 23, 0));
+		long reportId = id(submit(alice, study.studyId(), report(NOV_20, "1000")));
+		long push = rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_21, 0, 0));
+		rows.putCounted(study.studyId(), alice, NOV_21, push, "BOJ", "1000");
+		clock.setInstant(seoul(NOV_21, 0, 20));
+
+		MvcTestResult result = withdraw(alice, study.studyId(), reportId);
+
+		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(code(result)).isEqualTo("SAME_PROBLEM_PUSHED_IN_GRACE");
+		assertThat(selfReportStatus(reportId)).isEqualTo("ACCEPTED");
+		assertThat(rows.solveRecord(solveRecordOf(reportId)).status()).isEqualTo("CONFIRMED");
+		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("철회 (사람이 정함 \"그런 push가 있으면 철회를 막음\"): 목표 2. 같은 문제 push가 다음 날 유예 안에 와서 R4로 그날 갔다가 R5로 "
+			+ "빠졌으면 철회는 409 SAME_PROBLEM_PUSHED_IN_GRACE이고 그대로다")
+	void withdrawIsBlockedWhenPushArrivedInNextDayGraceGoalTwo() {
+		long alice = rows.newUser("s11-block-goal2");
+		TestStudy study = rows.standardStudy(alice);
+		jdbc.sql("update studybot.study_rules set daily_goal = 2 where study_id = :studyId")
+			.param("studyId", study.studyId())
+			.update();
+		clock.setInstant(seoul(NOV_20, 23, 0));
+		long reportId = id(submit(alice, study.studyId(), report(NOV_20, "1000")));
+		rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_21, 0, 10));
+		clock.setInstant(seoul(NOV_21, 0, 20));
+
+		MvcTestResult result = withdraw(alice, study.studyId(), reportId);
+
+		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(code(result)).isEqualTo("SAME_PROBLEM_PUSHED_IN_GRACE");
+		assertThat(selfReportStatus(reportId)).isEqualTo("ACCEPTED");
+		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("철회: 같은 날 받은 같은 문제 push로 바꿔 끼울 수 있으면 다음 날 유예 안 push가 있어도 막지 않는다")
+	void withdrawReplacesWhenSameDayPushExistsEvenWithGracePush() {
+		long alice = rows.newUser("s11-block-replaced");
+		TestStudy study = rows.standardStudy(alice);
+		clock.setInstant(seoul(NOV_20, 22, 0));
+		long reportId = id(submit(alice, study.studyId(), report(NOV_20, "1000")));
+		long sameDay = rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_20, 23, 0));
+		rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_21, 0, 10));
+		clock.setInstant(seoul(NOV_21, 0, 20));
+
+		assertThat(withdraw(alice, study.studyId(), reportId)).hasStatus(HttpStatus.NO_CONTENT);
+
+		assertThat(rows.studyDaySolves(study.studyId(), alice))
+			.containsExactly(new StudyDaySolveRow(NOV_20, sameDay, "BOJ", "1000"));
 	}
 
 	@Test
