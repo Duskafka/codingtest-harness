@@ -164,6 +164,26 @@ class ExemptionIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("수용 기준: 마지막 면제권을 쓴 날 다시 보내도 200이다 (한도 409가 아님). 쓴 뒤에 목표를 채웠어도 같다")
+	void usingAgainAfterLastTicketIsStillOk() {
+		long alice = rows.newUser("s11-twice-last");
+		TestStudy study = rows.standardStudy(alice);
+		rows.setExemptionsPerSeasonOfStudy(study.studyId(), 1);
+		assertThat(remaining(use(alice, study.studyId(), NOV_20))).isZero();
+
+		MvcTestResult again = use(alice, study.studyId(), NOV_20);
+		assertThat(again).hasStatus(HttpStatus.OK);
+		assertThat(remaining(again)).isZero();
+
+		jdbc.sql("update studybot.member_days set solved_count = 1 where study_id = :studyId and user_id = :userId")
+			.param("studyId", study.studyId())
+			.param("userId", alice)
+			.update();
+		assertThat(use(alice, study.studyId(), NOV_20)).hasStatus(HttpStatus.OK);
+		assertThat(exemptionUsedAt(study.studyId(), alice, NOV_20)).isEqualTo(NOW);
+	}
+
+	@Test
 	@DisplayName("수용 기준: 이미 달성한 날에는 면제권을 쓸 수 없다 → 409 GOAL_ALREADY_MET")
 	void cannotUseOnAchievedDay() {
 		long alice = rows.newUser("s11-achieved");
