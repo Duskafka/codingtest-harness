@@ -691,7 +691,7 @@ class SelfReportIntegrationTest {
 
 	@Test
 	@DisplayName("철회 (사람이 정함 \"그런 push가 있으면 철회를 막음\"): 목표 2. 같은 문제 push가 다음 날 유예 안에 와서 R4로 그날 갔다가 R5로 "
-			+ "빠졌으면 철회는 409 SAME_PROBLEM_PUSHED_IN_GRACE이고 그대로다")
+			+ "빠졌으면 철회는 409 SAME_PROBLEM_PUSHED_IN_GRACE이고 그대로다. 00:00에 받은 push는 다음 날 것이라 바꿔 끼우지도 않는다 (경계)")
 	void withdrawIsBlockedWhenPushArrivedInNextDayGraceGoalTwo() {
 		long alice = rows.newUser("s11-block-goal2");
 		TestStudy study = rows.standardStudy(alice);
@@ -700,7 +700,7 @@ class SelfReportIntegrationTest {
 			.update();
 		clock.setInstant(seoul(NOV_20, 23, 0));
 		long reportId = id(submit(alice, study.studyId(), report(NOV_20, "1000")));
-		rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_21, 0, 10));
+		rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_21, 0, 0));
 		clock.setInstant(seoul(NOV_21, 0, 20));
 
 		MvcTestResult result = withdraw(alice, study.studyId(), reportId);
