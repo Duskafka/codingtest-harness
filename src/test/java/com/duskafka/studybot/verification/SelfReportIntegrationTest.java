@@ -17,6 +17,7 @@ import com.duskafka.studybot.verification.service.SelfReportService;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -201,17 +202,69 @@ class SelfReportIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("T29: 유예 중인 전날은 수동 인증할 수 있고 전날에 센다 (전날이 이미 달성했어도 고른 날)")
+	@DisplayName("T29·R4: 유예 중인 전날이 R4의 전날 후보(목표 미달)면 수동 인증할 수 있고 전날에 센다. 전날이 목표를 채운 뒤에는 "
+			+ "409 PREVIOUS_DAY_NOT_OPEN (사람이 정함 \"R4 전날 조건 적용\")")
 	void t29_previousDayDuringGraceIsAllowed() {
 		long alice = rows.newUser("s11-grace");
 		TestStudy study = rows.standardStudy(alice);
 		clock.setInstant(seoul(NOV_21, 0, 20));
 
 		assertThat(submit(alice, study.studyId(), report(NOV_20, "1000"))).hasStatus(HttpStatus.CREATED);
-		assertThat(submit(alice, study.studyId(), report(NOV_20, "1001"))).hasStatus(HttpStatus.CREATED);
+		MvcTestResult second = submit(alice, study.studyId(), report(NOV_20, "1001"));
 
-		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isEqualTo(2);
+		assertThat(second).hasStatus(HttpStatus.CONFLICT);
+		assertThat(code(second)).isEqualTo("PREVIOUS_DAY_NOT_OPEN");
+		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isEqualTo(1);
 		assertThat(rows.solvedCount(study.studyId(), alice, NOV_21)).isZero();
+		assertThat(selfReportCount(study.studyId(), alice)).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("R4·R8: 전날 면제권을 썼으면 유예 중에 전날로 수동 인증할 수 없다 → 409 PREVIOUS_DAY_NOT_OPEN, 면제권은 그대로 "
+			+ "(자정 뒤 수동 인증으로 '성공 + 면제권 반환'을 만들지 못하게, 사람이 정함 \"R4 전날 조건 적용\")")
+	void previousDayWithExemptionIsRejected() {
+		long alice = rows.newUser("s11-grace-ticket");
+		TestStudy study = rows.standardStudy(alice);
+		rows.putMemberDay(study.studyId(), alice, NOV_20, 0, null, seoul(NOV_20, 9, 0));
+		clock.setInstant(seoul(NOV_21, 0, 20));
+
+		MvcTestResult result = submit(alice, study.studyId(), report(NOV_20, "1000"));
+
+		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(code(result)).isEqualTo("PREVIOUS_DAY_NOT_OPEN");
+		assertThat(selfReportCount(study.studyId(), alice)).isZero();
+		assertThat(solveRecordCount(alice)).isZero();
+		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isZero();
+		assertThat(rows.memberDay(study.studyId(), alice, NOV_20).orElseThrow().exemptionUsedAt()).isNotNull();
+	}
+
+	@Test
+	@DisplayName("R4: 전날이 쉬는 날이면 유예 중에 전날로 수동 인증할 수 없다 → 409 PREVIOUS_DAY_NOT_OPEN")
+	void previousRestDayIsRejected() {
+		long alice = rows.newUser("s11-grace-rest");
+		TestStudy study = rows.standardStudy(alice, StudyDayRows.SEOUL, LocalTime.MIDNIGHT, 30, "FRIDAY");
+		clock.setInstant(seoul(NOV_21, 0, 20));
+
+		MvcTestResult result = submit(alice, study.studyId(), report(NOV_20, "1000"));
+
+		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(code(result)).isEqualTo("PREVIOUS_DAY_NOT_OPEN");
+		assertThat(selfReportCount(study.studyId(), alice)).isZero();
+	}
+
+	@Test
+	@DisplayName("R4: 전날이 판정하지 않는 날(전날 가입)이면 유예 중에 전날로 수동 인증할 수 없다 → 409 PREVIOUS_DAY_NOT_OPEN. 오늘로는 낼 수 있다")
+	void previousNotJudgedDayIsRejected() {
+		long alice = rows.newUser("s11-grace-joined");
+		long studyId = rows.standardStudy(rows.newUser("s11-grace-joined-other")).studyId();
+		rows.join(studyId, alice, seoul(NOV_20, 9, 0), NOV_21);
+		clock.setInstant(seoul(NOV_21, 0, 20));
+
+		MvcTestResult result = submit(alice, studyId, report(NOV_20, "1000"));
+
+		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(code(result)).isEqualTo("PREVIOUS_DAY_NOT_OPEN");
+		assertThat(submit(alice, studyId, report(NOV_21, "1000"))).hasStatus(HttpStatus.CREATED);
 	}
 
 	@ParameterizedTest
@@ -263,6 +316,9 @@ class SelfReportIntegrationTest {
 	void t29_limitIsPerStudyDayAndCountsWithdrawn() {
 		long alice = rows.newUser("s11-limit-day");
 		TestStudy study = rows.standardStudy(alice);
+		jdbc.sql("update studybot.study_rules set daily_goal = 5 where study_id = :studyId")
+			.param("studyId", study.studyId())
+			.update();
 		clock.setInstant(seoul(NOV_21, 0, 10));
 		for (int i = 1; i <= 5; i++) {
 			assertThat(submit(alice, study.studyId(), report(NOV_20, "100" + i))).hasStatus(HttpStatus.CREATED);
@@ -539,6 +595,75 @@ class SelfReportIntegrationTest {
 
 		assertThat(again).hasStatus(HttpStatus.CONFLICT);
 		assertThat(code(again)).isEqualTo("SELF_REPORT_NOT_ACCEPTED");
+	}
+
+	@Test
+	@DisplayName("철회 (사람이 정함 \"다른 풀이로 바꿔 끼움\"): 그날 받은 같은 문제의 push가 R5로 세지 않은 채 남아 있으면, 철회 뒤에는 그 push가 "
+			+ "대신 센다. 센 수가 줄지 않고 현황의 최근 풀이는 GITHUB다")
+	void withdrawKeepsSameDayPushCounted() {
+		long alice = rows.newUser("s11-replace");
+		TestStudy study = rows.standardStudy(alice);
+		long reportId = id(submit(alice, study.studyId(), report(NOV_20, "1000")));
+		long push = rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_20, 15, 0));
+		clock.setInstant(seoul(NOV_20, 16, 0));
+
+		assertThat(withdraw(alice, study.studyId(), reportId)).hasStatus(HttpStatus.NO_CONTENT);
+
+		assertThat(selfReportStatus(reportId)).isEqualTo("WITHDRAWN");
+		assertThat(rows.studyDaySolves(study.studyId(), alice))
+			.containsExactly(new StudyDaySolveRow(NOV_20, push, "BOJ", "1000"));
+		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isEqualTo(1);
+		JsonNode recent = today(alice, study.studyId()).get("recentSolves");
+		assertThat(recent).hasSize(1);
+		assertThat(recent.get(0).get("source").asString()).isEqualTo("GITHUB");
+	}
+
+	@Test
+	@DisplayName("철회: 그 스터디 일 밖(전날 밤, 다음 날 유예)에 받은 같은 문제 push로는 바꿔 끼우지 않는다")
+	void withdrawDoesNotUsePushOutsideTheDay() {
+		long alice = rows.newUser("s11-replace-outside");
+		TestStudy study = rows.standardStudy(alice);
+		long reportId = id(submit(alice, study.studyId(), report(NOV_20, "1000")));
+		rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_19, 23, 59));
+		rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_21, 0, 0));
+		clock.setInstant(seoul(NOV_21, 0, 20));
+
+		assertThat(withdraw(alice, study.studyId(), reportId)).hasStatus(HttpStatus.NO_CONTENT);
+
+		assertThat(rows.studyDaySolves(study.studyId(), alice)).isEmpty();
+		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isZero();
+	}
+
+	@Test
+	@DisplayName("철회: 다른 스터디에 낸 같은 문제의 수동 인증으로는 바꿔 끼우지 않는다 (사람이 정함 \"그 스터디의 고른 날만\"). 그 스터디는 그대로다")
+	void withdrawDoesNotUseSelfReportOfAnotherStudy() {
+		long alice = rows.newUser("s11-replace-other-study");
+		TestStudy first = rows.standardStudy(alice);
+		TestStudy second = rows.standardStudy(alice);
+		long reportId = id(submit(alice, first.studyId(), report(NOV_20, "1000")));
+		assertThat(submit(alice, second.studyId(), report(NOV_20, "1000"))).hasStatus(HttpStatus.CREATED);
+
+		assertThat(withdraw(alice, first.studyId(), reportId)).hasStatus(HttpStatus.NO_CONTENT);
+
+		assertThat(rows.studyDaySolves(first.studyId(), alice)).isEmpty();
+		assertThat(rows.solvedCount(first.studyId(), alice, NOV_20)).isZero();
+		assertThat(rows.solvedCount(second.studyId(), alice, NOV_20)).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("철회: 이 스터디의 다른 날에 이미 센 같은 문제 push로는 바꿔 끼우지 않는다 (풀이 하나를 두 날에 세지 않음)")
+	void withdrawDoesNotUsePushCountedOnAnotherDay() {
+		long alice = rows.newUser("s11-replace-counted");
+		TestStudy study = rows.standardStudy(alice);
+		long push = rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_20, 0, 10));
+		rows.putCounted(study.studyId(), alice, NOV_19, push, "BOJ", "1000");
+		long reportId = id(submit(alice, study.studyId(), report(NOV_20, "1000")));
+
+		assertThat(withdraw(alice, study.studyId(), reportId)).hasStatus(HttpStatus.NO_CONTENT);
+
+		assertThat(rows.studyDaySolves(study.studyId(), alice))
+			.containsExactly(new StudyDaySolveRow(NOV_19, push, "BOJ", "1000"));
+		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isZero();
 	}
 
 	// --- T19 ---
