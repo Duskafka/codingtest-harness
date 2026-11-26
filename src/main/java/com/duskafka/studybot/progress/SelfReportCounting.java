@@ -33,7 +33,9 @@ public interface SelfReportCounting {
 	/**
 	 * 철회한 수동 인증의 풀이 기록을 그날 집계에서 뺀다 (R7 '판정 전까지는 본인이 철회'). 그날 멤버 일 행을 잠그고 뺀 뒤 다시 센다. 그날 받은 같은
 	 * 문제의 다른 풀이(push 등, 이 스터디에서 아직 세지 않음)가 있으면 빼지 않고 그 풀이로 바꾼다 (사람이 정함 2026-11-26 "다른 풀이로 바꿔
-	 * 끼움"). 멤버가 아니면 404, 그날이 이미 판정됐으면 409 ({@code SELF_REPORT_DAY_JUDGED}).
+	 * 끼움"). 바꿔 끼울 풀이가 없는데 같은 문제의 push가 다음 날 유예 안에 와 있으면 철회하면 그날 센 문제가 줄므로 409다
+	 * ({@code SAME_PROBLEM_PUSHED_IN_GRACE}, 사람이 정함 2026-11-26 "그런 push가 있으면 철회를 막음"). 멤버가 아니면 404, 그날이 이미
+	 * 판정됐으면 409 ({@code SELF_REPORT_DAY_JUDGED}).
 	 */
 	void uncount(long studyId, long userId, LocalDate studyDay, long solveRecordId);
 

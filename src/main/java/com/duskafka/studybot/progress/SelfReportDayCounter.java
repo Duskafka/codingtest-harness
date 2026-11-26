@@ -66,6 +66,14 @@ class SelfReportDayCounter implements SelfReportCounting {
 
 	static final String PREVIOUS_DAY_NOT_OPEN_DETAIL = "전날은 이미 목표를 채웠거나, 면제권을 썼거나, 쉬는 날이거나, 판정하지 않는 날이라 늦은 풀이를 받지 않아요. 오늘로 내 주세요.";
 
+	/**
+	 * 철회: 같은 문제의 push가 다음 날 유예 안에 와 있어 철회하면 그날 센 문제가 줄 때의 409 {@code code} (사람이 정함, 2026-11-26 "그런
+	 * push가 있으면 철회를 막음"). 이름은 에이전트가 정했다 (S11 PR 판단 기록).
+	 */
+	public static final String PUSHED_IN_GRACE_CODE = "SAME_PROBLEM_PUSHED_IN_GRACE";
+
+	static final String PUSHED_IN_GRACE_DETAIL = "같은 문제의 GitHub 풀이가 자정 뒤 유예 안에 들어와 있어서, 철회하면 그날 센 문제가 줄어요. 철회하지 않아도 같은 문제는 한 번만 세요.";
+
 	/** 그날 같은 문제를 이미 셌을 때의 409 {@code code} (R5). */
 	public static final String ALREADY_COUNTED_CODE = "PROBLEM_ALREADY_COUNTED";
 
@@ -133,9 +141,24 @@ class SelfReportDayCounter implements SelfReportCounting {
 			this.studyDaySolves.replaceSolve(studyId, userId, studyDay, solveRecordId, replacement);
 			return;
 		}
+		if (pushedInNextDayGrace(study, studyDay, counted)) {
+			throw new ConflictException(PUSHED_IN_GRACE_CODE, PUSHED_IN_GRACE_DETAIL);
+		}
 		if (this.studyDaySolves.deleteSolve(studyId, userId, studyDay, solveRecordId) > 0) {
 			this.memberDays.recountSolved(row.getId());
 		}
+	}
+
+	/**
+	 * 같은 문제의 풀이(수동 인증 아님)를 다음 날 유예 안({@code [startOf(day+1), graceEndOf(day))})에 받았는지 (사람이 정함, 2026-11-26 "그런
+	 * push가 있으면 철회를 막음"). 그 push는 R4로 그날에 왔다가 R5로 빠졌거나(목표가 남았을 때), 다음 날로 셌다(목표를 채웠을 때). 어느 쪽이든
+	 * 철회하면 그날 센 문제가 준다. 유예가 끝난 뒤에 받은 것은 다음 날 풀이라(D5, R4) 보지 않는다.
+	 */
+	private boolean pushedInNextDayGrace(MemberStudy study, LocalDate studyDay, CountedSolveRow counted) {
+		return !this.solveRecordDetails
+			.countableSolveIds(counted.userId(), counted.platform(), counted.problemNo(),
+					study.calendar().startOf(studyDay.plusDays(1)), study.calendar().graceEndOf(studyDay))
+			.isEmpty();
 	}
 
 	/**
