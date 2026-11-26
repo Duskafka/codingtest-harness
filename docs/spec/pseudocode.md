@@ -141,7 +141,7 @@ every 5 seconds:                                      -- 발송
 
 ```
 useExemption(study, user, day):
-    require now < cal.boundaryOf(day + 1) and not restDay(day)
+    require day == cal.studyDayOf(now) and not restDay(day)   -- 그날에만 (OD-09). 오늘이면 기준 시각 전이다
     transaction:
         lock memberships(study, user)                  -- 이 사용자의 면제권 계산을 한 줄로 세움
         md = lockMemberDay(study, user, day)
