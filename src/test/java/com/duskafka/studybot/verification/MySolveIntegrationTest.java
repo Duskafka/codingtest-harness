@@ -213,11 +213,17 @@ class MySolveIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("내 풀이: 모르는 status는 400")
+	@DisplayName("내 풀이: 모르는 status는 400, 대소문자를 가린다. 빈 status는 거르지 않은 것과 같다")
 	void rejectsUnknownStatus() {
 		long alice = rows.newUser("s10-bad-status");
+		long confirmed = rows.solve(alice, "BOJ", "1000", seoul(NOV_20, 10, 0));
+		long pending = rows.pendingSolve(alice, seoul(NOV_20, 11, 0), "algorithm/a.py");
 
 		assertThat(api.getWithParams(alice, "/api/me/solves", "status", "DONE")).hasStatus(HttpStatus.BAD_REQUEST);
+		assertThat(api.getWithParams(alice, "/api/me/solves", "status", "pending_identification"))
+			.hasStatus(HttpStatus.BAD_REQUEST);
+		assertThat(ids(TestApi.json(api.getWithParams(alice, "/api/me/solves", "status", ""))))
+			.containsExactly(pending, confirmed);
 	}
 
 	@Test
@@ -508,7 +514,8 @@ class MySolveIntegrationTest {
 	private boolean someoneWaitsForSolveRecordLock() {
 		return jdbc.sql("""
 				select count(*) from pg_stat_activity
-				where wait_event_type = 'Lock' and query ilike '%solve_records%'
+				where datname = current_database() and pid <> pg_backend_pid()
+					and wait_event_type = 'Lock' and query ilike '%solve_records%'
 				""").query(Long.class).single() > 0;
 	}
 

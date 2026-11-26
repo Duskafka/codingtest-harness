@@ -8,6 +8,7 @@ import com.duskafka.studybot.verification.ProblemRef;
 import com.duskafka.studybot.verification.persistence.MySolveRow;
 import com.duskafka.studybot.verification.persistence.SolveRecordRepository;
 import com.duskafka.studybot.verification.persistence.SolveStatus;
+import java.sql.SQLException;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
@@ -38,6 +39,9 @@ public class MySolveService {
 
 	/** 같은 커밋에 같은 문제가 이미 있을 때의 409 {@code code}. */
 	public static final String SAME_PROBLEM_IN_COMMIT_CODE = "PROBLEM_ALREADY_IN_COMMIT";
+
+	/** PostgreSQL의 UNIQUE 위반 SQLState. */
+	private static final String UNIQUE_VIOLATION = "23505";
 
 	private final SolveRecordRepository solveRecords;
 
@@ -86,7 +90,11 @@ public class MySolveService {
 			changed = this.solveRecords.identify(solveId, userId, platform, problem.problemNo());
 		}
 		catch (DataIntegrityViolationException ex) {
+			if (!isUniqueViolation(ex)) {
+				throw ex;
+			}
 			// 앞의 확인 뒤에 같은 커밋의 다른 확인 대기가 같은 문제로 먼저 지정됐다 (CodeRabbit PR #26 리뷰). 트랜잭션은 롤백된다.
+			// 이 UPDATE가 바꾸는 열(플랫폼·번호·상태)에 걸린 UNIQUE는 solve_records_commit_problem_uk뿐이다.
 			throw new ConflictException(SAME_PROBLEM_IN_COMMIT_CODE, SAME_PROBLEM_IN_COMMIT_DETAIL);
 		}
 		if (changed != 1) {
@@ -97,6 +105,19 @@ public class MySolveService {
 		this.studyDayAssignment.assignIdentified(
 				new SolveToAssign(solveId, userId, platform, problem.problemNo(), identified.receivedAt()));
 		return identified;
+	}
+
+	/**
+	 * UNIQUE 위반(SQLState {@code 23505})인지. CHECK 위반 같은 다른 무결성 오류는 요청 검증과 DB 제약이 어긋난 버그라서 409로 숨기지 않고
+	 * 그대로 던진다.
+	 */
+	private static boolean isUniqueViolation(DataIntegrityViolationException ex) {
+		for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+			if (cause instanceof SQLException sql && UNIQUE_VIOLATION.equals(sql.getSQLState())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 }
