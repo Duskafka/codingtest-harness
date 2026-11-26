@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-26 S11 수동 인증과 면제권 (세션 1/1)
+- 한 일: 만들 것 1~6. V9 `self_reports`. 수동 인증 `POST·DELETE /api/studies/{id}/self-reports`(verification `SelfReportService`, 풀이 기록 SELF_REPORT → progress 포트 `SelfReportCounting`가 그 스터디의 고른 날 멤버 일을 잠그고 센다, 하루 5건은 잠근 뒤 셈, 철회하면 WITHDRAWN·풀이 기록 IGNORED). 면제권 `POST /exemptions`·`DELETE /exemptions/{studyDay}`(progress `ExemptionService`, 오늘만, 멤버십 행 → 멤버 일 행 잠금, 기수 기간에서 SUCCESS가 아닌 사용을 셈). 현황 `members[]`에 `exemptionsRemaining`, 방장에게만 `selfReportRatio`(조회 포트 `SelfReportCounts`). study `StudyAccess#lockMember`, `MemberStudies#rulesOf`(`MemberStudyRules`), `MemberStudy#seasonOn`, `StudyDayContext`에 기수 기간·기수당 면제권
+- 상태: 빌드 통과 (테스트 715개). 구현 전 새 테스트 61개 중 58개 실패(통과 3개는 엔드포인트가 없어도 404인 T19). 조건 빼 보기 (채움)
+- 사람이 정한 것 (2026-11-26, 지시 "S11 시작해 OD-9부터 결정해야해. 선택지와 장단점을 제시하면 선택할게", 세션 선택지, 모두 Recommended): OD-09 "당일만"(docs PR #28), 브랜치 "docs PR 먼저 + feat/S11", 수동 인증 범위 "그 스터디의 고른 날만", '승인 필요' 모드 "409로 거절", 수동 인증 비율 "이번 기수"
+- 다음: PR 검토 → 병합(#28과 S11 단계 문서가 겹치면 master 병합) → 받아들인 스펙 변경 제안을 docs PR로(R7·5.6 범위, 승인 모드 409와 승인 API 제안, 비율 범위, api.md 요청·응답·`code`, data-model `self_reports` 메모) → S12(판정 배치) 또는 S13
+- 막힌 것: 없음
+- 참고: S12는 면제권을 쓴 날 목표를 채우면 SUCCESS로 판정하면 된다. 남은 개수 계산이 `result IS DISTINCT FROM 'SUCCESS'`라 판정 결과만 바꾸면 면제권이 돌아온다. 잠금 순서는 이렇다: 면제권은 멤버십 → 멤버 일, 수동 인증 철회는 수동 인증 → 풀이 기록 → 멤버 일, 제출은 멤버 일 하나만. 판정은 멤버 일만 잠그니 순환이 없다. S13의 알림 대상 제외는 `exemption_used_at`으로 본다. 열린 질문: 수동 인증 철회 뒤 같은 날 R5로 빠졌던 같은 문제 push는 다시 세지 않음, 하루 5건에 철회 포함, 남은 면제권을 모두에게 보임. 세션 재시작 뒤 dockerd가 오래된 pid로 안 뜨면 `CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`
+- PR: (여는 대로 적음)
+
 ## 2026-11-26 S10 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #26(병합)의 스펙 변경 제안 다섯 개를 문서에 반영. R6(늦은 지정의 '그날' = 원래 수신 시각으로 R4를 적용해 배정할 날, 유예 안 전날 실패면 이의, 한 스터디라도 그러면 아무 데도 반영 안 함, '판정됐다' = 그 멤버의 그날 판정 결과), api.md 4.4(표 `?from=&to=&status=`, '내 풀이' 항목, 오류 `code` 규칙과 지금 값 세 개, "Spring Boot 3" → "Spring"), glossary(`MemberDayStatus`, `ExemptReason`), S10 만들 것 3·4
 - 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
@@ -137,14 +146,7 @@
 - PR: #12
 
 ## 2026-11-23 S05 스터디·규칙·기수·초대·멤버십 (세션 1)
-- 한 일: 만들 것 1·2·3·5·6·7·8·9. V3 마이그레이션(studies, study_rules, seasons, memberships, invitations), 만들기(규칙 v1·1기·방장 한 트랜잭션), 목록(PagedModel)·상세, 이름 변경·위임, 초대 만들기·철회·미리보기(공개)·수락, 탈퇴, `StudyAccess`(비멤버 404, 비방장 403). 정원 동시성은 스터디 행 잠금 + 조건부 UPDATE(철회·만료도 다시 봄), 결정 제안서 006. `StudyCalendar`에 `nextStudyDayOf`·`seasonEndDay` 추가
-- 상태: 빌드 통과 (테스트 322개). 구현 전 새 테스트 73개 중 72개 실패 확인. 잠금·UPDATE 조건을 하나씩 빼면 해당 테스트가 실패하는 것도 확인. spec-reviewer 1차 12건·2차 11건 처리(PR 본문)
-- 사람이 정한 것 (2026-11-23, 세션 중 선택지): 시작일 "다음 날~30일 뒤 (추천)", 초대 철회 "DELETE 엔드포인트 추가 (추천)". 선택지 설명 원문과 에이전트가 해석한 부분은 PR 본문에 나눠 적음
-- 다음: PR 검토 → 사람이 '지금 병합할지, OD-08까지 열어 둘지'(PR 열린 질문 1)와 결정 제안서 006을 정함 → 병합 뒤 `docs/` 문서 전용 PR로 두 결정과 받아들인 스펙 변경 제안을 반영 → OD-08이 정해지면 규칙 변경 `PUT /rules`·T11
-- 막힌 것: 결정 대기 OD-08 (규칙 변경 API, T11). OD-07은 1기 생성만 했고 다음 기수는 S12. 단계 상태는 '결정 대기'
-- 참고: S05 테스트는 `study/StudyTestSupport`(사용자는 DB에 넣고 `authentication()`으로 로그인, CSRF는 쿠키로)를 상속. 기수 SCHEDULED→ACTIVE 전환은 아직 어느 단계에도 없음(PR 열린 질문). Hibernate 7.4의 PostgreSQL 쓰기 잠금은 `FOR NO KEY UPDATE`
-- 리뷰 반영 (같은 세션): CodeRabbit 2건. 철회 저장이 동시 수락의 `used_count`를 덮어쓰던 것(`updatable = false`), 소진된 초대는 정원 찬 스터디에서도 410. 새 테스트 2개 실패 확인 뒤 고침
-- PR: #11
+- 요약: V3(studies, study_rules, seasons, memberships, invitations), 만들기·목록·상세·이름 변경·위임, 초대 만들기·철회·미리보기·수락, 탈퇴, `StudyAccess`(비멤버 404, 비방장 403). 정원 동시성은 스터디 행 잠금 + 조건부 UPDATE(결정 제안서 006). 사람이 정함: 시작일 "다음 날~30일 뒤", 초대 철회 "DELETE 엔드포인트 추가". 테스트는 `study/StudyTestSupport` 상속. Hibernate 7.4의 PostgreSQL 쓰기 잠금은 `FOR NO KEY UPDATE`. 빌드 통과(322개). PR: #11
 
 ## 2026-11-22 S04 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 요약: PR #9 제안 두 건 반영(architecture 4.1 Nginx 경로에 `/logout`·`/github/setup`·`/actuator/health`, data-model `users` github_id CHECK·deleted_at). 훅은 `docs/S[0-9]*` 브랜치를 단계 브랜치로 봐서 스펙 수정을 막으니 문서 전용 PR 브랜치는 `docs/S`로 시작하지 않게 한다. PR: #10
