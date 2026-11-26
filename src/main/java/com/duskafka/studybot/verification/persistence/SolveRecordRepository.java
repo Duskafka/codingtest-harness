@@ -42,6 +42,31 @@ public interface SolveRecordRepository extends JpaRepository<SolveRecord, Long> 
 			@Param("status") String status);
 
 	/**
+	 * 수동 인증으로 풀이 기록을 넣고 새 행의 ID를 돌려준다 (출처 {@code SELF_REPORT}, 상태 {@code CONFIRMED}, R7, S11 만들 것 2). 인정 시각은
+	 * 제출 시각이다 (R3). 커밋이 없으니 UNIQUE 인덱스(커밋 기준)에 걸리지 않는다. 쓰기 트랜잭션 안에서 부른다.
+	 */
+	@Query(value = """
+			insert into studybot.solve_records (user_id, source, platform, problem_no, received_at, status)
+			values (:userId, 'SELF_REPORT', :platform, :problemNo, :receivedAt, 'CONFIRMED')
+			returning id
+			""", nativeQuery = true)
+	long insertSelfReport(@Param("userId") long userId, @Param("platform") String platform,
+			@Param("problemNo") String problemNo, @Param("receivedAt") Instant receivedAt);
+
+	/**
+	 * 철회한 수동 인증의 풀이 기록을 풀이로 보지 않게 한다 ({@code IGNORED}, S11 만들 것 3). 내 풀이 목록에서 인정된 풀이로 보이지 않게
+	 * 하려는 것이다. 수동 인증으로 만든 내 기록만 바꾼다.
+	 *
+	 * @return 바뀐 행 수
+	 */
+	@Modifying
+	@Query(value = """
+			update studybot.solve_records set status = 'IGNORED'
+			where id = :id and user_id = :userId and source = 'SELF_REPORT'
+			""", nativeQuery = true)
+	int ignoreSelfReport(@Param("id") long id, @Param("userId") long userId);
+
+	/**
 	 * 내 풀이 (api.md 4.4 {@code GET /api/me/solves}, S10 만들 것 3). 확인 대기를 포함한다. 수신 시각이 늦은 것부터이고, 정렬은 쿼리에 고정한다
 	 * (요청의 정렬 값을 쿼리에 넣지 않음). 인덱스 {@code solve_records_user_received_idx}를 쓴다.
 	 *

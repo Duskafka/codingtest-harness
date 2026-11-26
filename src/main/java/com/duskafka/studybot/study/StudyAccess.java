@@ -5,6 +5,7 @@ import com.duskafka.studybot.common.error.NotFoundException;
 import com.duskafka.studybot.study.persistence.MembershipRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -32,6 +33,21 @@ public class StudyAccess {
 	@Transactional(readOnly = true)
 	public StudyMember requireMember(long studyId, long userId) {
 		return this.membershipRepository.findByStudyIdAndUserIdAndLeftAtIsNull(studyId, userId)
+			.orElseThrow(() -> new NotFoundException(NOT_FOUND_DETAIL))
+			.toStudyMember();
+	}
+
+	/**
+	 * 멤버인지 확인하고 그 멤버십 행을 잠근다. 아니면 404. 잠금은 부르는 쪽 트랜잭션이 끝날 때까지 간다. 면제권은 날짜마다 멤버 일 행이 달라
+	 * 그 잠금으로는 마지막 면제권 경쟁을 못 막아서, 이 사용자의 면제권 계산을 멤버십 행 잠금으로 한 줄로 세운다 (5.7, S11 만들 것 5).
+	 *
+	 * <p>잠금 순서: 멤버십 → 멤버 일. 스터디 행을 잠그는 흐름(결정 제안서 006)은 스터디 → 멤버십이고, 배정(결정 제안서 007)은 멤버 일만 잠근다.
+	 */
+	@Transactional(propagation = Propagation.MANDATORY)
+	public StudyMember lockMember(long studyId, long userId) {
+		long membershipId = this.membershipRepository.lockActive(studyId, userId)
+			.orElseThrow(() -> new NotFoundException(NOT_FOUND_DETAIL));
+		return this.membershipRepository.findById(membershipId)
 			.orElseThrow(() -> new NotFoundException(NOT_FOUND_DETAIL))
 			.toStudyMember();
 	}

@@ -10,6 +10,7 @@ import com.duskafka.studybot.study.persistence.StudyRule;
 import com.duskafka.studybot.study.persistence.StudyRuleRepository;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,12 +40,32 @@ public class MemberStudies {
 		return this.membershipRepository.findActiveInActiveStudies(userId).stream().map(this::toMemberStudy).toList();
 	}
 
+	/**
+	 * 사용자가 이 스터디의 탈퇴하지 않은 멤버면 그 스터디의 배정 값과 수동 인증·면제권 규칙 항목 (S11). 아니면 빈 값이다. 권한 검사
+	 * ({@link StudyAccess})와 같이 스터디 상태는 보지 않는다.
+	 */
+	@Transactional(readOnly = true)
+	public Optional<MemberStudyRules> rulesOf(long studyId, long userId) {
+		return this.membershipRepository.findByStudyIdAndUserIdAndLeftAtIsNull(studyId, userId).map(membership -> {
+			List<StudyRule> rules = this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(studyId);
+			List<MemberStudyRules.RuleTerms> terms = rules.stream()
+				.map(rule -> new MemberStudyRules.RuleTerms(rule.getEffectiveFrom(), rule.getExemptionsPerSeason(),
+						rule.getSelfReportMode()))
+				.toList();
+			return new MemberStudyRules(toMemberStudy(membership, rules), terms);
+		});
+	}
+
 	private MemberStudy toMemberStudy(Membership membership) {
+		return toMemberStudy(membership,
+				this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(membership.getStudyId()));
+	}
+
+	private MemberStudy toMemberStudy(Membership membership, List<StudyRule> rules) {
 		long studyId = membership.getStudyId();
 		Study study = this.studyRepository.findById(studyId)
 			.orElseThrow(() -> new IllegalStateException("멤버십의 스터디가 없어요: " + studyId));
 		ZoneId zoneId = study.zoneId();
-		List<StudyRule> rules = this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(studyId);
 		RuleVersionCalendar calendar = RuleVersionCalendar.of(rules.stream()
 			.map(rule -> new RuleVersionCalendar.Version(rule.getEffectiveFrom(), rule.toTimeRule(zoneId)))
 			.toList());

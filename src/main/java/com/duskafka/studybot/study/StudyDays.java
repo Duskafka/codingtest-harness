@@ -77,18 +77,22 @@ public class StudyDays {
 		if (day.isBefore(calendar.studyDayOf(study.getCreatedAt()))) {
 			throw new BadRequestException(BEFORE_STUDY_DETAIL);
 		}
-		Long seasonId = seasonIdOn(this.seasonRepository.findByStudyIdOrderBySeqAsc(studyId), day);
+		MemberStudy.SeasonPeriod season = seasonOn(this.seasonRepository.findByStudyIdOrderBySeqAsc(studyId), day);
 		Instant startsAt = calendar.startOf(day);
 		Instant endsAt = calendar.startOf(day.plusDays(1));
 		List<RosterMember> members = rosterOf(
-				this.membershipRepository.findMembersDuring(studyId, startsAt, endsAt), day, seasonId != null);
-		return new StudyDayContext(studyId, day, today, startsAt, endsAt, calendar.graceEndOf(day),
-				StudyTimeline.ruleOn(rules, day).getDailyGoal(), StudyCalendar.of(calendar.ruleFor(day)).isRestDay(day),
-				seasonId, members);
+				this.membershipRepository.findMembersDuring(studyId, startsAt, endsAt), day, season != null);
+		StudyRule rule = StudyTimeline.ruleOn(rules, day);
+		return new StudyDayContext(studyId, day, today, startsAt, endsAt, calendar.graceEndOf(day), rule.getDailyGoal(),
+				StudyCalendar.of(calendar.ruleFor(day)).isRestDay(day), rule.getExemptionsPerSeason(), season, members);
 	}
 
-	private static @Nullable Long seasonIdOn(List<Season> seasons, LocalDate day) {
-		return seasons.stream().filter(season -> season.contains(day)).map(Season::getId).findFirst().orElse(null);
+	private static MemberStudy.@Nullable SeasonPeriod seasonOn(List<Season> seasons, LocalDate day) {
+		return seasons.stream()
+			.filter(season -> season.contains(day))
+			.map(season -> new MemberStudy.SeasonPeriod(season.getId(), season.getStartDay(), season.getEndDay()))
+			.findFirst()
+			.orElse(null);
 	}
 
 	/** 멤버십(ID 순서)을 사용자마다 하나로 합친다. 자리는 처음 멤버십, 역할은 나중 멤버십이다. */

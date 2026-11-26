@@ -39,4 +39,27 @@ public interface StudyDaySolveRepository extends JpaRepository<StudyDaySolve, Lo
 			@Param("studyDay") LocalDate studyDay, @Param("solveRecordId") long solveRecordId,
 			@Param("platform") String platform, @Param("problemNo") String problemNo);
 
+	/**
+	 * 그 날에 센 풀이 기록 하나를 뺀다 (수동 인증 철회, S11 만들 것 3). 같은 날 같은 문제를 다른 풀이 기록이 세고 있으면 그 행은 그대로다.
+	 * 멤버 일 행을 잠근 트랜잭션 안에서 부른다.
+	 *
+	 * @return 지운 행 수
+	 */
+	@Modifying
+	@Query(value = """
+			delete from studybot.study_day_solves
+			where study_id = :studyId and user_id = :userId and study_day = :studyDay and solve_record_id = :solveRecordId
+			""", nativeQuery = true)
+	int deleteSolve(@Param("studyId") long studyId, @Param("userId") long userId, @Param("studyDay") LocalDate studyDay,
+			@Param("solveRecordId") long solveRecordId);
+
+	/** 기간 안에 그 스터디에 센 풀이 수를 멤버마다 (현황의 수동 인증 비율의 분모, S11 만들 것 4). 센 풀이가 없는 멤버는 빠진다. */
+	@Query(value = """
+			select user_id as "userId", count(*) as "count" from studybot.study_day_solves
+			where study_id = :studyId and study_day between :fromDay and :toDay
+			group by user_id
+			""", nativeQuery = true)
+	List<MemberDayRepository.UserCount> countByUser(@Param("studyId") long studyId, @Param("fromDay") LocalDate fromDay,
+			@Param("toDay") LocalDate toDay);
+
 }

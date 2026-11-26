@@ -42,9 +42,13 @@ public record StudyDayStatus(StudyDayContext day, List<MemberStatus> members, Li
 	 * @param exemptionUsed 그날 면제권을 썼는지 (목표를 채워도 표시, 5.7)
 	 * @param solvedCount 그날 센 문제 수
 	 * @param result 판정 결과. 판정 전이면 {@code null}
+	 * @param exemptionsRemaining 그날이 속한 기수에 남은 면제권 (지금 기준). 기수 밖이면 {@code null} (S11 만들 것 6)
+	 * @param selfReportRatio 그날이 속한 기수에 센 풀이 중 수동 인증의 비율 (0~1). 보는 사람이 방장일 때만 있다. 기수 밖이거나 센 풀이가
+	 * 없으면 {@code null} (S11 만들 것 4, 사람이 정함 2026-11-26 "이번 기수")
 	 */
 	public record MemberStatus(long userId, String login, @Nullable String avatarUrl, MembershipRole role,
-			MemberDayProgress progress, boolean exemptionUsed, int solvedCount, @Nullable JudgmentResult result) {
+			MemberDayProgress progress, boolean exemptionUsed, int solvedCount, @Nullable JudgmentResult result,
+			@Nullable Integer exemptionsRemaining, @Nullable Double selfReportRatio) {
 
 	}
 

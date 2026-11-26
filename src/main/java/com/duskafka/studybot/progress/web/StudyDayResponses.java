@@ -67,15 +67,18 @@ final class StudyDayResponses {
 	 * @param result 판정 결과 ({@code SUCCESS}, {@code FAIL}, {@code EXEMPT_REST}, {@code EXEMPT_TICKET}). 판정 전이면 {@code null}.
 	 * 있으면 화면은 {@code status}보다 이것을 먼저 보여 준다 (이의로 결과가 바뀌면 센 수와 어긋날 수 있다, P2)
 	 * @param role 지금 역할. 지난 날 상세에서도 그날의 역할이 아니라 지금(마지막 멤버십의) 역할이다
+	 * @param exemptionsRemaining 그날이 속한 기수에 지금 남은 면제권. 기수 밖이면 {@code null} (S11 만들 것 6)
+	 * @param selfReportRatio 그날이 속한 기수에 센 풀이 중 수동 인증의 비율(0~1). 방장이 볼 때만 있고, 기수 밖이거나 센 풀이가 없으면
+	 * {@code null} (S11 만들 것 4)
 	 */
 	record MemberResponse(long userId, String login, @Nullable String avatarUrl, MembershipRole role,
 			MemberDayStatus status, @Nullable ExemptReason exemptReason, boolean exemptionUsed, int solvedCount,
-			@Nullable JudgmentResult result) {
+			@Nullable JudgmentResult result, @Nullable Integer exemptionsRemaining, @Nullable Double selfReportRatio) {
 
 		static MemberResponse from(MemberStatus member) {
 			return new MemberResponse(member.userId(), member.login(), member.avatarUrl(), member.role(),
 					member.progress().status(), member.progress().exemptReason(), member.exemptionUsed(),
-					member.solvedCount(), member.result());
+					member.solvedCount(), member.result(), member.exemptionsRemaining(), member.selfReportRatio());
 		}
 
 	}
