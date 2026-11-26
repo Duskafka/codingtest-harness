@@ -354,7 +354,7 @@ class SelfReportIntegrationTest {
 					selfReportService.submit(study.studyId(), alice,
 							new NewSelfReport(NOV_20, new ProblemRef(Platform.BOJ, "1005"), null, null));
 					fifthApplied.countDown();
-					awaitQuietly(commitFifth);
+					awaitRelease(commitFifth);
 				}));
 			assertThat(fifthApplied.await(10, TimeUnit.SECONDS)).as("5건째가 커밋 전까지 반영됨").isTrue();
 
@@ -897,12 +897,19 @@ class SelfReportIntegrationTest {
 				""").param("pattern", "%" + table + "%").query(Long.class).single() > 0;
 	}
 
-	private static void awaitQuietly(CountDownLatch latch) {
+	/**
+	 * 테스트가 놓아 줄 때까지 기다린다. 제한 시간 안에 놓아 주지 않거나 인터럽트되면 예외를 던져, 기다리던 트랜잭션이 커밋되지 않고
+	 * 롤백되게 한다 (CodeRabbit PR #29 리뷰). 제한은 테스트가 잠금 대기를 지켜보는 제한(10초)보다 넉넉하게 둔다.
+	 */
+	private static void awaitRelease(CountDownLatch latch) {
 		try {
-			latch.await(10, TimeUnit.SECONDS);
+			if (!latch.await(60, TimeUnit.SECONDS)) {
+				throw new IllegalStateException("테스트가 60초 안에 놓아 주지 않았어요");
+			}
 		}
 		catch (InterruptedException ex) {
 			Thread.currentThread().interrupt();
+			throw new IllegalStateException("놓아 주기를 기다리다 인터럽트됐어요", ex);
 		}
 	}
 
