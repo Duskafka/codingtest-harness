@@ -2,7 +2,7 @@
 
 > 스펙 문서예요. 사람이 정한 내용만 담아요. 에이전트는 사람이 정한 결정을 `docs/` 브랜치의 문서 전용 PR로 반영하고, 그 밖에 바꿀 게 있으면 PR의 '스펙 변경 제안'에 적어요 (`docs/workflow.md` 4장).
 >
-> - 4.4의 '단계' 열은 P1~P3예요. 어느 작업 단계(S번호)에서 만드는지는 `docs/steps/README.md`에 있어요.
+> - 4.4의 '단계' 열은 P1~P3예요. '미정'은 어느 단계에서 만들지 아직 정하지 않은 것이에요. 어느 작업 단계(S번호)에서 만드는지는 `docs/steps/README.md`에 있어요.
 > - 4.5의 로그인 유지 방식은 OD-01로 확정됐어요 (결정 제안서 002). GitHub 로그인 방식은 OD-02로 확정됐어요 (웹훅용 GitHub App의 사용자 인증, 결정 제안서 005).
 > - 응답 본문의 모양은 표에 없어요. 엔드포인트를 만드는 단계에서 정하고, PR 판단 기록에 '꼭 봐 주세요'로 남겨요. 프론트가 이 계약을 써요.
 
@@ -63,8 +63,8 @@
     - 지금 있는 값 (모두 409):
         - `STUDY_DAY_JUDGED`: 판정된 날에 풀이를 더하려 함. 확인 대기 지정(`PATCH /api/me/solves/{id}`, R6. 유예 안에 받았고 R4의 전날 후보인 전날이 실패로 판정된 경우 포함)과 수동 인증 제출. 화면은 이때만 이의 안내를 보여 줘요
         - `SOLVE_NOT_PENDING`: 확인 대기가 아님 / `PROBLEM_ALREADY_IN_COMMIT`: 같은 커밋에 그 문제가 이미 있음 (확인 대기 지정)
-        - `SELF_REPORT_DAILY_LIMIT`: 하루 6건째 / `SELF_REPORT_APPROVAL_UNSUPPORTED`: '승인 필요' 스터디 / `PROBLEM_ALREADY_COUNTED`: 그날 이미 센 문제 / `PREVIOUS_DAY_NOT_OPEN`: 유예 중 전날이 R4의 전날 후보가 아님, 오늘로 내야 함 (수동 인증 제출, R7)
-        - `SELF_REPORT_NOT_ACCEPTED`: 이미 철회함 / `SELF_REPORT_DAY_JUDGED`: 판정된 날의 수동 인증 철회 (이의 안내 없음) / `SAME_PROBLEM_PUSHED_IN_GRACE`: 같은 문제 풀이를 다음 날 유예 안에 받아 철회하면 그날 센 문제가 줆 (수동 인증 철회, R7)
+        - `SELF_REPORT_DAILY_LIMIT`: 하루 6건째 / `SELF_REPORT_APPROVAL_UNSUPPORTED`: '승인 필요' 스터디 / `PROBLEM_ALREADY_COUNTED`: 그날 이미 센 문제 / `PREVIOUS_DAY_NOT_OPEN`: 유예 중 전날에 R4가 보내지 않음(판정 대상 아님, 쉬는 날, 면제권 씀, 목표 채움), 오늘로 내야 함 (수동 인증 제출, R7)
+        - `SELF_REPORT_NOT_ACCEPTED`: 인정 상태가 아님(이미 철회함 등) / `SELF_REPORT_DAY_JUDGED`: 판정된 날의 수동 인증 철회 (이의 안내 없음) / `SAME_PROBLEM_PUSHED_IN_GRACE`: 같은 문제의 풀이(수동 인증 아님)를 다음 날 유예 안에 받아 철회하면 그날 센 문제가 줆 (수동 인증 철회, R7)
         - `GOAL_ALREADY_MET`: 목표를 채운 날 / `EXEMPTION_LIMIT_REACHED`: 이번 기수 면제권을 다 씀 (면제권 사용)
     - S11의 값과 응답 모양은 S11 PR #29에서 정했어요 (`code` 이름은 에이전트가 정했고, 사람이 스펙 반영을 정함, 2026-11-26).
 - springdoc-openapi로 명세를 자동 생성하고, 이 명세로 프론트의 API 클라이언트를 만들어요 (7장).
@@ -73,14 +73,15 @@
 - **수동 인증 (`/api/studies/{id}/self-reports`, R7, S11):**
     - 제출 본문은 `studyDay`(오늘 또는 유예 중 전날), `platform`, `problemNo`, `evidenceUrl`(선택, `http`·`https`, 2000자까지), `memo`(선택, 500자까지)예요. 201과 `{id, studyId, studyDay, platform, problemNo, evidenceUrl, memo, status, createdAt}`을 줘요.
     - 기한 밖 날·형식 오류·`http`·`https`가 아닌 링크는 400, 멤버가 아니면 404예요.
-    - 철회는 204예요. 남의 것·다른 스터디의 것·없는 것은 404예요.
+    - 철회는 204예요. 남의 것·다른 스터디의 것·없는 것, 지금 그 스터디의 멤버가 아니면 404예요.
     - 승인 API(위 표 '미정' 세 줄)는 '승인 필요' 모드에 필요한 계약으로 열어 둬요 (알려진 충돌 6번). 맡을 단계와, 승인할 때 그날이 이미 판정됐으면 어떻게 할지는 정하지 않았어요.
 - **면제권 (`/api/studies/{id}/exemptions`, R8, OD-09, S11):**
     - 사용 본문은 `studyDay`(오늘이어야 함)예요. 사용과 취소 모두 200과 `{studyDay, exemptionUsed, exemptionsPerSeason, exemptionsRemaining}`을 줘요. 같은 날 다시 써도, 쓰지 않은 날을 취소해도 200이에요.
-    - 오늘이 아닌 날·쉬는 날·판정하지 않는 날은 400, 멤버가 아니면 404예요.
+    - 사용: 오늘이 아닌 날·쉬는 날·판정하지 않는 날은 400이에요. 취소: 오늘이 아닌 날만 400이에요. 둘 다 멤버가 아니면 404예요.
+    - `exemptionsRemaining`은 그날이 기수 밖이면 `null`이에요 (기수 밖에서는 쓸 수 없으니 취소 응답에서만 생겨요).
 - **현황의 면제권·수동 인증 (`/today`, `/days/{date}`, S11):** `members[]`에 두 값이 있어요.
     - `exemptionsRemaining`: 그날이 속한 기수에 지금 남은 면제권이에요. 모든 멤버에게 보여요. 기수 밖이면 `null`이에요.
-    - `selfReportRatio`: 그날이 속한 기수에 센 풀이 중 인정된 수동 인증의 비율(0~1)이에요. 방장이 볼 때만 있어요. 기수 밖이거나 센 풀이가 없으면 `null`이에요.
+    - `selfReportRatio`: 그날이 속한 기수에 센 풀이 중 인정된 수동 인증의 비율(0~1)이에요. 방장이 볼 때만 값이 있고 아니면 `null`이에요. 기수 밖이거나 센 풀이가 없어도 `null`이에요.
 - **규칙 변경과 규칙 버전 (`PUT /api/studies/{id}/rules`, 스터디 상세, 초대 미리보기):** S05(PR #21)에서 정한 응답 모양 가운데 프론트가 꼭 알아야 하는 규칙 버전 부분이에요. 나머지 응답 모양은 머리말대로 단계 PR의 판단 기록에 있어요.
     - 본문은 그 값을 채울 때 출발한 규칙 버전의 ID(`basedOnRuleId`, 필수)와 규칙 열 항목 전체(R1 표)예요. 바꿀 항목만 보내지 않아요. 빠지거나 범위 밖이면 400이에요.
     - `basedOnRuleId`가 마지막 버전(예정된 변경이 있으면 마지막 예정 버전)이 아니면 409예요. 화면이 현재 규칙으로 채워 보내 예정된 변경을 모르고 지우거나, 다른 탭·새 방장이 바꾼 규칙을 덮어쓰는 일을 막아요. 예정 버전은 바꿀 때마다 새 ID가 돼서, 409를 받으면 다시 불러와야 해요.

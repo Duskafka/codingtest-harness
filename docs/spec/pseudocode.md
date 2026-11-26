@@ -26,7 +26,7 @@ assignStudyDay(plan, md):                          -- 잠근 뒤: md는 잠근 �
         return plan.candidate
     return plan.N
 
-recordSolve(user, problem, receivedAt, source):
+recordSolve(user, problem, receivedAt, source):    -- push·누락 복구. 수동 인증은 이 길을 쓰지 않고 그 스터디의 고른 날에만 센다 (R7)
     solve = insert solve_records(...) on conflict do nothing
     if solve was duplicate: return
     plans = [planStudyDay(study, user, receivedAt) for study in activeStudiesOf(user)]   -- 배정할 때 탈퇴하지 않은 멤버십 (R14)
@@ -145,7 +145,8 @@ useExemption(study, user, day):
     transaction:
         lock memberships(study, user)                  -- 이 사용자의 면제권 계산을 한 줄로 세움
         md = lockMemberDay(study, user, day)
-        require md.exemptionUsedAt is null and md.solvedCount < goal
+        if md.exemptionUsedAt is not null: return       -- 같은 날 두 번은 한 번만 (S11, api.md 4.4 면제권)
+        require md.solvedCount < goal
         used = count member_days in current season
                where exemption_used_at is not null and result is distinct from SUCCESS
         require used < rule.exemptionsPerSeason
