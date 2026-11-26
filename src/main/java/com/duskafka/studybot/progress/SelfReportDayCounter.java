@@ -92,17 +92,15 @@ class SelfReportDayCounter implements SelfReportCounting {
 		if (rules.termsOn(day).selfReportMode() == SelfReportMode.APPROVAL_REQUIRED) {
 			throw new ConflictException(APPROVAL_UNSUPPORTED_CODE, APPROVAL_UNSUPPORTED_DETAIL);
 		}
-		boolean previousDay = !day.equals(study.studyDayOf(report.receivedAt()));
-		AssignmentPlan plan = AssignmentPlan.of(study, report.receivedAt());
-		if (previousDay && plan.previous() == null) {
-			throw new ConflictException(PREVIOUS_DAY_NOT_OPEN_CODE, PREVIOUS_DAY_NOT_OPEN_DETAIL);
-		}
 		this.memberDays.insertIfAbsent(report.studyId(), report.userId(), day, study.seasonIdOn(day));
 		LockedMemberDay row = lockOrThrow(report.studyId(), report.userId(), day);
 		if (row.getJudged()) {
 			throw new ConflictException(StudyDayAssigner.JUDGED_DAY_CODE, JUDGED_DAY_DETAIL);
 		}
-		if (previousDay && !day.equals(plan.decide(StudyDayAssigner.stateOf(row)))) {
+		// 유예 중 전날은 R4가 그 시각의 풀이를 전날로 보낼 때만 받는다. 전날이 후보가 아니면(판정 대상 아님, 쉬는 날) decide는 오늘을 돌려준다.
+		boolean previousDay = !day.equals(study.studyDayOf(report.receivedAt()));
+		if (previousDay && !day.equals(
+				AssignmentPlan.of(study, report.receivedAt()).decide(StudyDayAssigner.stateOf(row)))) {
 			throw new ConflictException(PREVIOUS_DAY_NOT_OPEN_CODE, PREVIOUS_DAY_NOT_OPEN_DETAIL);
 		}
 		int inserted = this.studyDaySolves.insertIfAbsent(report.studyId(), report.userId(), day,
