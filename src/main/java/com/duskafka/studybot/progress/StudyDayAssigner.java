@@ -111,7 +111,8 @@ class StudyDayAssigner implements StudyDayAssignment {
 		return locked;
 	}
 
-	private static MemberDayState stateOf(LockedMemberDay row) {
+	/** 잠근 멤버 일 행을 R4 결정에 쓰는 상태로 ({@link AssignmentPlan#decide}). 수동 인증의 전날 확인도 쓴다 (S11). */
+	static MemberDayState stateOf(LockedMemberDay row) {
 		return new MemberDayState(row.getJudged(), row.getExemptionUsed(), row.getSolvedCount());
 	}
 

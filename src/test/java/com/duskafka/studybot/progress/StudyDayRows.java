@@ -143,6 +143,62 @@ public final class StudyDayRows {
 			.single();
 	}
 
+	/** 방장 멤버십을 넣고 ID를 돌려준다 (S11 수동 인증 비율은 방장에게만 보인다). */
+	public long joinAsOwner(long studyId, long userId, LocalDate judgedFrom) {
+		return jdbc.sql("""
+				insert into studybot.memberships (study_id, user_id, role, joined_at, judged_from)
+				values (:studyId, :userId, 'OWNER', :joinedAt, :judgedFrom) returning id
+				""")
+			.param("studyId", studyId)
+			.param("userId", userId)
+			.param("joinedAt", Timestamp.from(JOINED_AT))
+			.param("judgedFrom", judgedFrom)
+			.query(Long.class)
+			.single();
+	}
+
+	/** 규칙 버전의 기수당 면제권을 바꾼다 (S11). */
+	public void setExemptionsPerSeason(long ruleId, int exemptionsPerSeason) {
+		jdbc.sql("update studybot.study_rules set exemptions_per_season = :n where id = :id")
+			.param("n", exemptionsPerSeason)
+			.param("id", ruleId)
+			.update();
+	}
+
+	/** 스터디의 모든 규칙 버전의 수동 인증 방식을 바꾼다 (S11). */
+	public void setSelfReportMode(long studyId, String mode) {
+		jdbc.sql("update studybot.study_rules set self_report_mode = :mode where study_id = :studyId")
+			.param("mode", mode)
+			.param("studyId", studyId)
+			.update();
+	}
+
+	/** 스터디의 모든 규칙 버전의 기수당 면제권을 바꾼다 (S11). */
+	public void setExemptionsPerSeasonOfStudy(long studyId, int exemptionsPerSeason) {
+		jdbc.sql("update studybot.study_rules set exemptions_per_season = :n where study_id = :studyId")
+			.param("n", exemptionsPerSeason)
+			.param("studyId", studyId)
+			.update();
+	}
+
+	/**
+	 * 풀이 기록을 스터디 일에 센 것으로 바로 넣는다 ({@code study_day_solves}, 배정을 거치지 않음). 멤버 일의 센 수는 고치지 않는다.
+	 */
+	public void putCounted(long studyId, long userId, LocalDate studyDay, long solveRecordId, String platform,
+			String problemNo) {
+		jdbc.sql("""
+				insert into studybot.study_day_solves (study_id, user_id, study_day, solve_record_id, platform, problem_no)
+				values (:studyId, :userId, :studyDay, :solveRecordId, :platform, :problemNo)
+				""")
+			.param("studyId", studyId)
+			.param("userId", userId)
+			.param("studyDay", studyDay)
+			.param("solveRecordId", solveRecordId)
+			.param("platform", platform)
+			.param("problemNo", problemNo)
+			.update();
+	}
+
 	/** 탈퇴시킨다 ({@code left_at}). */
 	public void leave(long membershipId, Instant leftAt) {
 		jdbc.sql("update studybot.memberships set left_at = :leftAt where id = :id")

@@ -14,6 +14,17 @@ public interface MembershipRepository extends JpaRepository<Membership, Long> {
 	/** 스터디의 탈퇴하지 않은 멤버십. 없으면 그 사람은 멤버가 아니다. */
 	Optional<Membership> findByStudyIdAndUserIdAndLeftAtIsNull(long studyId, long userId);
 
+	/**
+	 * 스터디의 탈퇴하지 않은 멤버십 행을 잠그고 ID를 돌려준다 ({@code SELECT ... FOR UPDATE}). 없으면 빈 값이다. 면제권 사용·취소가 이 사용자의
+	 * 면제권 계산을 한 줄로 세우는 데 쓴다 (5.7 '마지막 면제권 경쟁', S11). 쓰기 트랜잭션 안에서 부른다.
+	 */
+	@Query(value = """
+			select id from studybot.memberships
+			where study_id = :studyId and user_id = :userId and left_at is null
+			for update
+			""", nativeQuery = true)
+	Optional<Long> lockActive(@Param("studyId") long studyId, @Param("userId") long userId);
+
 	/** 스터디의 탈퇴하지 않은 멤버 수 (정원 검사, 5.1). */
 	long countByStudyIdAndLeftAtIsNull(long studyId);
 

@@ -104,10 +104,16 @@ public record MemberStudy(long studyId, LocalDate judgedFrom, RuleVersionCalenda
 
 	/** 그 스터디 일을 담은 기수 행의 ID. 기수 밖인 날(1기 시작 전 등)이면 {@code null}이다. */
 	public @Nullable Long seasonIdOn(LocalDate studyDay) {
+		SeasonPeriod season = seasonOn(studyDay);
+		return season == null ? null : season.seasonId();
+	}
+
+	/** 그 스터디 일을 담은 기수 행의 기간. 기수 밖인 날이면 {@code null}이다 (S11: 면제권 한도는 이 기간에 센다). */
+	public @Nullable SeasonPeriod seasonOn(LocalDate studyDay) {
 		Objects.requireNonNull(studyDay, "studyDay");
 		for (SeasonPeriod season : this.seasons) {
 			if (season.contains(studyDay)) {
-				return season.seasonId();
+				return season;
 			}
 		}
 		return null;

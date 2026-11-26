@@ -1,5 +1,6 @@
 package com.duskafka.studybot.progress.persistence;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -74,6 +75,61 @@ public interface MemberDayRepository extends JpaRepository<MemberDay, Long> {
 			where m.studyId = :studyId and m.studyDay = :studyDay
 			""")
 	List<MemberDayRow> findDayRows(@Param("studyId") long studyId, @Param("studyDay") LocalDate studyDay);
+
+	/**
+	 * 면제권을 쓴 시각을 남긴다 (5.7, S11 만들 것 5). 이미 썼으면 바꾸지 않는다. 행을 잠근 뒤에 부른다.
+	 *
+	 * @return 고친 행 수
+	 */
+	@Modifying
+	@Query(value = """
+			update studybot.member_days set exemption_used_at = :usedAt, version = version + 1
+			where id = :id and exemption_used_at is null
+			""", nativeQuery = true)
+	int markExemptionUsed(@Param("id") long id, @Param("usedAt") Instant usedAt);
+
+	/**
+	 * 면제권을 취소한다 (R8, S11 만들 것 5). 쓰지 않았으면 바꾸지 않는다. 행을 잠근 뒤에 부른다.
+	 *
+	 * @return 고친 행 수
+	 */
+	@Modifying
+	@Query(value = """
+			update studybot.member_days set exemption_used_at = null, version = version + 1
+			where id = :id and exemption_used_at is not null
+			""", nativeQuery = true)
+	int clearExemption(@Param("id") long id);
+
+	/**
+	 * 한 멤버가 기간(이번 기수) 안에 쓴 면제권 수 (pseudocode '면제권 사용'). 성공으로 판정된 날은 면제권을 돌려받았으니 세지 않는다 (R8).
+	 * 판정 전인 날과 면제(면제권)로 판정된 날을 센다. 기간은 기수 행의 날짜다 (5.13 '주의할 것': 경계는 날짜로 본다).
+	 */
+	@Query(value = """
+			select count(*) from studybot.member_days
+			where study_id = :studyId and user_id = :userId and study_day between :fromDay and :toDay
+				and exemption_used_at is not null and result is distinct from 'SUCCESS'
+			""", nativeQuery = true)
+	long countUsedExemptions(@Param("studyId") long studyId, @Param("userId") long userId,
+			@Param("fromDay") LocalDate fromDay, @Param("toDay") LocalDate toDay);
+
+	/** {@link #countUsedExemptions}를 스터디의 멤버마다 한 번에 센다 (현황의 남은 면제권, S11 만들 것 6). 쓴 적 없는 멤버는 빠진다. */
+	@Query(value = """
+			select user_id as "userId", count(*) as "count" from studybot.member_days
+			where study_id = :studyId and study_day between :fromDay and :toDay
+				and exemption_used_at is not null and result is distinct from 'SUCCESS'
+			group by user_id
+			""", nativeQuery = true)
+	List<UserCount> countUsedExemptionsByUser(@Param("studyId") long studyId, @Param("fromDay") LocalDate fromDay,
+			@Param("toDay") LocalDate toDay);
+
+	/** 사용자마다 센 수. */
+	interface UserCount {
+
+		long getUserId();
+
+		long getCount();
+
+	}
 
 	/** 잠그고 읽은 멤버 일의 지금 값 중 배정에 필요한 것. */
 	interface LockedMemberDay {
