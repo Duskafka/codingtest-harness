@@ -9,7 +9,7 @@
 - 다음: 이 PR과 테스트 fix PR 병합 → 새 세션에서 S12(판정 배치와 기수 자동 연장, 선행 S11 완료, OD-07 확정, 결정 제안서 008: 판정 시점과 따라잡기). '한 세션에 단계 하나'라 S12는 이 세션에서 하지 않음
 - 막힌 것: 없음
 - 참고: 승인 API를 맡을 단계와 승인할 때 그날이 이미 판정됐으면 어떻게 할지는 열린 질문(PR 본문)
-- PR: (여는 대로 적음)
+- PR: #30. 테스트 fix PR(CodeRabbit PR #29 지적, `awaitQuietly` → `awaitRelease`)은 따로 연다. spec-reviewer '수정 필요' → 필수 1(철회 막는 조건에 '수동 인증 아님' 빠짐)과 고려 반영
 
 ## 2026-11-26 S11 수동 인증과 면제권 (세션 1/1)
 - 한 일: 만들 것 1~6. V9 `self_reports`. 수동 인증 `POST·DELETE /api/studies/{id}/self-reports`(verification `SelfReportService`, 풀이 기록 SELF_REPORT → progress 포트 `SelfReportCounting`가 그 스터디의 고른 날 멤버 일을 잠그고 센다, 하루 5건은 잠근 뒤 셈, 철회하면 WITHDRAWN·풀이 기록 IGNORED). 면제권 `POST /exemptions`·`DELETE /exemptions/{studyDay}`(progress `ExemptionService`, 오늘만, 멤버십 행 → 멤버 일 행 잠금, 기수 기간에서 SUCCESS가 아닌 사용을 셈). 현황 `members[]`에 `exemptionsRemaining`, 방장에게만 `selfReportRatio`(조회 포트 `SelfReportCounts`). study `StudyAccess#lockMember`, `MemberStudies#rulesOf`(`MemberStudyRules`), `MemberStudy#seasonOn`, `StudyDayContext`에 기수 기간·기수당 면제권
