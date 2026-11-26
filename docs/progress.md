@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-26 S10 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
+- 한 일: PR #26(병합)의 스펙 변경 제안 다섯 개를 문서에 반영. R6(늦은 지정의 '그날' = 원래 수신 시각으로 R4를 적용해 배정할 날, 유예 안 전날 실패면 이의, 한 스터디라도 그러면 아무 데도 반영 안 함, '판정됐다' = 그 멤버의 그날 판정 결과), api.md 4.4(표 `?from=&to=&status=`, '내 풀이' 항목, 오류 `code` 규칙과 지금 값 세 개, "Spring Boot 3" → "Spring"), glossary(`MemberDayStatus`, `ExemptReason`), S10 만들 것 3·4
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 사람이 정한 것: 2026-11-25 S10 세션 선택지 "전부 409, 아무것도 안 바꿈", "FAIL이면 409". 2026-11-26 지시 "열린 질문을 결정해보자 선택지와 각각의 장단점을 가져와 내가 선택할게" 뒤 선택지 "status 필터 추가", "code 속성 추가", "멤버 일 결과 그대로". 2026-11-26 지시 "26 병합했어" 뒤 선택 제안 질문에 "glossary에 상태 이름 추가", "api.md 'Spring Boot 3' 문구 정정" (모두 Recommended)
+- 다음: 이 PR 병합 → S11(수동 인증과 면제권, 결정 게이트 OD-09 확인부터)
+- 막힌 것: 없음
+- 참고: 에이전트가 덧붙인 문장(PR 본문에 표시): R6의 '결과가 없는 날은 그날에 기록'(가입한 날까지는 S09 PR #24 "지금대로 그날에 기록", 기수 밖은 2026-11-26 "멤버 일 결과 그대로"의 설명), api.md의 '`type`은 `about:blank` 그대로'와 '모르는 값은 400'. 빈 `status=`(거르지 않음)와 대소문자 구분, 규칙 변경 409 두 가지의 `code`는 스펙에 넣지 않았다(PR 열린 질문). spec-reviewer 필수 1(R6에 'R4의 전날 후보' 조건) 반영
+- PR: #27
+
 ## 2026-11-25 S10 오늘 현황·내 풀이·확인 대기 지정 (세션 1/1)
 - 한 일: 만들 것 1~5. `GET /api/studies/{id}/today`·`/days/{date}`(progress: 그날 멤버였던 사람의 DONE/REMAINING/EXEMPT/NOT_JUDGED, 판정 결과, 최근 배정 50개를 수신 시각 순서로, 출처 = 수동 표시 자리), `GET /api/me/solves`(확인 대기 포함, from·to 오프셋 있는 ISO 8601, 크기 50까지), `PATCH /api/me/solves/{id}`(verification: 내 확인 대기 잠금 → 문제 채움 → `StudyDayAssignment#assignIdentified`). study `StudyDays`·`StudyDayContext`, auth `UserDirectory#profilesOf`, progress 조회 포트 `SolveRecordDetails`(verification 구현), `RuleVersionCalendar#graceEndOf`. 테이블 변경 없음
 - 상태: 빌드 통과 (테스트 651개). 구현 전 새 테스트 52개 중 49개 실패(통과 3개는 엔드포인트가 없어도 404인 T19, 조건 빼 보기로 확인). 조건 빼 보기 16개 모두 해당 테스트 실패(2개는 처음에 빠져 테스트를 더함). `/today`는 멤버 3명·30명 모두 9문장. 측정(18만 행): p50 11.5ms·p95 19.4ms, 주요 쿼리는 인덱스 사용. spec-reviewer '수정 필요'(코드 위반 없음, 필수 1: 아래 R6 해석) → 사람에게 물어 반영, 고려 11건 중 6건 코드·설명 반영, 나머지는 PR 판단 기록·열린 질문
@@ -138,14 +147,7 @@
 - PR: #11
 
 ## 2026-11-22 S04 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
-- 한 일: PR #9의 '스펙 변경 제안' 두 건을 사람이 받아들여 문서 전용 PR로 반영했다
-    - architecture 4.1 Nginx 경로 목록에 `/logout`·`/github/setup`·`/actuator/health`를 더했다. 같은 목록이 있는 S17 '만들 것' 3도 함께 고쳤다
-    - data-model 4.3 `users` 제약 칸을 "github_id UNIQUE, 탈퇴 전 필수 (CHECK). 탈퇴 시 익명화·deleted_at 채움 (5.16)"으로 바꿨다. S15 '만들 것' 1의 익명화에도 `deleted_at`을 함께 채운다고 적었다 (사람이 고른 답의 설명 문장)
-- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎). 확정된 결정 제안서 002의 같은 목록(24행)은 기록이라 그대로 둠. `/admin/**`이 Nginx 목록에 없는 것은 PR '열린 질문'에 올림
-- 다음: 이 PR 병합 → S05(스터디·멤버십, OD-07·OD-08 결정 필요) 또는 S06(웹훅 수신)
-- 막힌 것: 없음
-- 참고: 훅은 `docs/S[0-9]*` 브랜치를 단계 브랜치로 봐서 스펙 수정을 막는다. 문서 전용 PR 브랜치 이름은 `docs/S`로 시작하지 않게 한다
-- PR: #10
+- 요약: PR #9 제안 두 건 반영(architecture 4.1 Nginx 경로에 `/logout`·`/github/setup`·`/actuator/health`, data-model `users` github_id CHECK·deleted_at). 훅은 `docs/S[0-9]*` 브랜치를 단계 브랜치로 봐서 스펙 수정을 막으니 문서 전용 PR 브랜치는 `docs/S`로 시작하지 않게 한다. PR: #10
 
 ## 2026-11-22 S04 로그인과 세션 구현 (세션 1, 이어서)
 - 요약: GitHub App 사용자 인증 로그인, DB 세션(`studybot.SPRING_SESSION`), `__Host-Http-SESSION` 쿠키 빈과 30일 롤링 필터, `csrf.spa()`, `/webhooks/**` 별도 체인, `GET /api/me`, `POST /logout`, 토큰 미저장. 공유 테스트 컨텍스트에서 `csrf()` 후처리기를 쓰지 말고 쿠키로 토큰을 받을 것. dockerd가 죽어 있으면 `CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`. 빌드 통과(238개). PR: #9

@@ -24,8 +24,8 @@
 
 1. `GET /api/studies/{id}/today`: 멤버별 완료·남음·면제, 최근 풀이, 수동 인증 표시 자리
 2. `GET /api/studies/{id}/days/{date}`: 특정 날 상세
-3. `GET /api/me/solves?from=&to=`: 내 풀이 (확인 대기 포함), 페이지네이션
-4. `PATCH /api/me/solves/{id}`: 확인 대기 풀이에 문제를 지정한다. 원래 수신 시각 기준으로 배정한다 (R6). 그날이 이미 판정됐으면 바꾸지 않고, 이의(P2)가 필요하다는 problem+json 409로 안내한다
+3. `GET /api/me/solves?from=&to=&status=`: 내 풀이 (확인 대기 포함), 페이지네이션
+4. `PATCH /api/me/solves/{id}`: 확인 대기 풀이에 문제를 지정한다. 원래 수신 시각 기준으로 배정한다 (R6). 그날이 이미 판정됐으면 바꾸지 않고, 이의(P2)가 필요하다는 problem+json 409(`code`가 `STUDY_DAY_JUDGED`)로 안내한다
 5. **조회 전용 쿼리:** 엔티티를 그대로 내보내지 않고 조회용 DTO로 가져온다. 스터디·날짜 단위로 한 번에 가져온다
 
 ## 만들지 않을 것

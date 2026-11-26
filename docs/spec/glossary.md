@@ -22,6 +22,8 @@
 | 시간 계산 | `StudyCalendar`, `RuleVersionCalendar` | `common.time`. 모든 시간 계산을 여기서. 규칙 버전에 걸친 계산(스터디 일, 유예 구간, 판정 시각)은 `RuleVersionCalendar` |
 | 멤버 일 | `MemberDay` | 멤버 × 스터디 일. 진행 상황과 판정 결과 |
 | 판정 결과 | `JudgmentResult` | `SUCCESS`, `FAIL`, `EXEMPT_REST`(쉬는 날), `EXEMPT_TICKET`(면제권). 미판정은 `null`. 기수 밖인 날은 판정하지 않아 결과가 없어요 (R9, OD-07) |
+| 현황 상태 | `MemberDayStatus` | `DONE`(완료), `REMAINING`(남음), `EXEMPT`(면제), `NOT_JUDGED`(그날 판정 대상 아님). 판정 전에도 지금 센 수로 정하고, 판정 결과(`JudgmentResult`)와는 따로예요 (S10) |
+| 면제 이유 | `ExemptReason` | `REST_DAY`(쉬는 날), `TICKET`(면제권). 현황 상태가 `EXEMPT`일 때만 있어요 (S10) |
 | 풀이 기록 | `SolveRecord` | 출처: `GITHUB`, `SELF_REPORT`, `RECOVERY`. 상태: `CONFIRMED`, `PENDING_IDENTIFICATION`(확인 대기), `IGNORED` |
 | 스터디별 집계 | `StudyDaySolve` | R5 유니크 제약을 거는 곳 |
 | 문제 식별자 | `ProblemRef` | (플랫폼, 문제 번호). 키는 항상 둘 다 |
