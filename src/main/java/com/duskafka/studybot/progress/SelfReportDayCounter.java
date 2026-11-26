@@ -72,7 +72,7 @@ class SelfReportDayCounter implements SelfReportCounting {
 	 */
 	public static final String PUSHED_IN_GRACE_CODE = "SAME_PROBLEM_PUSHED_IN_GRACE";
 
-	static final String PUSHED_IN_GRACE_DETAIL = "같은 문제의 GitHub 풀이가 자정 뒤 유예 안에 들어와 있어서, 철회하면 그날 센 문제가 줄어요. 철회하지 않아도 같은 문제는 한 번만 세요.";
+	static final String PUSHED_IN_GRACE_DETAIL = "같은 문제의 GitHub 풀이가 하루가 바뀐 뒤 유예 안에 들어와 있어서, 철회하면 그날 센 문제가 줄어요.";
 
 	/** 그날 같은 문제를 이미 셌을 때의 409 {@code code} (R5). */
 	public static final String ALREADY_COUNTED_CODE = "PROBLEM_ALREADY_COUNTED";

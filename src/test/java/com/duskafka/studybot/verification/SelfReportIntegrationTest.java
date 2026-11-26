@@ -708,7 +708,28 @@ class SelfReportIntegrationTest {
 		assertThat(result).hasStatus(HttpStatus.CONFLICT);
 		assertThat(code(result)).isEqualTo("SAME_PROBLEM_PUSHED_IN_GRACE");
 		assertThat(selfReportStatus(reportId)).isEqualTo("ACCEPTED");
+		assertThat(rows.solveRecord(solveRecordOf(reportId)).status()).isEqualTo("CONFIRMED");
 		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("철회: 다음 날 유예 안에 받았어도 다른 문제, 풀이로 보지 않는(IGNORED) 기록, 다른 스터디의 수동 인증이면 막지 않는다")
+	void withdrawIsNotBlockedByUnrelatedRecordsInGrace() {
+		long alice = rows.newUser("s11-block-unrelated");
+		TestStudy study = rows.standardStudy(alice);
+		TestStudy other = rows.standardStudy(alice);
+		clock.setInstant(seoul(NOV_20, 23, 0));
+		long reportId = id(submit(alice, study.studyId(), report(NOV_20, "1000")));
+		rows.githubSolve(alice, "BOJ", "2000", "A-B", seoul(NOV_21, 0, 5));
+		long ignored = rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_21, 0, 10));
+		jdbc.sql("update studybot.solve_records set status = 'IGNORED' where id = :id").param("id", ignored).update();
+		clock.setInstant(seoul(NOV_21, 0, 15));
+		assertThat(submit(alice, other.studyId(), report(NOV_21, "1000"))).hasStatus(HttpStatus.CREATED);
+		clock.setInstant(seoul(NOV_21, 0, 20));
+
+		assertThat(withdraw(alice, study.studyId(), reportId)).hasStatus(HttpStatus.NO_CONTENT);
+
+		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isZero();
 	}
 
 	@Test
