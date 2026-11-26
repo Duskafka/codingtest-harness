@@ -3,6 +3,7 @@ package com.duskafka.studybot.verification;
 import com.duskafka.studybot.progress.SolveDetail;
 import com.duskafka.studybot.progress.SolveRecordDetails;
 import com.duskafka.studybot.verification.persistence.SolveRecordRepository;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,13 @@ class SolveRecordDetailsProvider implements SolveRecordDetails {
 			.stream()
 			.map(row -> new SolveDetail(row.id(), row.source().name(), row.title(), row.receivedAt()))
 			.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<Long> countableSolveIds(long userId, String platform, String problemNo, Instant receivedFrom,
+			Instant receivedTo) {
+		return this.solveRecords.findCountableIds(userId, platform, problemNo, receivedFrom, receivedTo);
 	}
 
 }

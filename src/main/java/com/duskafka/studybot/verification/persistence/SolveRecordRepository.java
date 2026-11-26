@@ -67,6 +67,21 @@ public interface SolveRecordRepository extends JpaRepository<SolveRecord, Long> 
 	int ignoreSelfReport(@Param("id") long id, @Param("userId") long userId);
 
 	/**
+	 * 수동 인증을 철회할 때 대신 셀 수 있는 풀이 기록의 ID (S11, {@code SolveRecordDetails#countableSolveIds}). 그 사용자가 시각 범위 안에 받은
+	 * 그 문제의 풀이 기록 중 {@code CONFIRMED}이고 수동 인증이 아닌 것, 받은 시각·ID 순서. 인덱스 {@code solve_records_user_received_idx}를 쓴다.
+	 */
+	@Query(value = """
+			select id from studybot.solve_records
+			where user_id = :userId and platform = :platform and problem_no = :problemNo
+				and status = 'CONFIRMED' and source <> 'SELF_REPORT'
+				and received_at >= :receivedFrom and received_at < :receivedTo
+			order by received_at, id
+			""", nativeQuery = true)
+	List<Long> findCountableIds(@Param("userId") long userId, @Param("platform") String platform,
+			@Param("problemNo") String problemNo, @Param("receivedFrom") Instant receivedFrom,
+			@Param("receivedTo") Instant receivedTo);
+
+	/**
 	 * 내 풀이 (api.md 4.4 {@code GET /api/me/solves}, S10 만들 것 3). 확인 대기를 포함한다. 수신 시각이 늦은 것부터이고, 정렬은 쿼리에 고정한다
 	 * (요청의 정렬 값을 쿼리에 넣지 않음). 인덱스 {@code solve_records_user_received_idx}를 쓴다.
 	 *

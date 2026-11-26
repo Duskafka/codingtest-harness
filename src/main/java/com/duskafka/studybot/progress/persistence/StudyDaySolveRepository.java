@@ -1,7 +1,9 @@
 package com.duskafka.studybot.progress.persistence;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -52,6 +54,39 @@ public interface StudyDaySolveRepository extends JpaRepository<StudyDaySolve, Lo
 			""", nativeQuery = true)
 	int deleteSolve(@Param("studyId") long studyId, @Param("userId") long userId, @Param("studyDay") LocalDate studyDay,
 			@Param("solveRecordId") long solveRecordId);
+
+	/** 그 날에 이 풀이 기록으로 센 행 (수동 인증 철회, S11). 없으면 빈 값. 조회 전용 DTO로 읽는다. */
+	@Query("""
+			select new com.duskafka.studybot.progress.persistence.CountedSolveRow(s.solveRecordId, s.userId, s.platform,
+				s.problemNo)
+			from StudyDaySolve s
+			where s.studyId = :studyId and s.userId = :userId and s.studyDay = :studyDay
+				and s.solveRecordId = :solveRecordId
+			""")
+	Optional<CountedSolveRow> findCounted(@Param("studyId") long studyId, @Param("userId") long userId,
+			@Param("studyDay") LocalDate studyDay, @Param("solveRecordId") long solveRecordId);
+
+	/** 주어진 풀이 기록 중 이 스터디에서 어느 날에든 이미 센 것의 ID (풀이 하나를 두 날에 세지 않게, S11). */
+	@Query("""
+			select s.solveRecordId from StudyDaySolve s
+			where s.studyId = :studyId and s.solveRecordId in :solveRecordIds
+			""")
+	List<Long> findCountedAmong(@Param("studyId") long studyId,
+			@Param("solveRecordIds") Collection<Long> solveRecordIds);
+
+	/**
+	 * 그 날에 센 행의 풀이 기록을 다른 것으로 바꾼다 (수동 인증 철회 때 같은 문제의 다른 풀이가 대신 셈, S11, 사람이 정함 2026-11-26 "다른 풀이로
+	 * 바꿔 끼움"). 같은 문제라 UNIQUE(R5)와 센 수는 그대로다. 멤버 일 행을 잠근 트랜잭션 안에서 부른다.
+	 *
+	 * @return 바뀐 행 수
+	 */
+	@Modifying
+	@Query(value = """
+			update studybot.study_day_solves set solve_record_id = :replacementId
+			where study_id = :studyId and user_id = :userId and study_day = :studyDay and solve_record_id = :solveRecordId
+			""", nativeQuery = true)
+	int replaceSolve(@Param("studyId") long studyId, @Param("userId") long userId, @Param("studyDay") LocalDate studyDay,
+			@Param("solveRecordId") long solveRecordId, @Param("replacementId") long replacementId);
 
 	/** 기간 안에 그 스터디에 센 풀이 수를 멤버마다 (현황의 수동 인증 비율의 분모, S11 만들 것 4). 센 풀이가 없는 멤버는 빠진다. */
 	@Query(value = """
