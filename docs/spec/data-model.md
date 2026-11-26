@@ -88,7 +88,7 @@ erDiagram
 | `solve_records`                               | P1   | id, user_id, source, platform, problem_no, title, received_at, commit_sha, repo_id, inbox_id, raw_path, parser_version, status(CONFIRMED/PENDING_IDENTIFICATION/IGNORED)                                          | `(user_id, commit_sha, platform, problem_no)` UNIQUE, `(user_id, commit_sha, raw_path)` UNIQUE (둘 다 commit_sha 있을 때). 아래 '풀이 기록 테이블' |
 | `study_day_solves`                            | P1   | id, study_id, user_id, study_day, solve_record_id, platform, problem_no                                                                                                                                           | **(study_id, user_id, study_day, platform, problem_no) UNIQUE** → R5. 아래 '멤버 일 테이블' |
 | `member_days`                                 | P1   | id, study_id, user_id, study_day, season_id, solved_count, exemption_used_at, result, result_source, judged_at, rule_id, version                                                                                  | **(study_id, user_id, study_day) UNIQUE**. 잠금 대상이자 판정 결과 (5.5, 5.10). 아래 '멤버 일 테이블' |
-| `self_reports`                                | P1   | id, study_id, user_id, study_day, platform, problem_no, evidence_url, memo, status, solve_record_id, decided_by, decided_at, created_at                                                                           | 하루 5건 제한 (R7)                                                             |
+| `self_reports`                                | P1   | id, study_id, user_id, study_day, platform, problem_no, evidence_url, memo, status, solve_record_id, decided_by, decided_at, created_at                                                                           | 하루 5건 제한 (R7). 아래 '수동 인증 테이블'                                     |
 | `notifications`                               | P1   | id, type, channel, study_id, user_id, study_day, dedupe_key, payload(JSONB), status, attempts, next_attempt_at, locked_until, sent_at, expires_at, last_error                                                     | **dedupe_key UNIQUE** → 같은 알림 중복 생성 방지 (5.8)                         |
 | `push_subscriptions`                          | P1   | id, user_id, endpoint, p256dh, auth, user_agent, created_at, last_success_at, failure_count                                                                                                                       | endpoint UNIQUE                                                                |
 | `study_channels`                              | P1   | study_id, discord_webhook_url_enc, discord_enabled, discord_last_error                                                                                                                                            | 웹훅 URL은 앱 수준에서 암호화해 저장 (9.6)                                     |
@@ -140,9 +140,24 @@ erDiagram
     - `solve_record_id`는 그날에 센 풀이 기록이에요(FK).
     - 플랫폼·번호는 풀이 기록의 값을 그대로 옮겨요. 플랫폼 CHECK는 두지 않아요(풀이 기록 쪽에 있음).
 
+**수동 인증 테이블 (S11)**
+
+- `self_reports`
+    - 한 행이 스터디 하나의 스터디 일 하루에 낸 수동 인증 하나예요. 그 스터디의 그날에만 세요 (R7).
+    - `solve_record_id`는 이 수동 인증으로 만든 풀이 기록(출처 `SELF_REPORT`)이에요. ER대로 비어 있을 수 있어요(FK, NULL 허용, UNIQUE). '바로 인정'은 늘 채워요. '승인 필요' 모드는 승인할 때 만들 수 있게 열어 둬요.
+    - `decided_by`·`decided_at`은 상태를 바꾼 사람과 시각이에요. 본인 철회면 본인이에요. 상태와 묶는 CHECK는 두지 않아요. 방장 승인(`PENDING_APPROVAL` → `ACCEPTED`)도 남길 수 있게 하려는 거예요.
+    - 하루 5건(R7)은 (`study_id`, `user_id`, `study_day`)의 행 수로 세요. 철회한 것도 세요.
+    - CHECK
+        - `status`는 `ACCEPTED`·`PENDING_APPROVAL`·`WITHDRAWN`·`REJECTED`(glossary `SelfReport`)
+        - `platform`·`problem_no`는 `solve_records`와 같은 목록·정규형
+        - `evidence_url`은 `http`·`https`로 시작하고 공백이 없음 (security.md 9.7)
+        - `memo`는 500자까지
+        - `decided_by`와 `decided_at`은 함께 있거나 함께 비어 있음
+
 **인덱스 (먼저 만들 것)**
 
 - `member_days (study_id, study_day)`: 오늘 현황, 판정 배치
+- `self_reports (study_id, user_id, study_day)`: 하루 5건 세기 (S11)
 - `study_day_solves (study_id, study_day)`: 현황 상세
 - `solve_records (user_id, received_at)`: 내 풀이
 - `webhook_inbox (status, next_attempt_at)`, `notifications (status, next_attempt_at)`: 워커 조회

@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-26 S11 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
+- 한 일: PR #29(병합)의 결정과 받아들인 스펙 변경 제안을 문서에 반영. R7(그 스터디의 고른 날만, 유예 중 전날은 R4 전날 후보일 때만, '승인 필요'는 승인 API 전까지 409, 하루 5건에 철회 포함, 철회 때 같은 날 다른 풀이로 바꿔 끼움·다음 날 유예 안 같은 문제 풀이가 있으면 철회 불가), 5.6(만들 것·주의할 것, 수동 인증 비율은 그날이 속한 기수·방장만), api.md 4.4(승인 API 세 줄 '미정', 수동 인증·면제권 요청·응답, 현황 `exemptionsRemaining`·`selfReportRatio`, 오류 `code` 목록), architecture 알려진 충돌 6번, data-model '수동 인증 테이블' 메모·인덱스, S11 만들 것 2·4
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 사람이 정한 것: S11 세션(2026-11-26)의 결정 "그 스터디의 고른 날만", "409로 거절", "이번 기수", "R4 전날 조건 적용", "다른 풀이로 바꿔 끼움", "철회도 셈", "모두에게", "그런 push가 있으면 철회를 막음". 2026-11-26 지시 "이제 다음은 뭘 해?" 뒤 세션 선택지: 순서 "스펙 docs PR → S12", 반영 범위 "api.md 요청·응답·오류 code", "data-model self_reports 메모", "'승인 필요' 승인 API 제안", "지난 날 상세의 기수 해석", CodeRabbit 지적 "작은 fix PR로 5곳 모두"
+- 다음: 이 PR과 테스트 fix PR 병합 → 새 세션에서 S12(판정 배치와 기수 자동 연장, 선행 S11 완료, OD-07 확정, 결정 제안서 008: 판정 시점과 따라잡기). '한 세션에 단계 하나'라 S12는 이 세션에서 하지 않음
+- 막힌 것: 없음
+- 참고: 승인 API를 맡을 단계와 승인할 때 그날이 이미 판정됐으면 어떻게 할지는 열린 질문(PR 본문)
+- PR: (여는 대로 적음)
+
 ## 2026-11-26 S11 수동 인증과 면제권 (세션 1/1)
 - 한 일: 만들 것 1~6. V9 `self_reports`. 수동 인증 `POST·DELETE /api/studies/{id}/self-reports`(verification `SelfReportService`, 풀이 기록 SELF_REPORT → progress 포트 `SelfReportCounting`가 그 스터디의 고른 날 멤버 일을 잠그고 센다, 하루 5건은 잠근 뒤 셈, 철회하면 WITHDRAWN·풀이 기록 IGNORED). 면제권 `POST /exemptions`·`DELETE /exemptions/{studyDay}`(progress `ExemptionService`, 오늘만, 멤버십 행 → 멤버 일 행 잠금, 기수 기간에서 SUCCESS가 아닌 사용을 셈). 현황 `members[]`에 `exemptionsRemaining`, 방장에게만 `selfReportRatio`(조회 포트 `SelfReportCounts`). study `StudyAccess#lockMember`, `MemberStudies#rulesOf`(`MemberStudyRules`), `MemberStudy#seasonOn`, `StudyDayContext`에 기수 기간·기수당 면제권
 - 상태: 처음 PR을 연 때 빌드 통과 (테스트 716개). 구현 전 새 테스트 61개 중 58개 실패(통과 3개는 엔드포인트가 없어도 404인 T19). 조건 빼 보기 21개 모두 해당 테스트 실패(처음에 1개가 빠져 '마지막 면제권을 쓴 날 다시 써도 200' 테스트를 더함). spec-reviewer '수정 필요' → 필수 1(V9의 상태·결정 시각 CHECK가 승인 흐름을 막음, CHECK 뺌)과 고려 6건 반영(`solve_record_id` NULL 허용, 철회의 판정된 날 409는 `SELF_REPORT_DAY_JUDGED`, 나머지는 PR 본문)
@@ -139,13 +148,7 @@
 - PR: #14, docs PR #15
 
 ## 2026-11-23 S06 후속 결정 반영 (docs PR, 단계 진행 아님)
-- 한 일: PR #12(병합)에서 사람이 정한 것을 문서에 반영. S08 '만들 것' 7·수용 기준(네 이벤트 모두 처리기 필수), pseudocode 'push 웹훅 처리'(ping 200, `last_error`는 예외 종류), data-model `webhook_inbox`(payload 14일 뒤 비움, NULL 허용, 행은 남음), 5.3 '주의할 것'(5MB, 413 + 전달 ID 경고 로그)
-- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
-- 사람이 정한 것 (2026-11-23, 세션 중 선택지): 스펙 변경 제안 1·2 "둘 다 받아들임 (Recommended)". 열린 질문 셋은 S06 기록에 있음
-- 다음: 이 PR 병합 → 새 세션에서 S07(GitHub App 연결, 선행 S04·S06 완료). S07 처리기는 `github.webhook.GithubEventHandler` 빈으로
-- 막힌 것: 없음
-- 참고: PR #12 '그 밖에 발견한 것'(OSIV 기본값 켜짐, 수신함 엔티티의 모듈 위치와 P3 디스코드, 헤더 제어 문자 → 500)은 사람이 아직 정하지 않아 문서에 넣지 않음
-- PR: #13
+- 요약: PR #12에서 사람이 정한 것(네 이벤트 모두 처리기 필수, ping 200, `last_error`는 예외 종류, payload 14일 뒤 비움, 5MB 초과 413 + 경고 로그)을 S08·pseudocode·data-model·5.3에 반영. PR #12 '그 밖에 발견한 것'(OSIV, 수신함 엔티티 위치, 헤더 제어 문자 → 500)은 정하지 않음. PR: #13
 
 ## 2026-11-23 S06 웹훅 수신 기반 (세션 1/1)
 - 요약: V4 `webhook_inbox`, `POST /webhooks/github`(본문 5MB까지, 서명, 수신함 INSERT ON CONFLICT 별도 트랜잭션 → 새 트랜잭션에서 처리기 + 상태, 실패면 FAILED), 시크릿 교체(현재·옛), 처리기 인터페이스 `github.webhook.GithubEventHandler`, `PingEventHandler`. 사람이 정함: ping "수신함에 넣고 200", 본문 한도 "5MB 유지 + 경고 로그", `last_error` "예외 종류만". `spring.jpa.open-in-view`가 켜져 있음. 빌드 통과(376개). PR: #12
