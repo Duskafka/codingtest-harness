@@ -57,7 +57,7 @@
 
 - 오류 응답은 `application/problem+json`(RFC 9457) 형식으로 통일해요. Spring의 `ProblemDetail`을 써요.
     - 화면이 갈라 처리해야 하는 오류에는 확장 속성 `code`(대문자 스네이크)를 둬요. `detail` 문장은 바뀔 수 있어도 `code`는 바꾸지 않아요. 구분은 `type` URI가 아니라 `code`로 하고, `type`은 `about:blank` 그대로예요 (사람이 정함, 2026-11-26 S10 PR #26).
-    - 지금 있는 값은 `PATCH /api/me/solves/{id}`의 409예요. `STUDY_DAY_JUDGED`(판정된 날, R6. 유예 안에 받았고 전날이 실패로 판정된 경우 포함. 화면은 이때만 이의 안내를 보여 줘요), `SOLVE_NOT_PENDING`(확인 대기가 아님), `PROBLEM_ALREADY_IN_COMMIT`(같은 커밋에 그 문제가 이미 있음).
+    - 지금 있는 값은 `PATCH /api/me/solves/{id}`의 409예요. `STUDY_DAY_JUDGED`(판정된 날, R6. 유예 안에 받았고 R4의 전날 후보인 전날이 실패로 판정된 경우 포함. 화면은 이때만 이의 안내를 보여 줘요), `SOLVE_NOT_PENDING`(확인 대기가 아님), `PROBLEM_ALREADY_IN_COMMIT`(같은 커밋에 그 문제가 이미 있음).
 - springdoc-openapi로 명세를 자동 생성하고, 이 명세로 프론트의 API 클라이언트를 만들어요 (7장).
 - 목록 API는 전부 페이지네이션해요 (Supabase egress 보호, 9.4).
 - **내 풀이 (`GET /api/me/solves`):** `status`는 선택이고, 풀이 기록 상태(`CONFIRMED`·`PENDING_IDENTIFICATION`·`IGNORED`) 하나로 걸러요. 모르는 값은 400이에요. `from`·`to`·페이지와 함께 쓸 수 있어요. 화면 7번은 확인 대기만 모아 볼 때 `status=PENDING_IDENTIFICATION`을 써요 (사람이 정함, 2026-11-26 S10 PR #26).
