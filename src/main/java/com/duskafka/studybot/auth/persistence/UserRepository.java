@@ -1,6 +1,9 @@
 package com.duskafka.studybot.auth.persistence;
 
+import com.duskafka.studybot.auth.UserProfile;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,6 +29,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 			""", nativeQuery = true)
 	long upsertByGithubId(@Param("githubId") long githubId, @Param("githubLogin") String githubLogin,
 			@Param("avatarUrl") @Nullable String avatarUrl, @Param("createdAt") Instant createdAt);
+
+	/** 사용자들의 화면용 정보 (조회 전용 DTO 쿼리, OD-04 기본안). 엔티티를 영속성 컨텍스트에 올리지 않는다. */
+	@Query("select new com.duskafka.studybot.auth.UserProfile(u.id, u.githubLogin, u.avatarUrl) from User u where u.id in :ids")
+	List<UserProfile> findProfiles(@Param("ids") Collection<Long> ids);
 
 	/** GitHub ID로 탈퇴하지 않은 사용자의 ID를 찾는다. */
 	@Query("select u.id from User u where u.githubId = :githubId and u.deletedAt is null")

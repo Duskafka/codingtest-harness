@@ -1,6 +1,8 @@
 package com.duskafka.studybot.auth;
 
 import com.duskafka.studybot.auth.persistence.UserRepository;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,17 @@ public class UserDirectory {
 	@Transactional(readOnly = true)
 	public Optional<Long> findUserIdByGithubId(long githubId) {
 		return this.userRepository.findActiveIdByGithubId(githubId);
+	}
+
+	/**
+	 * 사용자들의 화면용 정보. 쿼리 한 번으로 가져온다 (S10 오늘 현황, architecture.md 6장 ⑤). 없는 ID는 빠진다. 순서는 정하지 않는다.
+	 */
+	@Transactional(readOnly = true)
+	public List<UserProfile> profilesOf(Collection<Long> userIds) {
+		if (userIds.isEmpty()) {
+			return List.of();
+		}
+		return this.userRepository.findProfiles(userIds);
 	}
 
 }

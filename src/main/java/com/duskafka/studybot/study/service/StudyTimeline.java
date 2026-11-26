@@ -12,21 +12,23 @@ import java.util.List;
  * 그날 적용되는 규칙 버전과 기수를 고른다. 날짜 계산은 {@code common.time}에 맡긴다 (architecture.md 4.2).
  *
  * <p>규칙 버전 목록은 적용 시작일 순서로 받는다 ({@code StudyRuleRepository#findByStudyIdOrderByEffectiveFromAsc}).
+ *
+ * <p>study 모듈 안에서 함께 쓴다 ({@code study.StudyDays}도 씀). 하위 패키지라 다른 모듈은 쓰지 못한다 (결정 001 ①, ArchUnit).
  */
-final class StudyTimeline {
+public final class StudyTimeline {
 
 	private StudyTimeline() {
 	}
 
 	/** 버전에 걸친 달력. 오늘·다음 스터디 일은 이것으로 센다 (R2, 기준 시각이 바뀌는 새 기수 첫날 포함). */
-	static RuleVersionCalendar calendar(List<StudyRule> rulesByEffectiveFrom, ZoneId zoneId) {
+	public static RuleVersionCalendar calendar(List<StudyRule> rulesByEffectiveFrom, ZoneId zoneId) {
 		return RuleVersionCalendar.of(rulesByEffectiveFrom.stream()
 			.map(rule -> new RuleVersionCalendar.Version(rule.getEffectiveFrom(), rule.toTimeRule(zoneId)))
 			.toList());
 	}
 
 	/** 그 스터디 일에 적용되는 버전. 첫 버전보다 앞선 날(1기 시작 전)이면 첫 버전이다. */
-	static StudyRule ruleOn(List<StudyRule> rulesByEffectiveFrom, LocalDate studyDay) {
+	public static StudyRule ruleOn(List<StudyRule> rulesByEffectiveFrom, LocalDate studyDay) {
 		if (rulesByEffectiveFrom.isEmpty()) {
 			throw new IllegalStateException("스터디에 규칙 버전이 없어요");
 		}

@@ -128,13 +128,24 @@ public class WebhookTestConfiguration {
 		@Override
 		public Object postProcessAfterInitialization(Object bean, String beanName) {
 			if (bean instanceof StudyDayAssignment real) {
-				return (StudyDayAssignment) solve -> {
-					calls.add(solve);
-					RuntimeException toThrow = this.failure;
-					if (toThrow != null) {
-						throw toThrow;
+				return new StudyDayAssignment() {
+
+					@Override
+					public void assign(SolveToAssign solve) {
+						calls.add(solve);
+						RuntimeException toThrow = RecordingStudyDayAssignment.this.failure;
+						if (toThrow != null) {
+							throw toThrow;
+						}
+						real.assign(solve);
 					}
-					real.assign(solve);
+
+					/** 확인 대기 지정(S10)은 push 처리 기록과 섞지 않고 그대로 넘긴다. */
+					@Override
+					public void assignIdentified(SolveToAssign solve) {
+						real.assignIdentified(solve);
+					}
+
 				};
 			}
 			return bean;
