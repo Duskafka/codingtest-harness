@@ -9,7 +9,7 @@
 - 다음: 이 PR 병합 → S11(수동 인증과 면제권, 결정 게이트 OD-09 확인부터)
 - 막힌 것: 없음
 - 참고: 에이전트가 덧붙인 문장(PR 본문에 표시): R6의 '결과가 없는 날은 그날에 기록'(가입한 날까지는 S09 PR #24 "지금대로 그날에 기록", 기수 밖은 2026-11-26 "멤버 일 결과 그대로"의 설명), api.md의 '`type`은 `about:blank` 그대로'와 '모르는 값은 400'. 빈 `status=`(거르지 않음)와 대소문자 구분, 규칙 변경 409 두 가지의 `code`는 스펙에 넣지 않았다(PR 열린 질문). spec-reviewer 필수 1(R6에 'R4의 전날 후보' 조건) 반영
-- PR: #
+- PR: #27
 
 ## 2026-11-25 S10 오늘 현황·내 풀이·확인 대기 지정 (세션 1/1)
 - 한 일: 만들 것 1~5. `GET /api/studies/{id}/today`·`/days/{date}`(progress: 그날 멤버였던 사람의 DONE/REMAINING/EXEMPT/NOT_JUDGED, 판정 결과, 최근 배정 50개를 수신 시각 순서로, 출처 = 수동 표시 자리), `GET /api/me/solves`(확인 대기 포함, from·to 오프셋 있는 ISO 8601, 크기 50까지), `PATCH /api/me/solves/{id}`(verification: 내 확인 대기 잠금 → 문제 채움 → `StudyDayAssignment#assignIdentified`). study `StudyDays`·`StudyDayContext`, auth `UserDirectory#profilesOf`, progress 조회 포트 `SolveRecordDetails`(verification 구현), `RuleVersionCalendar#graceEndOf`. 테이블 변경 없음
