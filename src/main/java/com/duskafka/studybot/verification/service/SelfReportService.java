@@ -96,8 +96,12 @@ public class SelfReportService {
 		}
 		SelfReportRef ref = this.selfReports.findRef(reportId)
 			.orElseThrow(() -> new IllegalStateException("잠근 수동 인증을 찾지 못했어요: " + reportId));
-		this.solveRecords.ignoreSelfReport(ref.solveRecordId(), userId);
-		this.selfReportCounting.uncount(studyId, userId, ref.studyDay(), ref.solveRecordId());
+		Long solveRecordId = ref.solveRecordId();
+		if (solveRecordId == null) {
+			throw new IllegalStateException("인정된 수동 인증에 풀이 기록이 없어요: " + reportId);
+		}
+		this.solveRecords.ignoreSelfReport(solveRecordId, userId);
+		this.selfReportCounting.uncount(studyId, userId, ref.studyDay(), solveRecordId);
 		this.selfReports.withdraw(reportId, userId, now);
 	}
 

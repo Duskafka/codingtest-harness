@@ -511,7 +511,7 @@ class SelfReportIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("수용 기준: 판정 후 철회 → 409 STUDY_DAY_JUDGED이고 그대로다")
+	@DisplayName("수용 기준: 판정 후 철회 → 409 SELF_REPORT_DAY_JUDGED이고 그대로다 (이의 안내를 띄우는 STUDY_DAY_JUDGED와 다름)")
 	void withdrawAfterJudgmentIsRejected() {
 		long alice = rows.newUser("s11-withdraw-judged");
 		TestStudy study = rows.standardStudy(alice);
@@ -521,7 +521,7 @@ class SelfReportIntegrationTest {
 		MvcTestResult result = withdraw(alice, study.studyId(), reportId);
 
 		assertThat(result).hasStatus(HttpStatus.CONFLICT);
-		assertThat(code(result)).isEqualTo("STUDY_DAY_JUDGED");
+		assertThat(code(result)).isEqualTo("SELF_REPORT_DAY_JUDGED");
 		assertThat(selfReportStatus(reportId)).isEqualTo("ACCEPTED");
 		assertThat(rows.solveRecord(solveRecordOf(reportId)).status()).isEqualTo("CONFIRMED");
 		assertThat(rows.studyDaySolves(study.studyId(), alice)).hasSize(1);

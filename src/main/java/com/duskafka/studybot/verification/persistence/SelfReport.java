@@ -62,9 +62,9 @@ public class SelfReport {
 	@Column(name = "status", nullable = false)
 	private SelfReportStatus status;
 
-	/** 이 수동 인증으로 만든 풀이 기록 (출처 {@code SELF_REPORT}). */
-	@Column(name = "solve_record_id", nullable = false, updatable = false)
-	private Long solveRecordId;
+	/** 이 수동 인증으로 만든 풀이 기록 (출처 {@code SELF_REPORT}). '바로 인정'은 늘 있다. '승인 필요' 모드를 위해 비어 있을 수 있다. */
+	@Column(name = "solve_record_id", updatable = false)
+	private @Nullable Long solveRecordId;
 
 	/** 상태를 바꾼 사람 (본인 철회면 본인). */
 	@Column(name = "decided_by")

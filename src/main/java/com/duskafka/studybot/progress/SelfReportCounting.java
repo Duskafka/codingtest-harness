@@ -30,7 +30,7 @@ public interface SelfReportCounting {
 
 	/**
 	 * 철회한 수동 인증의 풀이 기록을 그날 집계에서 뺀다 (R7 '판정 전까지는 본인이 철회'). 그날 멤버 일 행을 잠그고 뺀 뒤 다시 센다. 멤버가
-	 * 아니면 404, 그날이 이미 판정됐으면 409.
+	 * 아니면 404, 그날이 이미 판정됐으면 409 ({@code SELF_REPORT_DAY_JUDGED}).
 	 */
 	void uncount(long studyId, long userId, LocalDate studyDay, long solveRecordId);
 

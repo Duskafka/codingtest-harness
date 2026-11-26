@@ -36,7 +36,16 @@ class SelfReportDayCounter implements SelfReportCounting {
 
 	static final String APPROVAL_UNSUPPORTED_DETAIL = "이 스터디는 수동 인증에 방장 승인이 필요한데, 승인 기능은 아직 없어요. 방장에게 '바로 인정'으로 바꿔 달라고 해 주세요.";
 
+	/**
+	 * 제출: 고른 날이 판정됐을 때. {@code code}는 S10의 {@code STUDY_DAY_JUDGED}를 그대로 쓴다. 판정된 날에 풀이를 더하려는 것이라 S10 확인 대기
+	 * 지정처럼 이의 안내가 맞다 (api.md 4.4 '오류 code').
+	 */
 	static final String JUDGED_DAY_DETAIL = "이미 판정이 끝난 날이에요. 판정을 바로잡으려면 이의를 신청해야 해요.";
+
+	/** 철회: 그날이 판정된 뒤. 이의 안내가 맞지 않아 {@code STUDY_DAY_JUDGED}와 다른 {@code code}를 쓴다. */
+	public static final String WITHDRAW_JUDGED_CODE = "SELF_REPORT_DAY_JUDGED";
+
+	static final String WITHDRAW_JUDGED_DETAIL = "판정이 끝난 날의 수동 인증은 철회할 수 없어요.";
 
 	/** 그날 같은 문제를 이미 셌을 때의 409 {@code code} (R5). */
 	public static final String ALREADY_COUNTED_CODE = "PROBLEM_ALREADY_COUNTED";
@@ -86,7 +95,7 @@ class SelfReportDayCounter implements SelfReportCounting {
 			return;
 		}
 		if (row.getJudged()) {
-			throw new ConflictException(StudyDayAssigner.JUDGED_DAY_CODE, JUDGED_DAY_DETAIL);
+			throw new ConflictException(WITHDRAW_JUDGED_CODE, WITHDRAW_JUDGED_DETAIL);
 		}
 		if (this.studyDaySolves.deleteSolve(studyId, userId, studyDay, solveRecordId) > 0) {
 			this.memberDays.recountSolved(row.getId());

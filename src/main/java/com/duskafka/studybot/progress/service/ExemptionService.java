@@ -42,6 +42,7 @@ public class ExemptionService {
 
 	static final String NOT_JUDGED_DETAIL = "판정하지 않는 날(가입한 날, 기수 밖)이라 면제권을 쓰지 않아도 돼요.";
 
+	/** 오늘만 다루니 보통은 생기지 않는다. 화면이 가를 일이 아니라 {@code code}를 두지 않는다. */
 	static final String JUDGED_DAY_DETAIL = "이미 판정이 끝난 날이에요.";
 
 	/** 그날 목표를 이미 채웠을 때의 409 {@code code}. */
@@ -53,9 +54,6 @@ public class ExemptionService {
 	public static final String LIMIT_REACHED_CODE = "EXEMPTION_LIMIT_REACHED";
 
 	static final String LIMIT_REACHED_DETAIL = "이번 기수의 면제권을 모두 썼어요.";
-
-	/** 판정된 날의 409 {@code code}. 오늘만 다루니 보통은 생기지 않는다. */
-	static final String JUDGED_DAY_CODE = "STUDY_DAY_JUDGED";
 
 	private final StudyAccess studyAccess;
 
@@ -93,7 +91,7 @@ public class ExemptionService {
 		LockedMemberDay row = this.memberDays.lock(studyId, userId, studyDay)
 			.orElseThrow(() -> new IllegalStateException("만든 멤버 일 행을 찾지 못했어요: study=" + studyId));
 		if (row.getJudged()) {
-			throw new ConflictException(JUDGED_DAY_CODE, JUDGED_DAY_DETAIL);
+			throw new ConflictException(JUDGED_DAY_DETAIL);
 		}
 		if (!row.getExemptionUsed()) {
 			if (row.getSolvedCount() >= study.dailyGoalOn(studyDay)) {
@@ -121,7 +119,7 @@ public class ExemptionService {
 		LockedMemberDay row = this.memberDays.lock(studyId, userId, studyDay).orElse(null);
 		if (row != null && row.getExemptionUsed()) {
 			if (row.getJudged()) {
-				throw new ConflictException(JUDGED_DAY_CODE, JUDGED_DAY_DETAIL);
+				throw new ConflictException(JUDGED_DAY_DETAIL);
 			}
 			this.memberDays.clearExemption(row.getId());
 		}
