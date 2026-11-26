@@ -64,7 +64,7 @@ class SelfReportDayCounter implements SelfReportCounting {
 	 */
 	public static final String PREVIOUS_DAY_NOT_OPEN_CODE = "PREVIOUS_DAY_NOT_OPEN";
 
-	static final String PREVIOUS_DAY_NOT_OPEN_DETAIL = "전날은 이미 목표를 채웠거나 면제권을 썼거나 판정하지 않는 날이라 늦은 풀이를 받지 않아요. 오늘로 내 주세요.";
+	static final String PREVIOUS_DAY_NOT_OPEN_DETAIL = "전날은 이미 목표를 채웠거나, 면제권을 썼거나, 쉬는 날이거나, 판정하지 않는 날이라 늦은 풀이를 받지 않아요. 오늘로 내 주세요.";
 
 	/** 그날 같은 문제를 이미 셌을 때의 409 {@code code} (R5). */
 	public static final String ALREADY_COUNTED_CODE = "PROBLEM_ALREADY_COUNTED";
@@ -149,7 +149,8 @@ class SelfReportDayCounter implements SelfReportCounting {
 		if (candidates.isEmpty()) {
 			return null;
 		}
-		Set<Long> alreadyCounted = new HashSet<>(this.studyDaySolves.findCountedAmong(studyId, candidates));
+		Set<Long> alreadyCounted = new HashSet<>(
+				this.studyDaySolves.findCountedAmong(studyId, counted.userId(), candidates));
 		return candidates.stream().filter(id -> !alreadyCounted.contains(id)).findFirst().orElse(null);
 	}
 

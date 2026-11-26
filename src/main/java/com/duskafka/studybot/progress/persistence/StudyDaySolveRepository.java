@@ -66,12 +66,15 @@ public interface StudyDaySolveRepository extends JpaRepository<StudyDaySolve, Lo
 	Optional<CountedSolveRow> findCounted(@Param("studyId") long studyId, @Param("userId") long userId,
 			@Param("studyDay") LocalDate studyDay, @Param("solveRecordId") long solveRecordId);
 
-	/** 주어진 풀이 기록 중 이 스터디에서 어느 날에든 이미 센 것의 ID (풀이 하나를 두 날에 세지 않게, S11). */
+	/**
+	 * 주어진 풀이 기록(그 사용자의 것) 중 이 스터디에서 어느 날에든 이미 센 것의 ID (풀이 하나를 두 날에 세지 않게, S11). 사용자로도 묶어
+	 * UNIQUE {@code (study_id, user_id, ...)}의 앞부분을 쓴다.
+	 */
 	@Query("""
 			select s.solveRecordId from StudyDaySolve s
-			where s.studyId = :studyId and s.solveRecordId in :solveRecordIds
+			where s.studyId = :studyId and s.userId = :userId and s.solveRecordId in :solveRecordIds
 			""")
-	List<Long> findCountedAmong(@Param("studyId") long studyId,
+	List<Long> findCountedAmong(@Param("studyId") long studyId, @Param("userId") long userId,
 			@Param("solveRecordIds") Collection<Long> solveRecordIds);
 
 	/**

@@ -619,6 +619,39 @@ class SelfReportIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("철회: 대신 셀 push가 둘 이상이면 받은 시각이 빠른 것을 고른다 (ID 순서가 아님)")
+	void withdrawPicksEarliestReceivedPush() {
+		long alice = rows.newUser("s11-replace-order");
+		TestStudy study = rows.standardStudy(alice);
+		long reportId = id(submit(alice, study.studyId(), report(NOV_20, "1000")));
+		long later = rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_20, 15, 0));
+		long earlier = rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_20, 12, 0));
+		assertThat(earlier).isGreaterThan(later);
+		clock.setInstant(seoul(NOV_20, 16, 0));
+
+		assertThat(withdraw(alice, study.studyId(), reportId)).hasStatus(HttpStatus.NO_CONTENT);
+
+		assertThat(rows.studyDaySolves(study.studyId(), alice))
+			.containsExactly(new StudyDaySolveRow(NOV_20, earlier, "BOJ", "1000"));
+	}
+
+	@Test
+	@DisplayName("철회: 풀이로 보지 않는(IGNORED) 같은 문제 기록으로는 바꿔 끼우지 않는다")
+	void withdrawDoesNotUseIgnoredRecord() {
+		long alice = rows.newUser("s11-replace-ignored");
+		TestStudy study = rows.standardStudy(alice);
+		long reportId = id(submit(alice, study.studyId(), report(NOV_20, "1000")));
+		long ignored = rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_20, 15, 0));
+		jdbc.sql("update studybot.solve_records set status = 'IGNORED' where id = :id").param("id", ignored).update();
+		clock.setInstant(seoul(NOV_20, 16, 0));
+
+		assertThat(withdraw(alice, study.studyId(), reportId)).hasStatus(HttpStatus.NO_CONTENT);
+
+		assertThat(rows.studyDaySolves(study.studyId(), alice)).isEmpty();
+		assertThat(rows.solvedCount(study.studyId(), alice, NOV_20)).isZero();
+	}
+
+	@Test
 	@DisplayName("철회: 그 스터디 일 밖(전날 밤, 다음 날 유예)에 받은 같은 문제 push로는 바꿔 끼우지 않는다")
 	void withdrawDoesNotUsePushOutsideTheDay() {
 		long alice = rows.newUser("s11-replace-outside");
