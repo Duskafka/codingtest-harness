@@ -521,7 +521,7 @@ class MySolveIntegrationTest {
 
 	/**
 	 * 테스트가 놓아 줄 때까지 기다린다. 제한 시간 안에 놓아 주지 않거나 인터럽트되면 예외를 던져, 기다리던 트랜잭션이 커밋되지 않고
-	 * 롤백되게 한다 (CodeRabbit PR #29 리뷰). 제한은 테스트가 잠금 대기를 지켜보는 제한(10초)보다 넉넉하게 둔다.
+	 * 롤백되게 한다 (CodeRabbit PR #29 리뷰). 제한은 테스트가 놓아 주기 전에 기다리는 시간(잠금 대기 관찰 등, 길어야 10초 남짓)보다 넉넉하게 둔다.
 	 */
 	private static void awaitRelease(CountDownLatch latch) {
 		try {
