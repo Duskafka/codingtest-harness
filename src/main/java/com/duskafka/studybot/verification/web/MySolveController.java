@@ -2,6 +2,7 @@ package com.duskafka.studybot.verification.web;
 
 import com.duskafka.studybot.auth.LoginUser;
 import com.duskafka.studybot.verification.ProblemRef;
+import com.duskafka.studybot.verification.persistence.SolveStatus;
 import com.duskafka.studybot.verification.service.MySolveService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -36,16 +37,19 @@ class MySolveController {
 	 *
 	 * @param from 이 시각부터 (포함). ISO 8601 날짜·시각과 오프셋 (예: {@code 2026-11-20T00:00:00+09:00}). 없으면 처음부터
 	 * @param to 이 시각 전까지 (뺌). 형식은 {@code from}과 같다. 없으면 끝까지
+	 * @param status 이 상태만 ({@code CONFIRMED}, {@code PENDING_IDENTIFICATION}, {@code IGNORED}). 없으면 모두. 확인 대기만 모아 보는
+	 * 데 쓴다 (사람이 정함, 2026-11-26 "status 필터 추가")
 	 */
 	@GetMapping
 	PagedModel<MySolveResponse> list(@AuthenticationPrincipal LoginUser loginUser,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @Nullable OffsetDateTime from,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @Nullable OffsetDateTime to,
+			@RequestParam(required = false) @Nullable SolveStatus status,
 			@RequestParam(defaultValue = "0") @Min(0) int page,
 			@RequestParam(defaultValue = "20") @Min(1) @Max(MAX_PAGE_SIZE) int size) {
 		return new PagedModel<>(this.mySolveService
-			.mySolves(loginUser.userId(), from == null ? null : from.toInstant(), to == null ? null : to.toInstant(), page,
-					size)
+			.mySolves(loginUser.userId(), from == null ? null : from.toInstant(), to == null ? null : to.toInstant(), status,
+					page, size)
 			.map(MySolveResponse::from));
 	}
 

@@ -37,6 +37,9 @@ class StudyDayAssigner implements StudyDayAssignment {
 	/** 확인 대기 지정에서 배정할 날이 이미 판정됐을 때의 409 문장 (S10 만들 것 4 '이의가 필요하다는 안내'). */
 	static final String JUDGED_DAY_DETAIL = "이미 판정이 끝난 날의 풀이라 문제를 지정할 수 없어요. 판정을 바로잡으려면 이의를 신청해야 해요.";
 
+	/** 그 409의 {@code code}. 화면은 이 코드일 때만 이의 안내를 보여 준다 (사람이 정함, 2026-11-26 "code 속성 추가"). */
+	public static final String JUDGED_DAY_CODE = "STUDY_DAY_JUDGED";
+
 	private final MemberStudies memberStudies;
 
 	private final MemberDayRepository memberDays;
@@ -74,7 +77,7 @@ class StudyDayAssigner implements StudyDayAssignment {
 		Map<MemberDayKey, LockedMemberDay> locked = lockInOrder(solve.userId(), plans);
 		List<Decision> decisions = plans.stream().map(plan -> decide(plan, locked)).toList();
 		if (rejectJudgedDay && decisions.stream().anyMatch(Decision::judgedDayAtReceipt)) {
-			throw new ConflictException(JUDGED_DAY_DETAIL);
+			throw new ConflictException(JUDGED_DAY_CODE, JUDGED_DAY_DETAIL);
 		}
 		for (Decision decision : decisions) {
 			int inserted = this.studyDaySolves.insertIfAbsent(decision.studyId(), solve.userId(), decision.day(),

@@ -47,6 +47,7 @@ public interface SolveRecordRepository extends JpaRepository<SolveRecord, Long> 
 	 *
 	 * @param from 이 시각부터 (포함). {@code null}이면 처음부터
 	 * @param to 이 시각 전까지 (뺌). {@code null}이면 끝까지
+	 * @param status 이 상태만. {@code null}이면 모두
 	 */
 	@Query(value = """
 			select new com.duskafka.studybot.verification.persistence.MySolveRow(s.id, s.source, s.status, s.platform,
@@ -55,15 +56,17 @@ public interface SolveRecordRepository extends JpaRepository<SolveRecord, Long> 
 			where s.userId = :userId
 				and (cast(:from as Instant) is null or s.receivedAt >= :from)
 				and (cast(:to as Instant) is null or s.receivedAt < :to)
+				and (:status is null or s.status = :status)
 			order by s.receivedAt desc, s.id desc
 			""", countQuery = """
 			select count(s) from SolveRecord s
 			where s.userId = :userId
 				and (cast(:from as Instant) is null or s.receivedAt >= :from)
 				and (cast(:to as Instant) is null or s.receivedAt < :to)
+				and (:status is null or s.status = :status)
 			""")
 	Page<MySolveRow> findMine(@Param("userId") long userId, @Param("from") @Nullable Instant from,
-			@Param("to") @Nullable Instant to, Pageable pageable);
+			@Param("to") @Nullable Instant to, @Param("status") @Nullable SolveStatus status, Pageable pageable);
 
 	/**
 	 * 이 사용자의 풀이 기록 하나를 내 풀이 한 줄로 읽는다. 엔티티를 영속성 컨텍스트에 올리지 않으니 앞서 네이티브로 고친 값을 그대로

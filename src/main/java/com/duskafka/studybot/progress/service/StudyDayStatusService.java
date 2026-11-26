@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -34,6 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>스터디·날짜 단위로 한 번에 가져온다 (architecture.md 6장 ⑤): 권한 1, 그날의 맥락(스터디·규칙·기수·멤버십) 4, 멤버 일 1, 집계 1,
  * 사용자 1, 풀이 기록 1. 멤버 수와 상관없이 같다 (S10 수용 기준 2). 엔티티를 내보내지 않고 조회용 DTO로 읽는다.
+ *
+ * <p>여러 문장을 한 스냅샷에서 읽도록 {@code REPEATABLE_READ}로 읽는다. PostgreSQL 기본(READ COMMITTED)은 문장마다 새 스냅샷이라, 그
+ * 사이에 배정이 커밋되면 멤버 일(센 수)과 최근 풀이가 서로 어긋날 수 있다 (CodeRabbit PR #26 리뷰). 읽기만 해서 직렬화 실패는 없다.
  */
 @Service
 @RequiredArgsConstructor
@@ -55,14 +59,14 @@ public class StudyDayStatusService {
 	private final SolveRecordDetails solveRecordDetails;
 
 	/** 오늘 현황. 멤버가 아니면 404. */
-	@Transactional(readOnly = true)
+	@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 	public StudyDayStatus today(long studyId, long userId) {
 		this.studyAccess.requireMember(studyId, userId);
 		return statusOf(this.studyDays.load(studyId, null));
 	}
 
 	/** 특정 날 상세. 멤버가 아니면 404, 아직 오지 않은 날이나 스터디가 생기기 전 날이면 400 ({@link StudyDays#load}). */
-	@Transactional(readOnly = true)
+	@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 	public StudyDayStatus day(long studyId, long userId, LocalDate studyDay) {
 		this.studyAccess.requireMember(studyId, userId);
 		return statusOf(this.studyDays.load(studyId, studyDay));
