@@ -10,8 +10,17 @@
 - 열린 질문 5 결정 (2026-11-26, 지시 "열린 질문 5번도 선택지와 장단점", 세션 선택지 Recommended): "그런 push가 있으면 철회를 막음". 같은 날 push로 바꿔 끼울 수 없고 같은 문제 push(수동 인증 아님)를 다음 날 유예 안 `[startOf(D+1), graceEndOf(D))`에 받았으면 철회 409 `SAME_PROBLEM_PUSHED_IN_GRACE`. 테스트 53개 중 2개 실패 확인 뒤 구현, 조건 빼 보기 6개 모두 걸림(1개는 처음에 1ns 변형이라 DB 정밀도에 묻혀 안 걸려 1초로 다시 확인, 그 경계 테스트를 00:00으로). spec-reviewer 3차 '수정 필요' → 필수 1(409 문구에 에이전트가 덧붙인 '한 번만 세요'가 목표 1에서 틀림) 반영, 고려 반영(문구 '하루가 바뀐 뒤', 막지 않는 기록 테스트). 빌드 통과 (테스트 729개)
 - 다음: PR 검토 → 병합(#28과 S11 단계 문서가 겹치면 master 병합) → 받아들인 스펙 변경 제안을 docs PR로(R7·5.6 범위, 승인 모드 409와 승인 API 제안, 비율 범위, api.md 요청·응답·`code`·남은 면제권 모두에게, data-model `self_reports` 메모·하루 5건 철회 포함, R7 유예 중 전날 R4 조건, R7·5.6 철회 때 바꿔 끼움·다음 날 유예 push면 철회 막음) → S12(판정 배치) 또는 S13
 - 막힌 것: 없음
-- 참고: S12는 면제권을 쓴 날 목표를 채우면 SUCCESS로 판정하면 된다. 남은 개수 계산이 `result IS DISTINCT FROM 'SUCCESS'`라 판정 결과만 바꾸면 면제권이 돌아온다. 잠금 순서는 이렇다: 면제권은 멤버십 → 멤버 일, 수동 인증 철회는 수동 인증 → 풀이 기록 → 멤버 일, 제출은 멤버 일 하나만. 판정은 멤버 일만 잠그니 순환이 없다. S13의 알림 대상 제외는 `exemption_used_at`으로 본다. 처음 열린 질문 넷은 모두 정함(위). 병합 순서: #28 → master를 이 브랜치에 병합 → #28이 더한 S11 수용 기준 줄 체크. 세션 재시작 뒤 dockerd가 오래된 pid로 안 뜨면 `CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`
+- 참고: S12는 면제권을 쓴 날 목표를 채우면 SUCCESS로 판정하면 된다. 남은 개수 계산이 `result IS DISTINCT FROM 'SUCCESS'`라 판정 결과만 바꾸면 면제권이 돌아온다. 잠금 순서는 이렇다: 면제권은 멤버십 → 멤버 일, 수동 인증 철회는 수동 인증 → 풀이 기록 → 멤버 일, 제출은 멤버 일 하나만. 판정은 멤버 일만 잠그니 순환이 없다. S13의 알림 대상 제외는 `exemption_used_at`으로 본다. 처음 열린 질문 넷은 모두 정함(위). #28 병합 뒤 master를 이 브랜치에 병합하고 progress·S11 단계 문서 충돌을 풀었다(두 기록 모두 남김, #28이 더한 OD-09 수용 기준 줄 체크). 세션 재시작 뒤 dockerd가 오래된 pid로 안 뜨면 `CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`
 - PR: #29
+
+## 2026-11-26 OD-09 결정 반영 (docs PR, 단계 진행 아님)
+- 한 일: 사람이 정한 OD-09(면제권 미리 쓰기 = 당일만)를 결정 대장(확정), R8, domain-rules 머리의 '알려진 빈 곳' 줄, pseudocode '면제권 사용'(`day == cal.studyDayOf(now)`), 5.7 확인 단계, S11 단계 문서(결정 게이트, 만들 것 5, 수용 기준 한 줄, 주의할 것, 판단 기록 줄)에 반영
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 사람이 정한 것 (2026-11-26, 지시 "S11 시작해 OD-9부터 결정해야해. 선택지와 장단점을 제시하면 선택할게", 세션 선택지, 모두 Recommended): OD-09 "당일만", 브랜치 "docs PR 먼저 + feat/S11". 같은 세션에서 S11 구현 쪽 선택(수동 인증 범위 "그 스터디의 고른 날만", 승인 모드 "409로 거절", 수동 인증 비율 "이번 기수")도 정함. 이 셋은 S11 PR의 스펙 변경 제안으로 올림
+- 다음: 이 PR 병합. 같은 세션에서 S11 구현(`feat/S11-self-report-exemption`)을 이어 함
+- 막힌 것: 없음
+- 참고: 에이전트가 쓴 문장(PR 본문에 표시): S11 '판단 기록이 필요한 곳'의 '면제권의 검증 조건 (OD-09: 당일만)'(원래 줄 '면제권 미리 쓰기 (OD-09 결과에 따라 검증 조건)'을 결정에 맞춤). spec-reviewer '통과', 고려 3건 반영(경계 경합 설명 문장은 빼고 S11 PR에 적음, 오래된 S05 기록 한 줄로)
+- PR: #28
 
 ## 2026-11-26 S10 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #26(병합)의 스펙 변경 제안 다섯 개를 문서에 반영. R6(늦은 지정의 '그날' = 원래 수신 시각으로 R4를 적용해 배정할 날, 유예 안 전날 실패면 이의, 한 스터디라도 그러면 아무 데도 반영 안 함, '판정됐다' = 그 멤버의 그날 판정 결과), api.md 4.4(표 `?from=&to=&status=`, '내 풀이' 항목, 오류 `code` 규칙과 지금 값 세 개, "Spring Boot 3" → "Spring"), glossary(`MemberDayStatus`, `ExemptReason`), S10 만들 것 3·4
@@ -139,13 +148,7 @@
 - PR: #13
 
 ## 2026-11-23 S06 웹훅 수신 기반 (세션 1/1)
-- 한 일: 만들 것 1~8. V4 `webhook_inbox`, `POST /webhooks/github`(본문 5MB까지 바이트로 읽기 → 서명 → 이벤트 거르기 → 수신함 INSERT ON CONFLICT 별도 트랜잭션 → 새 트랜잭션에서 처리기 + 상태 → 실패면 FAILED), 시크릿 교체(현재·옛), 처리기 인터페이스 `github.webhook.GithubEventHandler`, `PingEventHandler`. 테스트 payload는 octokit/webhooks 예시를 가짜 값으로 바꿈(`github-payloads/README.md`)
-- 상태: 빌드 통과 (테스트 376개). 구현 전 새 테스트 42개 중 41개 실패 확인. 트랜잭션을 합치거나 ON CONFLICT를 빼면 해당 테스트가 실패하는 것도 확인. spec-reviewer '통과', 고려할 것 6건 반영(PR 본문). CodeRabbit '지적 없음'
-- 사람이 정한 것 (2026-11-23, 세션 중 선택지): 브랜치 "feat/S06-webhook-receiver (Recommended)", ping "수신함에 넣고 200 (Recommended)". PR 열린 질문 셋: 본문 한도 "5MB 유지 + 경고 로그 (Recommended)", 처리기 없는 이벤트 "S08에서 처리기 필수로 (Recommended)", `last_error` "메시지 대신 예외 종류만 (Recommended)" → 1·3은 이 PR에 구현(`cfdad73`), 2는 기록만
-- 다음: PR 검토와 병합 → docs PR로 S08 '만들 것'에 "네 이벤트 모두 처리기가 있어야 앱이 뜬다" 추가와 스펙 변경 제안 1·2(pseudocode의 ping 200, data-model payload NULL 허용) 반영 → S07(GitHub App 연결, 선행 S04·S06 완료)
-- 막힌 것: 없음. 실제 GitHub 전달 확인은 H-02. 시크릿은 환경 변수 `GITHUB_WEBHOOK_SECRET`(필수)·`GITHUB_WEBHOOK_SECRET_PREVIOUS`(교체 중)
-- 참고: S07·S08 처리기는 `GithubEventHandler` 빈 하나만 더하면 된다(이벤트당 하나, 예외 = FAILED, GitHub API 금지). `last_error`에는 예외 종류만 남으니 DB에서 볼 설명은 `WebhookHandlingException`(개인정보 금지)으로. `spring.jpa.open-in-view`가 켜져 있어 요청 안의 새 트랜잭션은 같은 EntityManager·연결을 이어 씀(롤백 때 clear). DB 장애 테스트는 `github.WebhookTestConfiguration.DatabaseOutage`. 작업 프로세스가 재시작되면 dockerd가 죽어 있을 수 있음(`CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`)
-- PR: #12
+- 요약: V4 `webhook_inbox`, `POST /webhooks/github`(본문 5MB까지, 서명, 수신함 INSERT ON CONFLICT 별도 트랜잭션 → 새 트랜잭션에서 처리기 + 상태, 실패면 FAILED), 시크릿 교체(현재·옛), 처리기 인터페이스 `github.webhook.GithubEventHandler`, `PingEventHandler`. 사람이 정함: ping "수신함에 넣고 200", 본문 한도 "5MB 유지 + 경고 로그", `last_error` "예외 종류만". `spring.jpa.open-in-view`가 켜져 있음. 빌드 통과(376개). PR: #12
 
 ## 2026-11-23 S05 스터디·규칙·기수·초대·멤버십 (세션 1)
 - 요약: V3(studies, study_rules, seasons, memberships, invitations), 만들기·목록·상세·이름 변경·위임, 초대 만들기·철회·미리보기·수락, 탈퇴, `StudyAccess`(비멤버 404, 비방장 403). 정원 동시성은 스터디 행 잠금 + 조건부 UPDATE(결정 제안서 006). 사람이 정함: 시작일 "다음 날~30일 뒤", 초대 철회 "DELETE 엔드포인트 추가". 테스트는 `study/StudyTestSupport` 상속. Hibernate 7.4의 PostgreSQL 쓰기 잠금은 `FOR NO KEY UPDATE`. 빌드 통과(322개). PR: #11
