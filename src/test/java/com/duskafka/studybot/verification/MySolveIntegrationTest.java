@@ -4,6 +4,7 @@ import static com.duskafka.studybot.progress.StudyDayRows.NOV_1;
 import static com.duskafka.studybot.progress.StudyDayRows.seoul;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.awaitility.Awaitility.await;
 
 import com.duskafka.studybot.IntegrationTest;
 import com.duskafka.studybot.MutableClock;
@@ -13,6 +14,8 @@ import com.duskafka.studybot.progress.StudyDayRows.MemberDayRow;
 import com.duskafka.studybot.progress.StudyDayRows.SolveRecordRow;
 import com.duskafka.studybot.progress.StudyDayRows.StudyDaySolveRow;
 import com.duskafka.studybot.progress.StudyDayRows.TestStudy;
+import com.duskafka.studybot.verification.service.MySolveService;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -33,6 +36,8 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -64,6 +69,12 @@ class MySolveIntegrationTest {
 	@Autowired
 	private MutableClock clock;
 
+	@Autowired
+	private MySolveService mySolveService;
+
+	@Autowired
+	private PlatformTransactionManager transactionManager;
+
 	private StudyDayRows rows;
 
 	private TestApi api;
@@ -81,6 +92,12 @@ class MySolveIntegrationTest {
 
 	private MvcTestResult mySolves(long userId, String query) {
 		return api.get(userId, "/api/me/solves" + query);
+	}
+
+	/** 409 problem+json의 code 확장 속성 (사람이 정함, 2026-11-26 "code 속성 추가"). */
+	private static String code(MvcTestResult result) {
+		JsonNode code = TestApi.json(result).get("code");
+		return code == null ? "(없음)" : code.asString();
 	}
 
 	private static List<Long> ids(JsonNode page) {
@@ -172,6 +189,38 @@ class MySolveIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("내 풀이: status로 상태를 거른다. 확인 대기만 모아 볼 수 있다 (사람이 정함, 2026-11-26 \"status 필터 추가\")")
+	void filtersByStatus() {
+		long alice = rows.newUser("s10-status");
+		long bob = rows.newUser("s10-status-other");
+		long confirmed = rows.githubSolve(alice, "BOJ", "1000", "A+B", seoul(NOV_20, 10, 0));
+		long olderPending = rows.pendingSolve(alice, seoul(NOV_20, 9, 0), "algorithm/a.py");
+		long newerPending = rows.pendingSolve(alice, seoul(NOV_20, 11, 0), "algorithm/b.py");
+		rows.pendingSolve(bob, seoul(NOV_20, 12, 0), "algorithm/c.py");
+
+		JsonNode pending = TestApi.json(api.getWithParams(alice, "/api/me/solves", "status", "PENDING_IDENTIFICATION"));
+		JsonNode confirmedOnly = TestApi.json(api.getWithParams(alice, "/api/me/solves", "status", "CONFIRMED"));
+		JsonNode pendingInRange = TestApi.json(api.getWithParams(alice, "/api/me/solves", "status",
+				"PENDING_IDENTIFICATION", "from", "2026-11-20T10:00:00+09:00", "to", "2026-11-21T00:00:00+09:00"));
+		JsonNode firstPage = TestApi.json(api.getWithParams(alice, "/api/me/solves", "status", "PENDING_IDENTIFICATION",
+				"size", "1"));
+
+		assertThat(ids(pending)).containsExactly(newerPending, olderPending);
+		assertThat(ids(confirmedOnly)).containsExactly(confirmed);
+		assertThat(ids(pendingInRange)).containsExactly(newerPending);
+		assertThat(ids(firstPage)).containsExactly(newerPending);
+		assertThat(firstPage.get("page").get("totalElements").asLong()).isEqualTo(2);
+	}
+
+	@Test
+	@DisplayName("내 풀이: 모르는 status는 400")
+	void rejectsUnknownStatus() {
+		long alice = rows.newUser("s10-bad-status");
+
+		assertThat(api.getWithParams(alice, "/api/me/solves", "status", "DONE")).hasStatus(HttpStatus.BAD_REQUEST);
+	}
+
+	@Test
 	@DisplayName("내 풀이: 날짜 형식이 틀리면 400, 로그인하지 않으면 401")
 	void rejectsBadRangeAndAnonymous() {
 		long alice = rows.newUser("s10-bad-range");
@@ -246,6 +295,7 @@ class MySolveIntegrationTest {
 
 		assertThat(result).hasStatus(HttpStatus.CONFLICT);
 		assertThat(TestApi.json(result).get("detail").asString()).contains("이의");
+		assertThat(code(result)).isEqualTo("STUDY_DAY_JUDGED");
 		assertThat(rows.solveRecord(pending).status()).isEqualTo("PENDING_IDENTIFICATION");
 		assertThat(rows.studyDaySolves(study.studyId(), alice)).isEmpty();
 		assertThat(rows.memberDay(study.studyId(), alice, NOV_21)).isEmpty();
@@ -316,6 +366,7 @@ class MySolveIntegrationTest {
 		assertThat(result).hasStatus(HttpStatus.CONFLICT);
 		assertThat(result).hasContentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON);
 		assertThat(TestApi.json(result).get("detail").asString()).contains("이의");
+		assertThat(code(result)).isEqualTo("STUDY_DAY_JUDGED");
 		assertThat(rows.solveRecord(pending)).isEqualTo(new SolveRecordRow("PENDING_IDENTIFICATION", null, null));
 		assertThat(rows.studyDaySolves(study.studyId(), alice)).isEmpty();
 		assertThat(rows.memberDay(study.studyId(), alice, NOV_20)).contains(before);
@@ -333,6 +384,7 @@ class MySolveIntegrationTest {
 		MvcTestResult result = identify(alice, pending, BOJ_1000);
 
 		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(code(result)).isEqualTo("STUDY_DAY_JUDGED");
 		assertThat(rows.solveRecord(pending).status()).isEqualTo("PENDING_IDENTIFICATION");
 		assertThat(rows.studyDaySolves(open.studyId(), alice)).isEmpty();
 		assertThat(memberDayCount(open.studyId(), alice)).isZero();
@@ -377,10 +429,13 @@ class MySolveIntegrationTest {
 		long confirmed = rows.githubSolve(alice, "BOJ", "2000", "제목", seoul(NOV_20, 10, 0));
 		long pending = rows.pendingSolve(alice, seoul(NOV_20, 23, 50), "algorithm/a.py");
 
-		assertThat(identify(alice, confirmed, BOJ_1000)).hasStatus(HttpStatus.CONFLICT);
+		MvcTestResult notPending = identify(alice, confirmed, BOJ_1000);
+		assertThat(notPending).hasStatus(HttpStatus.CONFLICT);
+		assertThat(code(notPending)).isEqualTo("SOLVE_NOT_PENDING");
 		assertThat(identify(alice, pending, BOJ_1000)).hasStatus(HttpStatus.OK);
-		assertThat(identify(alice, pending, "{\"platform\": \"BOJ\", \"problemNo\": \"1001\"}"))
-			.hasStatus(HttpStatus.CONFLICT);
+		MvcTestResult again = identify(alice, pending, "{\"platform\": \"BOJ\", \"problemNo\": \"1001\"}");
+		assertThat(again).hasStatus(HttpStatus.CONFLICT);
+		assertThat(code(again)).isEqualTo("SOLVE_NOT_PENDING");
 
 		assertThat(rows.solveRecord(confirmed)).isEqualTo(new SolveRecordRow("CONFIRMED", "BOJ", "2000"));
 		assertThat(rows.solveRecord(pending)).isEqualTo(new SolveRecordRow("CONFIRMED", "BOJ", "1000"));
@@ -403,9 +458,67 @@ class MySolveIntegrationTest {
 		MvcTestResult result = identify(alice, pending, BOJ_1000);
 
 		assertThat(result).hasStatus(HttpStatus.CONFLICT);
+		assertThat(code(result)).isEqualTo("PROBLEM_ALREADY_IN_COMMIT");
 		assertThat(rows.solveRecord(pending).status()).isEqualTo("PENDING_IDENTIFICATION");
 		assertThat(rows.studyDaySolves(study.studyId(), alice)).isEmpty();
 		assertThat(identify(alice, pending, "{\"platform\": \"BOJ\", \"problemNo\": \"1001\"}")).hasStatus(HttpStatus.OK);
+	}
+
+	@Test
+	@DisplayName("같은 커밋의 확인 대기 둘을 동시에 같은 문제로 지정하면 나중 것은 409다 (UNIQUE 경합이 500이 되지 않음, "
+			+ "CodeRabbit PR #26 리뷰)")
+	void concurrentSameProblemInTheSameCommitIsConflict() throws Exception {
+		long alice = rows.newUser("s10-commit-race");
+		long first = rows.pendingSolve(alice, seoul(NOV_20, 23, 50), "algorithm/a.py");
+		long second = rows.pendingSolve(alice, seoul(NOV_20, 23, 50), "algorithm/b.py");
+		jdbc.sql("""
+				update studybot.solve_records set commit_sha = (select commit_sha from studybot.solve_records where id = :first)
+				where id = :second
+				""").param("first", first).param("second", second).update();
+		CountDownLatch firstApplied = new CountDownLatch(1);
+		CountDownLatch commitFirst = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		try {
+			Future<?> identifyingFirst = executor.submit(() -> new TransactionTemplate(transactionManager)
+				.executeWithoutResult(status -> {
+					mySolveService.identify(alice, first, new ProblemRef(Platform.BOJ, "1000"));
+					firstApplied.countDown();
+					awaitQuietly(commitFirst);
+				}));
+			assertThat(firstApplied.await(10, TimeUnit.SECONDS)).as("첫 지정이 커밋 전까지 반영됨").isTrue();
+
+			Future<MvcTestResult> identifyingSecond = executor.submit(() -> identify(alice, second, BOJ_1000));
+			await().atMost(Duration.ofSeconds(10)).until(this::someoneWaitsForSolveRecordLock);
+			commitFirst.countDown();
+
+			identifyingFirst.get(10, TimeUnit.SECONDS);
+			MvcTestResult result = identifyingSecond.get(10, TimeUnit.SECONDS);
+			assertThat(result).hasStatus(HttpStatus.CONFLICT);
+			assertThat(code(result)).isEqualTo("PROBLEM_ALREADY_IN_COMMIT");
+		}
+		finally {
+			commitFirst.countDown();
+			executor.shutdownNow();
+		}
+		assertThat(rows.solveRecord(first)).isEqualTo(new SolveRecordRow("CONFIRMED", "BOJ", "1000"));
+		assertThat(rows.solveRecord(second)).isEqualTo(new SolveRecordRow("PENDING_IDENTIFICATION", null, null));
+	}
+
+	/** 다른 연결이 solve_records의 잠금(여기서는 UNIQUE 인덱스의 커밋 전 행)을 기다리고 있는지 (pg_stat_activity). */
+	private boolean someoneWaitsForSolveRecordLock() {
+		return jdbc.sql("""
+				select count(*) from pg_stat_activity
+				where wait_event_type = 'Lock' and query ilike '%solve_records%'
+				""").query(Long.class).single() > 0;
+	}
+
+	private static void awaitQuietly(CountDownLatch latch) {
+		try {
+			latch.await(10, TimeUnit.SECONDS);
+		}
+		catch (InterruptedException ex) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	@ParameterizedTest
