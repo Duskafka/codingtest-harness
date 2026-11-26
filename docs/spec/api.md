@@ -31,7 +31,7 @@
 | `GET /github/setup`                              | 설치 후 돌아오는 화면 (연결 상태 안내만) | 로그인    | P1   |
 | `GET /api/me/github/repositories`                | 설치된 레포 목록                         | 로그인    | P1   |
 | `PUT /api/me/linked-repository`                  | 풀이 레포 선택                           | 로그인    | P1   |
-| `GET /api/me/solves?from=&to=`                   | 내 풀이 (확인 대기 포함)                 | 로그인    | P1   |
+| `GET /api/me/solves?from=&to=&status=`           | 내 풀이 (확인 대기 포함)                 | 로그인    | P1   |
 | `PATCH /api/me/solves/{id}`                      | 확인 대기 풀이에 문제 지정               | 본인      | P1   |
 | `POST /api/studies/{id}/self-reports`            | 수동 인증                                | 멤버      | P1   |
 | `DELETE /api/studies/{id}/self-reports/{rid}`    | 수동 인증 철회 (판정 전)                 | 본인      | P1   |
@@ -55,9 +55,12 @@
 | `POST /webhooks/kakao-share`                     | 카톡 공유 결과 수신 (선택)               | 확인 헤더 | P3   |
 | `GET /actuator/health`                           | 헬스체크 (외부 노출은 이것만)            | 공개      | P1   |
 
-- 오류 응답은 `application/problem+json`(RFC 9457) 형식으로 통일해요. Spring Boot 3의 `ProblemDetail`을 써요.
+- 오류 응답은 `application/problem+json`(RFC 9457) 형식으로 통일해요. Spring의 `ProblemDetail`을 써요.
+    - 화면이 갈라 처리해야 하는 오류에는 확장 속성 `code`(대문자 스네이크)를 둬요. `detail` 문장은 바뀔 수 있어도 `code`는 바꾸지 않아요. 구분은 `type` URI가 아니라 `code`로 하고, `type`은 `about:blank` 그대로예요 (사람이 정함, 2026-11-26 S10 PR #26).
+    - 지금 있는 값은 `PATCH /api/me/solves/{id}`의 409예요. `STUDY_DAY_JUDGED`(판정된 날, R6. 유예 안에 받았고 전날이 실패로 판정된 경우 포함. 화면은 이때만 이의 안내를 보여 줘요), `SOLVE_NOT_PENDING`(확인 대기가 아님), `PROBLEM_ALREADY_IN_COMMIT`(같은 커밋에 그 문제가 이미 있음).
 - springdoc-openapi로 명세를 자동 생성하고, 이 명세로 프론트의 API 클라이언트를 만들어요 (7장).
 - 목록 API는 전부 페이지네이션해요 (Supabase egress 보호, 9.4).
+- **내 풀이 (`GET /api/me/solves`):** `status`는 선택이고, 풀이 기록 상태(`CONFIRMED`·`PENDING_IDENTIFICATION`·`IGNORED`) 하나로 걸러요. 모르는 값은 400이에요. `from`·`to`·페이지와 함께 쓸 수 있어요. 화면 7번은 확인 대기만 모아 볼 때 `status=PENDING_IDENTIFICATION`을 써요 (사람이 정함, 2026-11-26 S10 PR #26).
 - **규칙 변경과 규칙 버전 (`PUT /api/studies/{id}/rules`, 스터디 상세, 초대 미리보기):** S05(PR #21)에서 정한 응답 모양 가운데 프론트가 꼭 알아야 하는 규칙 버전 부분이에요. 나머지 응답 모양은 머리말대로 단계 PR의 판단 기록에 있어요.
     - 본문은 그 값을 채울 때 출발한 규칙 버전의 ID(`basedOnRuleId`, 필수)와 규칙 열 항목 전체(R1 표)예요. 바꿀 항목만 보내지 않아요. 빠지거나 범위 밖이면 400이에요.
     - `basedOnRuleId`가 마지막 버전(예정된 변경이 있으면 마지막 예정 버전)이 아니면 409예요. 화면이 현재 규칙으로 채워 보내 예정된 변경을 모르고 지우거나, 다른 탭·새 방장이 바꾼 규칙을 덮어쓰는 일을 막아요. 예정 버전은 바꿀 때마다 새 ID가 돼서, 409를 받으면 다시 불러와야 해요.
