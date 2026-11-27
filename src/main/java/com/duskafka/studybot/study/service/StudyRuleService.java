@@ -4,6 +4,8 @@ import com.duskafka.studybot.common.error.ConflictException;
 import com.duskafka.studybot.common.error.NotFoundException;
 import com.duskafka.studybot.common.time.StudyCalendar;
 import com.duskafka.studybot.study.StudyAccess;
+import com.duskafka.studybot.study.StudyRulesChanged;
+import com.duskafka.studybot.study.persistence.MembershipRepository;
 import com.duskafka.studybot.study.persistence.Season;
 import com.duskafka.studybot.study.persistence.SeasonRepository;
 import com.duskafka.studybot.study.persistence.Study;
@@ -13,8 +15,10 @@ import com.duskafka.studybot.study.persistence.StudyRuleRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +43,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>버전 행은 그날부터의 규칙 전체를 담는다(스냅샷). 테이블은 그대로다 ({@code (study_id, effective_from)} UNIQUE).
  * 같은 스터디의 규칙 변경·수락·위임은 스터디 행 잠금으로 차례로 실행된다 (결정 제안서 006).
+ *
+ * <p>새 버전을 만들었으면 같은 트랜잭션 안에서 {@link StudyRulesChanged}를 발행한다. notification이 같은 트랜잭션에서 멤버에게 알림을
+ * 넣는다 (S13 만들 것 4, 알려진 충돌 5번, 사람이 정함 2026-11-27 "Listener in the same transaction (Recommended)").
  */
 @Service
 @RequiredArgsConstructor
@@ -51,6 +58,10 @@ public class StudyRuleService {
 	private final StudyRuleRepository ruleRepository;
 
 	private final SeasonRepository seasonRepository;
+
+	private final MembershipRepository membershipRepository;
+
+	private final ApplicationEventPublisher events;
 
 	private final Clock clock;
 
@@ -73,7 +84,8 @@ public class StudyRuleService {
 		Season first = seasons.getFirst();
 
 		if (today.isBefore(first.getStartDay())) {
-			changeBeforeFirstSeason(studyId, study, first, desired, now);
+			StudyRule saved = changeBeforeFirstSeason(studyId, study, first, desired, now);
+			publishChanged(study, actorUserId, List.of(saved));
 			return;
 		}
 
@@ -81,20 +93,40 @@ public class StudyRuleService {
 		LocalDate nextSeasonStart = StudyTimeline.nextSeasonStart(seasons, rules, today);
 		RuleSettings current = RuleSettings.of(StudyTimeline.ruleOn(rules, today));
 		this.ruleRepository.deleteFrom(studyId, nextDay);
+		List<StudyRule> saved = new ArrayList<>();
 		if (nextSeasonStart.equals(nextDay)) {
 			if (!desired.equals(current)) {
-				this.ruleRepository.save(desired.toVersion(studyId, nextDay, now));
+				saved.add(this.ruleRepository.save(desired.toVersion(studyId, nextDay, now)));
 			}
 		}
 		else {
 			if (!desired.sameNextDayItems(current)) {
-				this.ruleRepository.save(desired.withNextSeasonItemsOf(current).toVersion(studyId, nextDay, now));
+				saved.add(this.ruleRepository.save(desired.withNextSeasonItemsOf(current).toVersion(studyId, nextDay, now)));
 			}
 			if (!desired.sameNextSeasonItems(current)) {
-				this.ruleRepository.save(desired.toVersion(studyId, nextSeasonStart, now));
+				saved.add(this.ruleRepository.save(desired.toVersion(studyId, nextSeasonStart, now)));
 			}
 		}
 		rescheduleNextSeason(studyId, today, nextSeasonStart, desired);
+		publishChanged(study, actorUserId, saved);
+	}
+
+	/**
+	 * 새 버전을 만들었으면 규칙 변경을 알린다 (S13 만들 것 4). 받는 사람은 탈퇴하지 않은 멤버 중 바꾼 방장을 뺀 사람이다. 받는 쪽이 같은
+	 * 트랜잭션에서 알림 행을 넣는다.
+	 *
+	 * @param saved 이번에 만든 버전들 (적용 시작일 순서). 비어 있으면 알리지 않는다 (예정된 변경을 취소만 함)
+	 */
+	private void publishChanged(Study study, long actorUserId, List<StudyRule> saved) {
+		if (saved.isEmpty()) {
+			return;
+		}
+		List<Long> recipients = this.membershipRepository.findActiveUserIds(study.getId())
+			.stream()
+			.filter(userId -> userId != actorUserId)
+			.toList();
+		this.events.publishEvent(new StudyRulesChanged(study.getId(), study.getName(), saved.getLast().getId(),
+				saved.getFirst().getEffectiveFrom(), actorUserId, recipients));
 	}
 
 	/**
@@ -107,7 +139,7 @@ public class StudyRuleService {
 				StudyCalendar.seasonEndDay(nextSeasonStart, desired.seasonLengthDays()));
 	}
 
-	private void changeBeforeFirstSeason(long studyId, Study study, Season first, RuleSettings desired, Instant now) {
+	private StudyRule changeBeforeFirstSeason(long studyId, Study study, Season first, RuleSettings desired, Instant now) {
 		LocalDate start = first.getStartDay();
 		// 바꾼 뒤에는 1기 시작일이 첫 버전이라, 첫날은 새 규칙의 기준 시각에 시작한다 (RuleVersionCalendar).
 		Instant newStart = StudyCalendar.of(desired.toTimeRule(study.zoneId())).boundaryOf(start);
@@ -115,13 +147,14 @@ public class StudyRuleService {
 			throw new ConflictException("이 기준 시각으로 바꾸면 1기 첫날이 이미 시작돼요. 1기가 시작한 뒤에 바꾸면 다음 기수부터 적용돼요.");
 		}
 		this.ruleRepository.deleteFrom(studyId, start);
-		this.ruleRepository.save(desired.toVersion(studyId, start, now));
+		StudyRule saved = this.ruleRepository.save(desired.toVersion(studyId, start, now));
 		int rescheduled = this.seasonRepository.rescheduleEnd(first.getId(),
 				StudyCalendar.seasonEndDay(start, desired.seasonLengthDays()));
 		if (rescheduled != 1) {
 			// 시작 전인데 1기가 SCHEDULED가 아니면 기수 상태가 날짜와 어긋난 것이다. 규칙과 기수 끝 날짜가 어긋나게 두지 않는다.
 			throw new IllegalStateException("시작 전 1기의 끝 날짜를 바꾸지 못했어요: season=" + first.getId());
 		}
+		return saved;
 	}
 
 }
