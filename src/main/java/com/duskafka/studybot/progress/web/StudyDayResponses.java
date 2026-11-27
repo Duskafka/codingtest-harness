@@ -7,6 +7,7 @@ import com.duskafka.studybot.progress.service.StudyDayStatus;
 import com.duskafka.studybot.progress.service.StudyDayStatus.MemberStatus;
 import com.duskafka.studybot.progress.service.StudyDayStatus.RecentSolve;
 import com.duskafka.studybot.study.MembershipRole;
+import com.duskafka.studybot.study.PenaltyType;
 import com.duskafka.studybot.study.StudyDayContext;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -33,19 +34,23 @@ final class StudyDayResponses {
 	 * @param dailyGoal 그날의 하루 목표
 	 * @param restDay 쉬는 요일인지
 	 * @param inSeason 기수 안인지. 기수 밖이면 아무도 판정하지 않는다 (R9)
+	 * @param penaltyType 그날 규칙의 벌금 방식: {@code NONE}(없음) / {@code FINE}(벌금) / {@code DEPOSIT_REFUND}(보증금 환급). 한 기수
+	 * 안에서는 같다 (R2)
+	 * @param fineAmount 실패 한 번의 금액(원). 벌금 방식이 {@code NONE}이면 {@code null} (S12 만들 것 7)
 	 * @param summary 판정 대상 멤버의 상태별 수
 	 * @param members 그날 멤버였던 사람들 (가입 순서)
 	 * @param recentSolves 그날 센 풀이 중 최근에 배정한 50개를 수신 시각이 늦은 것부터
 	 */
 	record StudyDayStatusResponse(long studyId, LocalDate studyDay, boolean today, Instant startsAt, Instant endsAt,
-			Instant graceEndsAt, int dailyGoal, boolean restDay, boolean inSeason, Summary summary,
-			List<MemberResponse> members, List<RecentSolveResponse> recentSolves) {
+			Instant graceEndsAt, int dailyGoal, boolean restDay, boolean inSeason, PenaltyType penaltyType,
+			@Nullable Integer fineAmount, Summary summary, List<MemberResponse> members,
+			List<RecentSolveResponse> recentSolves) {
 
 		static StudyDayStatusResponse from(StudyDayStatus status) {
 			StudyDayContext day = status.day();
 			return new StudyDayStatusResponse(day.studyId(), day.studyDay(), day.studyDay().equals(day.today()),
 					day.startsAt(), day.endsAt(), day.graceEndsAt(), day.dailyGoal(), day.restDay(), day.inSeason(),
-					new Summary(status.count(MemberDayStatus.DONE), status.count(MemberDayStatus.REMAINING),
+					day.penaltyType(), day.penaltyType() == PenaltyType.NONE ? null : day.fineAmount(), new Summary(status.count(MemberDayStatus.DONE), status.count(MemberDayStatus.REMAINING),
 							status.count(MemberDayStatus.EXEMPT)),
 					status.members().stream().map(MemberResponse::from).toList(),
 					status.recentSolves().stream().map(RecentSolveResponse::from).toList());
@@ -70,15 +75,20 @@ final class StudyDayResponses {
 	 * @param exemptionsRemaining 그날이 속한 기수에 지금 남은 면제권. 기수 밖이면 {@code null} (S11 만들 것 6)
 	 * @param selfReportRatio 그날이 속한 기수에 센 풀이 중 수동 인증의 비율(0~1). 방장이 볼 때만 있고, 기수 밖이거나 센 풀이가 없으면
 	 * {@code null} (S11 만들 것 4)
+	 * @param failCount 그날이 속한 기수에 실패로 판정된 날 수(지금까지). 모든 멤버에게 보인다. 기수 밖이거나 벌금 방식이 {@code NONE}이면
+	 * {@code null} (S12 만들 것 7, 2.3 '미인증 횟수 × 금액 표시')
+	 * @param fineTotal 실패 횟수 × 실패 한 번의 금액(원). 보증금 환급 방식이면 보증금에서 깎일 금액이다. {@code failCount}가 없으면 {@code null}
 	 */
 	record MemberResponse(long userId, String login, @Nullable String avatarUrl, MembershipRole role,
 			MemberDayStatus status, @Nullable ExemptReason exemptReason, boolean exemptionUsed, int solvedCount,
-			@Nullable JudgmentResult result, @Nullable Integer exemptionsRemaining, @Nullable Double selfReportRatio) {
+			@Nullable JudgmentResult result, @Nullable Integer exemptionsRemaining, @Nullable Double selfReportRatio,
+			@Nullable Integer failCount, @Nullable Integer fineTotal) {
 
 		static MemberResponse from(MemberStatus member) {
 			return new MemberResponse(member.userId(), member.login(), member.avatarUrl(), member.role(),
 					member.progress().status(), member.progress().exemptReason(), member.exemptionUsed(),
-					member.solvedCount(), member.result(), member.exemptionsRemaining(), member.selfReportRatio());
+					member.solvedCount(), member.result(), member.exemptionsRemaining(), member.selfReportRatio(),
+					member.failCount(), member.fineTotal());
 		}
 
 	}

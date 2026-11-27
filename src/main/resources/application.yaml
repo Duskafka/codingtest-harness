@@ -81,3 +81,9 @@ studybot:
       # private key는 서버 파일 경로로만 받는다 (infra.md 9.6: 권한 400, 읽기 전용 마운트. 사람이 정함 2026-11-24 "파일만").
       # 키 내용을 환경 변수로 받지 않는다. 없으면 기동이 실패한다. 키 내용은 로그에 찍지 않는다.
       private-key-path: ${GITHUB_APP_PRIVATE_KEY_PATH:}
+
+# 판정 배치 (S12, processes 5.10). judgment.JudgmentSchedule
+# 5분마다 돈다. 서버가 여러 대여도 ShedLock으로 한 번만 돈다 (common.scheduling.SchedulingConfiguration).
+# 판정 시각이 지난 날만 판정하니(R9) 주기는 판정이 얼마나 늦어질 수 있는지만 정한다. "-"면 끈다(Spring 비활성 cron).
+  judgment:
+    cron: "0 */5 * * * *"

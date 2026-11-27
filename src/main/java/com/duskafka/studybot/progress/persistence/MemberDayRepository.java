@@ -122,6 +122,38 @@ public interface MemberDayRepository extends JpaRepository<MemberDay, Long> {
 	List<UserCount> countUsedExemptionsByUser(@Param("studyId") long studyId, @Param("fromDay") LocalDate fromDay,
 			@Param("toDay") LocalDate toDay);
 
+	/**
+	 * 판정 결과를 남긴다 (5.10, S12 만들 것 4). 결과가 이미 있으면 바꾸지 않는다 (다시 돌려도 안전, 5.10 '주의할 것'). 그날의 기수 행이 비어
+	 * 있으면 채운다 (다음 기수 행이 생기기 전에 만든 행). 행을 잠근 뒤에 부른다.
+	 *
+	 * @param result 판정 결과 ({@code JudgmentResult} 이름)
+	 * @param resultSource 결과를 정한 곳 (판정 배치는 {@code BATCH})
+	 * @param ruleId 판정에 쓴 규칙 버전
+	 * @param seasonId 그날을 담은 기수 행
+	 * @return 고친 행 수
+	 */
+	@Modifying
+	@Query(value = """
+			update studybot.member_days
+			set result = :result, result_source = :resultSource, judged_at = :judgedAt, rule_id = :ruleId,
+				season_id = coalesce(season_id, cast(:seasonId as bigint)), version = version + 1
+			where id = :id and result is null
+			""", nativeQuery = true)
+	int recordJudgment(@Param("id") long id, @Param("result") String result, @Param("resultSource") String resultSource,
+			@Param("judgedAt") Instant judgedAt, @Param("ruleId") long ruleId, @Param("seasonId") @Nullable Long seasonId);
+
+	/**
+	 * 기간(이번 기수) 안에 실패로 판정된 날 수를 멤버마다 센다 (현황의 P1 정산 표시, S12 만들 것 7). 실패가 없는 멤버는 빠진다. 기간은 기수 행의
+	 * 날짜다.
+	 */
+	@Query(value = """
+			select user_id as "userId", count(*) as "count" from studybot.member_days
+			where study_id = :studyId and study_day between :fromDay and :toDay and result = 'FAIL'
+			group by user_id
+			""", nativeQuery = true)
+	List<UserCount> countFailuresByUser(@Param("studyId") long studyId, @Param("fromDay") LocalDate fromDay,
+			@Param("toDay") LocalDate toDay);
+
 	/** 사용자마다 센 수. */
 	interface UserCount {
 

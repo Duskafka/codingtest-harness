@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-27 S12 판정 배치와 기수 자동 연장 (세션 1/1)
+- 한 일: 만들 것 1~8. V10(`shedlock`, `seasons.settling_started_at` + 상태 CHECK), ShedLock 7.11.0(`common.scheduling`, DB 시각), judgment `DailyJudgmentBatch`(스터디마다 기수 준비 → 판정 시각이 지난 날을 오래된 순서로 → 멤버마다 트랜잭션 → 오류 없을 때만 진행 지점), `JudgmentSchedule`(5분, `@SchedulerLock` 30분/1분), `JudgmentRule`, study `StudySeasons`(스터디 행 잠금, 다음 기수 행 되풀이 생성·진행·72시간 뒤 종료)·`JudgingDays`(날·대상·진행 지점·정산 중), progress `MemberDayJudgments`(행 만들기·잠그기·`result IS NULL`일 때 저장, `BATCH`), 규칙 변경 때 다음 기수 행 끝 날짜 다시 세기, 현황 `penaltyType`·`fineAmount`·`members[].failCount`·`fineTotal`, `ModuleRules` judgment → study, 결정 제안서 008(기록용)
+- 상태: 빌드 통과 (테스트 761개). 구현 전 새 테스트 31개 중 30개 실패(통과 1개는 껍데기가 늘 FAIL을 돌려준 `otherwiseFail`). 조건 빼 보기 18개 모두 해당 테스트 실패. spec-reviewer '수정 필요' → 필수 1(5.10·architecture 6장 ⑤도 스펙 변경 제안에)과 고려 4건 반영(테스트 1개 더함, 008 지표 설명, 재기동 직후 구간은 열린 질문)
+- 사람이 정한 것 (2026-11-27, 지시 "S12 시작해", 세션 선택지, 모두 Recommended): 브랜치 "feat/S12-daily-judgment", 쿼리 수 "조회만 일정, 멤버별 잠금"(수용 기준 문구는 스펙 변경 제안), 정산 확정 "실제 판정 시각 + 72시간", 정산 표시 "모든 멤버에게 멤버마다". PR 열린 질문 1 (2026-11-27, 지시 "PR의 열린 질문 장단점을 비교해서 제시해 선택할게", 세션 선택지 Recommended): 기수 하나보다 긴 장애 뒤 배치가 기수 행을 채우기 전 구간은 "A. 지금대로 둠"(코드 변경 없음, 5.13 알려진 한계로 적자는 스펙 변경 제안 7)
+- 다음: PR 검토(판단 기록 '꼭 봐 주세요': 현황 응답 모양, `result_source` 값, ShedLock 시간) → 병합 → 받아들인 스펙 변경 제안을 docs PR로(쿼리 수 문구 세 곳, data-model `settling_started_at`·`result_source`, R13·5.13·3.4 정산 72시간, api.md 현황 필드, 알려진 충돌 9·11번, 5.13 알려진 한계 한 줄) → S13 또는 S14
+- 막힌 것: 없음
+- 참고: 판정 테스트는 `DailyJudgmentBatch#judgeStudy`로 스터디 하나씩 돌린다. 모든 스터디를 도는 `run()`·ShedLock 진입점은 공유 DB에 쌓인 2026년 스터디를 피하려고 2025년 날짜로 본다(멤버십 가입 시각도 그해로). 테스트 설정은 `studybot.judgment.cron: "-"`. S13 알림 생성도 `common.scheduling`과 `@SchedulerLock`을 쓰면 된다. S14 결과 알림은 판정이 남긴 `result`·`judged_at`과 `last_judged_day`로 DB에서 다시 맞출 수 있다(judgment는 notification을 부르지 않음). 정산 중은 `last_judged_day`가 끝 날짜에 닿을 때, 종료는 `settling_started_at + 72h` 뒤 첫 배치. Maven Central 429가 잦으니 의존성을 더하면 일찍 받아 두기
+- PR: #32
+
 ## 2026-11-26 S11 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #29(병합)의 결정과 받아들인 스펙 변경 제안을 문서에 반영. R7(그 스터디의 고른 날만, 유예 중 전날은 R4 전날 후보일 때만, '승인 필요'는 승인 API 전까지 409, 하루 5건에 철회 포함, 철회 때 같은 날 다른 풀이로 바꿔 끼움·다음 날 유예 안 같은 문제 풀이가 있으면 철회 불가), 5.6(만들 것·주의할 것, 수동 인증 비율은 그날이 속한 기수·방장만), api.md 4.4(승인 API 세 줄 '미정', 수동 인증·면제권 요청·응답, 현황 `exemptionsRemaining`·`selfReportRatio`, 오류 `code` 목록), architecture 알려진 충돌 6번, data-model '수동 인증 테이블' 메모·인덱스, S11 만들 것 2·4
 - 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
@@ -135,17 +144,7 @@
 - PR: #16 (docs PR #15보다 먼저 병합). 재발 방지로 세션 시작 때 origin/master를 받아 오는 chore PR #17(사람이 정함 "스크립트 + 훅 패치 제안"). 세션 도중 병합까지 잡는 보호 훅 패치는 #17 본문에 제안만 했고 적용은 사람 몫
 
 ## 2026-11-23 S07 GitHub App 연결 (세션 1/1)
-- 한 일: 만들 것 1~6. V5(`github_installations`, `linked_repositories`), 설치 웹훅 처리기(created·deleted·suspend·unsuspend, removed·added), 가입 때 연결(auth `UserLoggedIn` 커밋 뒤 + 연결 화면에서 다시 claim), GitHub API 클라이언트(App JWT를 JDK로 서명, PKCS#1·#8 키, 설치 토큰 메모리 캐시·만료 5분 전 갱신), `GET /api/github/install-url`(서명된 1회용 state), `GET /github/setup`(302), `GET /api/me/github/repositories`(레포 1개면 자동 연결), `PUT /api/me/linked-repository`
-- 상태: 빌드 통과 (테스트 432개). 구현 전 새 테스트 52개 중 51개 실패 확인. 조건 빼 보기 8개 모두 해당 테스트 실패. spec-reviewer '수정 필요'(코드 지적 없음, PR 본문 3건) → 반영, 고려 10건 중 6건은 코드·테스트로(설치자 ID 대신 `installed_by_owner`, 저장 때 설치 잠금 재확인, 테스트 3개)
-- 사람이 정한 것 (2026-11-23, 세션 선택지): 브랜치 "feat/S07-github-app (Recommended)", S06 테스트 "installation 단언만 PROCESSED로 (Recommended)", 자동 연결 "레포 목록 조회 때 (Recommended)", `/github/setup` "프론트 홈으로 302 (Recommended)"
-- 다음: PR 검토(판단 기록 '꼭 봐 주세요': 응답 모양, 테이블 컬럼·상태 값, 엔티티 이름, 가입 연결 방식, state) → 병합 뒤 받아들인 스펙 변경 제안을 docs PR로 → S08(push 처리, 선행 S03·S06·S07 완료)
-- 막힌 것: 없음. 실제 연동 확인은 H-02. 새 환경 변수 `GITHUB_APP_SLUG`(필수), `GITHUB_APP_PRIVATE_KEY_PATH`(필수, 키 파일 경로. 키 내용을 환경 변수로 받지 않음, 아래 '스펙 변경 제안 결정'). JWT `iss`는 기존 `GITHUB_APP_CLIENT_ID`
-- 참고: S08은 연결을 `repo_id` + ACTIVE로 찾는다(부분 UNIQUE). `default_branch`는 목록 조회 때 GitHub 값으로 갱신된다. 모든 통합 테스트 컨텍스트에 테스트 키·WireMock(`github.GithubApiStub`)이 들어간다(`GithubAppTestConfiguration`). 컨텍스트를 따로 띄우는 테스트는 키를 직접 넣는다(`SessionRestartTest`는 실행 인자로, `properties()`는 yaml 빈 값에 밀림). 커밋 전 파일을 `git checkout --`로 되돌리는 명령은 막히니 조건 빼 보기는 커밋한 뒤 정확히 되바꿔서
-- 리뷰 반영 (같은 세션): CodeRabbit 11건 중 9건 코드로(HEAD 500, 웹훅 행 잠금, 순서 바뀐 deleted·suspend 기록, `repositories_revision`으로 제거·연결 경합, 완전한 목록에 없는 연결 끊기, refresh 재읽기, 목록 1000개 범위, `@DynamicUpdate`, 로그인 연결 `@Async`), 2건은 답글만(토큰 기준 해석, state 원자성). spec-reviewer 2차가 찾은 open-in-view 문제(잠근 뒤에도 요청 안의 옛 엔티티로 비교) → 네이티브 `select … for update`로. 빌드 통과(테스트 450개). 사람이 정한 것 (2026-11-23, 세션 선택지): "체크 유지, 해석을 답글로", "세션 유지, 답글로 설명", "목록이 한 페이지로 다 보일 때만 끊음", "비동기로 실행" (모두 Recommended). S13 참고: 연결은 이제 웹훅뿐 아니라 목록 조회(GET)에서도 끊긴다. open-in-view가 켜져 있어 같은 요청에서 앞서 읽은 엔티티는 잠가도 다시 채워지지 않으니, 잠근 뒤 확인은 네이티브 쿼리로
-- 2차 리뷰 반영 (같은 세션): CodeRabbit review 6031060345(Caution = 줄에 달 수 없는 지적 1건)와 후속 답글. Caution의 옛 엔티티 비교와 `Thread.sleep` 지적은 이미 고친 것(535d951, 6e916ea)이라 PR 댓글로 알림. 코드로 고친 것 3건: 처음 보는 설치의 deleted·suspend·unsuspend는 설치 ID·상태만 남기고 계정 값·설치자는 created가 `ON CONFLICT DO UPDATE … WHERE installed_by_owner IS NULL AND status <> 'DELETED'`로 채움(V5 네 컬럼 NULL 허용 + CHECK, 1f02e86·bc7f71b, 삭제된 설치에는 채우지 않는 것은 spec-reviewer 3차 지적), 목록에서 빠진 연결은 목록 읽기 전에 본 행(id)·그 설치만 끊음(2605aa5), `total_count` 없는 목록 응답은 503(898c2d4). 빌드 통과(테스트 457개), 조건 빼 보기 5개 모두 걸림. spec-reviewer 3차 '수정 필요'는 PR 본문 갱신(코드 지적 없음). S08 참고: `github_installations`의 계정 값은 NULL일 수 있다(사용자에게 이은 행에는 늘 있음, CHECK)
-- 스펙 변경 제안 결정 (같은 세션, 2026-11-24): 사람이 정한 것 (세션 선택지): 제안 1 "Github* 유지", 제안 2 "같은 테이블, NULL 허용", 제안 3 "파일만", 제안 4 "설치 중 + 삭제 뒤 30일" (모두 Recommended), 제안 5는 2026-11-23 결정 그대로. 제안 3 때문에 #14에서 키를 파일 경로로만 받게 고침(3ea7b3e). spec-reviewer 4차가 찾은 '경로 자리에 키 내용을 넣으면 기동 실패 로그에 키가 남음'도 고침(9489220). 빌드 통과(테스트 460개). 문서 반영은 docs PR #15(#14 다음에 병합, progress는 #14에만 적음). #15의 열린 질문 3개(30일 정리 때 연결 행 FK, '삭제된 지 30일'의 기준 시각, 탈퇴 때 설치 행 삭제와 S15 만들 것 3의 관계)는 S15에서 정할 거리
-- 다음: #14 병합 → #15 병합 → H-02(실제 App으로 확인) → S08
-- PR: #14, docs PR #15
+- 요약: V5(`github_installations`, `linked_repositories`), 설치 웹훅 처리기, 가입 때 연결(커밋 뒤 `@Async`), App JWT·설치 토큰 캐시, `GET /api/github/install-url`·`GET /github/setup`(302)·레포 목록(1개면 자동 연결)·`PUT /api/me/linked-repository`. 리뷰 반영으로 웹훅 행 잠금, `repositories_revision`, 잠근 뒤 확인은 네이티브 쿼리(open-in-view). 사람이 정함: 키는 파일 경로로만, 계정 값 NULL 허용, 설치 중 + 삭제 뒤 30일. 빌드 통과(460개). PR: #14, docs PR #15
 
 ## 2026-11-23 S06 후속 결정 반영 (docs PR, 단계 진행 아님)
 - 요약: PR #12에서 사람이 정한 것(네 이벤트 모두 처리기 필수, ping 200, `last_error`는 예외 종류, payload 14일 뒤 비움, 5MB 초과 413 + 경고 로그)을 S08·pseudocode·data-model·5.3에 반영. PR #12 '그 밖에 발견한 것'(OSIV, 수신함 엔티티 위치, 헤더 제어 문자 → 500)은 정하지 않음. PR: #13

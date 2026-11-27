@@ -51,7 +51,7 @@ public final class StudyTimeline {
 
 	/**
 	 * 그 스터디 일의 기수. 1기 전이면 1기, 마지막 기수 행이 끝난 뒤면 마지막 기수를 보여 준다. 기수 밖인 날은 판정하지 않으니
-	 * (R9, OD-07) 화면에 보여 줄 기수로만 쓴다. 다음 기수 행을 만드는 것은 S12다.
+	 * (R9, OD-07) 화면에 보여 줄 기수로만 쓴다. 다음 기수 행은 판정 배치가 이번 기수가 시작될 때 만든다 ({@code study.StudySeasons}, S12).
 	 */
 	static Season seasonOn(List<Season> seasonsBySeq, LocalDate studyDay) {
 		if (seasonsBySeq.isEmpty()) {
@@ -69,8 +69,9 @@ public final class StudyTimeline {
 	/**
 	 * 오늘이 속한 기수 다음 기수의 시작일. 다음 기수는 마지막 날 다음 날 바로 시작한다 (R13, OD-07). 1기 시작 전이면 1기 시작일이다.
 	 *
-	 * <p>다음 기수 행은 S12가 만든다. 그래서 오늘이 마지막 기수 행보다 뒤면, 마지막 행의 다음 날부터 그 시작일에 적용되는 규칙의 기수
-	 * 길이로 기수를 이어 센다 (끝 날짜는 {@link StudyCalendar#seasonEndDay}, 5.13).
+	 * <p>다음 기수 행은 판정 배치가 만든다 ({@code study.StudySeasons}, S12). 배치가 아직 돌지 않아 오늘이 마지막 기수 행보다 뒤면(서버가
+	 * 꺼져 있었을 때), 마지막 행의 다음 날부터 그 시작일에 적용되는 규칙의 기수 길이로 기수를 이어 센다 (끝 날짜는
+	 * {@link StudyCalendar#seasonEndDay}, 5.13). 배치가 행을 만들 때도 같은 방식이다.
 	 */
 	static LocalDate nextSeasonStart(List<Season> seasonsBySeq, List<StudyRule> rulesByEffectiveFrom, LocalDate today) {
 		Season first = seasonsBySeq.getFirst();

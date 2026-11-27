@@ -45,10 +45,13 @@ public record StudyDayStatus(StudyDayContext day, List<MemberStatus> members, Li
 	 * @param exemptionsRemaining 그날이 속한 기수에 남은 면제권 (지금 기준). 기수 밖이면 {@code null} (S11 만들 것 6)
 	 * @param selfReportRatio 그날이 속한 기수에 센 풀이 중 수동 인증의 비율 (0~1). 보는 사람이 방장일 때만 있다. 기수 밖이거나 센 풀이가
 	 * 없으면 {@code null} (S11 만들 것 4, 사람이 정함 2026-11-26 "이번 기수")
+	 * @param failCount 그날이 속한 기수에 실패로 판정된 날 수 (지금까지). 기수 밖이거나 벌금 방식이 '없음'이면 {@code null} (S12 만들 것 7)
+	 * @param fineTotal 실패 횟수 × 그 기수의 벌금액(원). 보증금 환급 방식이면 보증금에서 깎일 금액이다. {@code failCount}가 없으면 {@code null}
 	 */
 	public record MemberStatus(long userId, String login, @Nullable String avatarUrl, MembershipRole role,
 			MemberDayProgress progress, boolean exemptionUsed, int solvedCount, @Nullable JudgmentResult result,
-			@Nullable Integer exemptionsRemaining, @Nullable Double selfReportRatio) {
+			@Nullable Integer exemptionsRemaining, @Nullable Double selfReportRatio, @Nullable Integer failCount,
+			@Nullable Integer fineTotal) {
 
 	}
 

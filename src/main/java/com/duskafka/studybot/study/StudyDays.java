@@ -84,7 +84,8 @@ public class StudyDays {
 				this.membershipRepository.findMembersDuring(studyId, startsAt, endsAt), day, season != null);
 		StudyRule rule = StudyTimeline.ruleOn(rules, day);
 		return new StudyDayContext(studyId, day, today, startsAt, endsAt, calendar.graceEndOf(day), rule.getDailyGoal(),
-				StudyCalendar.of(calendar.ruleFor(day)).isRestDay(day), rule.getExemptionsPerSeason(), season, members);
+				StudyCalendar.of(calendar.ruleFor(day)).isRestDay(day), rule.getExemptionsPerSeason(), rule.getPenaltyType(),
+				rule.getFineAmount(), season, members);
 	}
 
 	private static MemberStudy.@Nullable SeasonPeriod seasonOn(List<Season> seasons, LocalDate day) {
@@ -95,8 +96,10 @@ public class StudyDays {
 			.orElse(null);
 	}
 
-	/** 멤버십(ID 순서)을 사용자마다 하나로 합친다. 자리는 처음 멤버십, 역할은 나중 멤버십이다. */
-	private static List<RosterMember> rosterOf(List<Membership> memberships, LocalDate day, boolean inSeason) {
+	/**
+	 * 멤버십(ID 순서)을 사용자마다 하나로 합친다. 자리는 처음 멤버십, 역할은 나중 멤버십이다. 판정 대상({@link JudgingDays})도 이것으로 고른다.
+	 */
+	static List<RosterMember> rosterOf(List<Membership> memberships, LocalDate day, boolean inSeason) {
 		Map<Long, RosterMember> byUser = new LinkedHashMap<>();
 		for (Membership membership : memberships) {
 			long userId = membership.getUserId();

@@ -35,6 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 지금 규칙과 같게 보내면 예정된 변경이 없어진다.</li>
  * </ul>
  *
+ * <p>기수 중 변경이면 이미 만든 다음 기수 행의 끝 날짜도 다시 센다 (S12, 5.13 '주의할 것').
+ *
  * <p>버전 행은 그날부터의 규칙 전체를 담는다(스냅샷). 테이블은 그대로다 ({@code (study_id, effective_from)} UNIQUE).
  * 같은 스터디의 규칙 변경·수락·위임은 스터디 행 잠금으로 차례로 실행된다 (결정 제안서 006).
  */
@@ -83,14 +85,26 @@ public class StudyRuleService {
 			if (!desired.equals(current)) {
 				this.ruleRepository.save(desired.toVersion(studyId, nextDay, now));
 			}
-			return;
 		}
-		if (!desired.sameNextDayItems(current)) {
-			this.ruleRepository.save(desired.withNextSeasonItemsOf(current).toVersion(studyId, nextDay, now));
+		else {
+			if (!desired.sameNextDayItems(current)) {
+				this.ruleRepository.save(desired.withNextSeasonItemsOf(current).toVersion(studyId, nextDay, now));
+			}
+			if (!desired.sameNextSeasonItems(current)) {
+				this.ruleRepository.save(desired.toVersion(studyId, nextSeasonStart, now));
+			}
 		}
-		if (!desired.sameNextSeasonItems(current)) {
-			this.ruleRepository.save(desired.toVersion(studyId, nextSeasonStart, now));
-		}
+		rescheduleNextSeason(studyId, today, nextSeasonStart, desired);
+	}
+
+	/**
+	 * 이미 만든 다음 기수 행(S12 판정 배치가 이번 기수가 시작될 때 만듦)의 끝 날짜를 다음 기수 시작일에 적용되는 기수 길이로 다시 센다 (S12 만들 것 6
+	 * '예정 행의 끝 날짜', R2, 5.13). 변경이든 취소든 위 버전 저장 뒤 그 시작일의 기수 길이는 원하는 규칙의 길이다: 다음 기수 항목이 다르면 그
+	 * 시작일에 원하는 규칙 버전을 두고, 같으면 지금 규칙의 길이가 곧 원하는 길이다. 진행 중인 기수의 끝 날짜는 바꾸지 않는다 (R2).
+	 */
+	private void rescheduleNextSeason(long studyId, LocalDate today, LocalDate nextSeasonStart, RuleSettings desired) {
+		this.seasonRepository.rescheduleUpcoming(studyId, nextSeasonStart, today,
+				StudyCalendar.seasonEndDay(nextSeasonStart, desired.seasonLengthDays()));
 	}
 
 	private void changeBeforeFirstSeason(long studyId, Study study, Season first, RuleSettings desired, Instant now) {

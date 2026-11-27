@@ -25,3 +25,7 @@ studybot:
     app:
       client-id: test-github-app-client-id
       slug: studybot-test-app
+  # 판정 배치 스케줄을 끈다 ("-"는 Spring의 비활성 cron). 통합 테스트 도중 배치가 저절로 돌아 공유 DB의 스터디를 판정하지 않게 한다.
+  # 테스트는 judgment.DailyJudgmentBatch를 직접 부르고, ShedLock 테스트만 judgment.JudgmentSchedule 진입점을 부른다 (S12).
+  judgment:
+    cron: "-"
