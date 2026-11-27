@@ -18,12 +18,14 @@ import org.jspecify.annotations.Nullable;
  * @param dailyGoal 그날 규칙의 하루 목표
  * @param restDay 그날 규칙의 쉬는 요일인지
  * @param exemptionsPerSeason 그날 규칙의 기수당 면제권. 한 기수 안에서는 같다 (R2, S11 남은 면제권)
+ * @param penaltyType 그날 규칙의 벌금 방식. 다음 기수부터 바뀌는 항목이라 한 기수 안에서는 같다 (R2, S12 정산 표시)
+ * @param fineAmount 그날 규칙의 벌금액(원). 한 기수 안에서는 같다 (R2)
  * @param season 그날을 담은 기수 행의 기간. 기수 밖이면 {@code null} (R9, OD-07)
  * @param members 그날 멤버였던 사용자들 (가입 순서). 그날 가입했거나 그날 탈퇴한 사람도 들어 있다 (R14)
  */
 public record StudyDayContext(long studyId, LocalDate studyDay, LocalDate today, Instant startsAt, Instant endsAt,
-		Instant graceEndsAt, int dailyGoal, boolean restDay, int exemptionsPerSeason,
-		MemberStudy.@Nullable SeasonPeriod season, List<RosterMember> members) {
+		Instant graceEndsAt, int dailyGoal, boolean restDay, int exemptionsPerSeason, PenaltyType penaltyType,
+		int fineAmount, MemberStudy.@Nullable SeasonPeriod season, List<RosterMember> members) {
 
 	/**
 	 * 그날 멤버였던 사용자 하나.
@@ -46,6 +48,7 @@ public record StudyDayContext(long studyId, LocalDate studyDay, LocalDate today,
 		Objects.requireNonNull(startsAt, "startsAt");
 		Objects.requireNonNull(endsAt, "endsAt");
 		Objects.requireNonNull(graceEndsAt, "graceEndsAt");
+		Objects.requireNonNull(penaltyType, "penaltyType");
 		members = List.copyOf(members);
 	}
 
