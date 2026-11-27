@@ -190,17 +190,42 @@ class WebPushSendIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("구독이 없으면 보내지 않고 FAILED다")
-	void noSubscriptionFails() {
-		long alice = rows.newUser("s13-no-sub");
+	@DisplayName("리다이렉트를 따라가지 않는다 (9.7): 301이면 다른 주소로 보내지 않고 FAILED다")
+	void redirectIsNotFollowed() {
+		long alice = rows.newUser("s13-redirect");
 		TestStudy study = rows.standardStudy(alice);
+		String endpoint = WebPushStub.newEndpoint();
+		String elsewhere = WebPushStub.newEndpoint();
+		WebPushStub.reply(elsewhere, 201);
+		WebPushStub.replyRedirect(endpoint, 301, elsewhere);
+		notifications.insertSubscription(alice, endpoint, PushReceiver.create());
 		long id = sharePrompt(study.studyId(), alice);
 
 		dispatcher.run();
 
 		NotificationRow row = notifications.byId(id);
 		assertThat(row.status()).isEqualTo("FAILED");
+		assertThat(row.lastError()).isEqualTo("HTTP_301");
+		assertThat(WebPushStub.requestsTo(endpoint)).hasSize(1);
+		assertThat(WebPushStub.requestsTo(elsewhere)).isEmpty();
+	}
+
+	@Test
+	@DisplayName("구독이 없으면 보내지 않고 FAILED다")
+	void noSubscriptionFails() {
+		long alice = rows.newUser("s13-no-sub");
+		TestStudy study = rows.standardStudy(alice);
+		long id = sharePrompt(study.studyId(), alice);
+		double before = counter("studybot.notification.dispatched", "result", "FAILED", "reason", "NO_SUBSCRIPTION");
+
+		dispatcher.run();
+
+		NotificationRow row = notifications.byId(id);
+		assertThat(row.status()).isEqualTo("FAILED");
 		assertThat(row.lastError()).isEqualTo("NO_SUBSCRIPTION");
+		// 발송 성공률에서 구독 없는 사용자를 가를 수 있게 실패 까닭을 태그로 남긴다.
+		assertThat(counter("studybot.notification.dispatched", "result", "FAILED", "reason", "NO_SUBSCRIPTION"))
+			.isEqualTo(before + 1);
 	}
 
 	@Test

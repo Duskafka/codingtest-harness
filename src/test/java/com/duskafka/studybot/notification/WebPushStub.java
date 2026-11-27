@@ -49,6 +49,11 @@ public final class WebPushStub {
 		reply(endpoint, aResponse().withStatus(status));
 	}
 
+	/** 이 구독 주소로 오는 요청에 리다이렉트(이 상태 코드와 {@code Location})로 답한다. */
+	public static void replyRedirect(String endpoint, int status, String location) {
+		reply(endpoint, aResponse().withStatus(status).withHeader("Location", location));
+	}
+
 	/** 이 구독 주소로 오는 요청에 이 상태 코드와 {@code Retry-After}로 답한다. */
 	public static void replyWithRetryAfter(String endpoint, int status, String retryAfter) {
 		reply(endpoint, aResponse().withStatus(status).withHeader("Retry-After", retryAfter));

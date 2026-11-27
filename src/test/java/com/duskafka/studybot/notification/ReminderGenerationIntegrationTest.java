@@ -131,6 +131,46 @@ class ReminderGenerationIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("그날 탈퇴한 멤버는 알림 대상도 공유 유도의 'N명'도 아니다 (사람이 정함 2026-11-27 '탈퇴한 멤버에게 보내지 않음'. 판정은 그날까지)")
+	void memberWhoLeftThatDayIsNotReminded() {
+		long alice = rows.newUser("s13-today-stay");
+		long bob = rows.newUser("s13-today-left");
+		long owner = rows.newUser("s13-today-owner");
+		TestStudy study = rows.standardStudy(alice);
+		long bobMembership = rows.join(study.studyId(), bob, NOV_1);
+		rows.joinAsOwner(study.studyId(), owner, NOV_1);
+		rows.putMemberDay(study.studyId(), owner, NOV_20, 1, null, null);
+		rows.leave(bobMembership, seoul(NOV_20, 12, 0));
+		clock.setInstant(seoul(NOV_20, 22, 0));
+
+		generator.remindStudy(study.studyId());
+
+		assertThat(notifications.ofStudy(study.studyId(), "REMINDER")).extracting(NotificationRow::userId)
+			.containsExactly(alice);
+		assertThat(JSON.readTree(notifications.ofStudy(study.studyId(), "SHARE_PROMPT").getFirst().payload())
+			.path("body")
+			.asString()).contains("1명");
+	}
+
+	@Test
+	@DisplayName("그날 탈퇴했다가 그날 다시 가입한 멤버는 그날도 세니(R14) 알림 대상이다")
+	void memberWhoRejoinedThatDayIsReminded() {
+		long alice = rows.newUser("s13-rejoin-stay");
+		long bob = rows.newUser("s13-rejoin");
+		TestStudy study = rows.standardStudy(alice);
+		rows.putMemberDay(study.studyId(), alice, NOV_20, 1, null, null);
+		long bobMembership = rows.join(study.studyId(), bob, NOV_1);
+		rows.leave(bobMembership, seoul(NOV_20, 12, 0));
+		rows.join(study.studyId(), bob, seoul(NOV_20, 13, 0), NOV_21);
+		clock.setInstant(seoul(NOV_20, 22, 0));
+
+		generator.remindStudy(study.studyId());
+
+		assertThat(notifications.ofStudy(study.studyId(), "REMINDER")).extracting(NotificationRow::userId)
+			.containsExactly(bob);
+	}
+
+	@Test
 	@DisplayName("T15: 알림 생성 스케줄러가 두 번 돌아도 알림은 1개다. 진행 지점을 지워 다시 돌려도 dedupe_key가 막는다")
 	void t15RunningTwiceCreatesOneNotification() {
 		long alice = rows.newUser("s13-twice");

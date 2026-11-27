@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.duskafka.studybot.notification.NotificationRows;
 import com.duskafka.studybot.notification.NotificationRows.NotificationRow;
+import com.duskafka.studybot.notification.dispatch.NotificationDispatcher;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -39,6 +40,9 @@ class RuleChangeNotificationIntegrationTest extends StudyTestSupport {
 
 	@Autowired
 	private PlatformTransactionManager transactionManager;
+
+	@Autowired
+	private NotificationDispatcher dispatcher;
 
 	private NotificationRows notifications;
 
@@ -84,6 +88,39 @@ class RuleChangeNotificationIntegrationTest extends StudyTestSupport {
 		assertThat(putRules(rules(Map.of()))).hasStatus(HttpStatus.OK);
 
 		assertThat(notifications.ofStudy(studyId, "RULE_CHANGED")).isEmpty();
+	}
+
+	@Test
+	@DisplayName("1기 시작 전에 지금 규칙과 같게 보내면(버전은 다시 저장되지만 내용이 같음) 알림이 없다")
+	void sameRulesBeforeFirstSeasonMakeNoNotification() {
+		setClock(CREATED_AT);
+
+		assertThat(putRules(rules(Map.of()))).hasStatus(HttpStatus.OK);
+
+		assertThat(notifications.ofStudy(studyId, "RULE_CHANGED")).isEmpty();
+	}
+
+	@Test
+	@DisplayName("같은 예정 변경을 다시 보내면(예정 버전이 새 ID로 다시 저장되지만 내용이 같음) 알림을 또 만들지 않는다")
+	void sameUpcomingChangeTwiceMakesOneNotification() {
+		assertThat(putRules(rules(Map.of("dailyGoal", 2)))).hasStatus(HttpStatus.OK);
+		assertThat(putRules(rules(Map.of("dailyGoal", 2)))).hasStatus(HttpStatus.OK);
+
+		assertThat(notifications.ofStudy(studyId, "RULE_CHANGED")).hasSize(1);
+	}
+
+	@Test
+	@DisplayName("알림을 만든 뒤 탈퇴했으면 보내기 직전에 SKIPPED다 (사람이 정함 2026-11-27 '탈퇴한 멤버에게 보내지 않음')")
+	void memberWhoLeftAfterChangeIsSkippedWhenSending() {
+		notifications.expireLeftovers();
+		assertThat(putRules(rules(Map.of("dailyGoal", 2)))).hasStatus(HttpStatus.OK);
+		assertThat(delete(member, "/api/studies/" + studyId + "/members/me")).hasStatus(HttpStatus.NO_CONTENT);
+
+		dispatcher.run();
+
+		assertThat(notifications.ofStudy(studyId, "RULE_CHANGED")).singleElement()
+			.extracting(NotificationRow::status)
+			.isEqualTo("SKIPPED");
 	}
 
 	@Test

@@ -8,6 +8,7 @@ import com.duskafka.studybot.IntegrationTest;
 import com.duskafka.studybot.MutableClock;
 import com.duskafka.studybot.notification.NotificationRows.NotificationRow;
 import com.duskafka.studybot.notification.dispatch.NotificationDispatcher;
+import com.duskafka.studybot.notification.persistence.NotificationRepository;
 import com.duskafka.studybot.notification.reminder.ReminderGenerator;
 import com.duskafka.studybot.progress.StudyDayRows;
 import com.duskafka.studybot.progress.StudyDayRows.TestStudy;
@@ -55,6 +56,9 @@ class NotificationDispatchIntegrationTest {
 	@Autowired
 	private PlatformTransactionManager transactionManager;
 
+	@Autowired
+	private NotificationRepository notificationRepository;
+
 	private StudyDayRows rows;
 
 	private NotificationRows notifications;
@@ -76,10 +80,10 @@ class NotificationDispatchIntegrationTest {
 		clock.setInstant(seoul(NOV_20, 22, 0));
 		generator.remindStudy(study.studyId());
 		NotificationRow reminder = notifications.ofStudy(study.studyId(), "REMINDER").getFirst();
-		return new Reminded(study.studyId(), alice, endpoint, reminder.id());
+		return new Reminded(study.studyId(), alice, endpoint, reminder.id(), study.membershipId());
 	}
 
-	private record Reminded(long studyId, long userId, String endpoint, long notificationId) {
+	private record Reminded(long studyId, long userId, String endpoint, long notificationId, long membershipId) {
 	}
 
 	@Test
@@ -213,6 +217,53 @@ class NotificationDispatchIntegrationTest {
 
 		assertThat(notifications.byId(later).status()).isEqualTo("PENDING");
 		assertThat(notifications.byId(later).attempts()).isZero();
+	}
+
+	@Test
+	@DisplayName("알림을 만든 뒤 탈퇴했으면 발송 직전 재확인에서 SKIPPED다 (사람이 정함 2026-11-27 '탈퇴한 멤버에게 보내지 않음')")
+	void memberWhoLeftAfterCreationIsSkipped() {
+		Reminded reminded = remindedAlice("s13-left-later");
+		rows.leave(reminded.membershipId(), seoul(NOV_20, 22, 1));
+
+		dispatcher.run();
+
+		assertThat(notifications.byId(reminded.notificationId()).status()).isEqualTo("SKIPPED");
+		assertThat(WebPushStub.requestsTo(reminded.endpoint())).isEmpty();
+	}
+
+	@Test
+	@DisplayName("결과는 가져갈 때 정한 잠금 만료 시각이 같을 때만 남는다: 잠금이 만료돼 다른 발송기가 다시 가져간 행을 옛 발송기가 덮어쓰지 않는다")
+	void staleTokenCannotOverwriteReclaimedRow() {
+		long alice = rows.newUser("s13-token");
+		TestStudy study = rows.standardStudy(alice);
+		Instant now = seoul(NOV_20, 22, 10);
+		clock.setInstant(now);
+		long id = notifications.insertPending("SHARE_PROMPT", study.studyId(), alice, NOV_20, "{}", now,
+				seoul(NOV_21, 0, 0));
+		Instant oldToken = now.plusSeconds(120);
+		Instant newToken = now.plusSeconds(300);
+		notifications.markSending(id, newToken);
+
+		assertThat(notificationRepository.finish(id, oldToken, "SENT", 1, null, now)).isZero();
+		assertThat(notificationRepository.retryLater(id, oldToken, now.plusSeconds(30), "HTTP_503")).isZero();
+		NotificationRow row = notifications.byId(id);
+		assertThat(row.status()).isEqualTo("SENDING");
+		assertThat(row.lockedUntil()).isEqualTo(newToken);
+		assertThat(row.attempts()).isZero();
+
+		assertThat(notificationRepository.finish(id, newToken, "SENT", 1, null, now)).isEqualTo(1);
+		assertThat(notifications.byId(id).status()).isEqualTo("SENT");
+	}
+
+	@Test
+	@DisplayName("시계에 나노초가 있어도 결과를 남긴다 (잠금 만료 시각을 DB 정밀도인 마이크로초로 잘라 토큰으로 씀)")
+	void subMicrosecondClockStillRecordsResult() {
+		Reminded reminded = remindedAlice("s13-nanos");
+		clock.setInstant(seoul(NOV_20, 22, 0).plusNanos(123_456_789));
+
+		dispatcher.run();
+
+		assertThat(notifications.byId(reminded.notificationId()).status()).isEqualTo("SENT");
 	}
 
 }
