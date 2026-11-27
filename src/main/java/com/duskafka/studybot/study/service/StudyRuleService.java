@@ -84,14 +84,16 @@ public class StudyRuleService {
 		Season first = seasons.getFirst();
 
 		if (today.isBefore(first.getStartDay())) {
+			List<VersionTerms> replaced = termsFrom(rules, first.getStartDay());
 			StudyRule saved = changeBeforeFirstSeason(studyId, study, first, desired, now);
-			publishChanged(study, actorUserId, List.of(saved));
+			publishChanged(study, actorUserId, replaced, List.of(saved));
 			return;
 		}
 
 		LocalDate nextDay = today.plusDays(1);
 		LocalDate nextSeasonStart = StudyTimeline.nextSeasonStart(seasons, rules, today);
 		RuleSettings current = RuleSettings.of(StudyTimeline.ruleOn(rules, today));
+		List<VersionTerms> replaced = termsFrom(rules, nextDay);
 		this.ruleRepository.deleteFrom(studyId, nextDay);
 		List<StudyRule> saved = new ArrayList<>();
 		if (nextSeasonStart.equals(nextDay)) {
@@ -108,17 +110,21 @@ public class StudyRuleService {
 			}
 		}
 		rescheduleNextSeason(studyId, today, nextSeasonStart, desired);
-		publishChanged(study, actorUserId, saved);
+		publishChanged(study, actorUserId, replaced, saved);
 	}
 
 	/**
-	 * 새 버전을 만들었으면 규칙 변경을 알린다 (S13 만들 것 4). 받는 사람은 탈퇴하지 않은 멤버 중 바꾼 방장을 뺀 사람이다. 받는 쪽이 같은
+	 * 예정된 규칙이 실제로 달라졌으면 규칙 변경을 알린다 (S13 만들 것 4). 받는 사람은 탈퇴하지 않은 멤버 중 바꾼 방장을 뺀 사람이다. 받는 쪽이 같은
 	 * 트랜잭션에서 알림 행을 넣는다.
 	 *
+	 * <p>예정 버전은 바꿀 때마다 지우고 새 ID로 다시 만든다. 그래서 같은 예정 변경을 다시 보내거나 1기 시작 전에 지금 규칙과 같게 보내도 새 행이
+	 * 생긴다. 이때는 바꾸기 전과 (적용 시작일, 규칙 값)이 모두 같으니 알리지 않는다.
+	 *
+	 * @param replaced 이번에 지운 버전들의 값 (적용 시작일 순서)
 	 * @param saved 이번에 만든 버전들 (적용 시작일 순서). 비어 있으면 알리지 않는다 (예정된 변경을 취소만 함)
 	 */
-	private void publishChanged(Study study, long actorUserId, List<StudyRule> saved) {
-		if (saved.isEmpty()) {
+	private void publishChanged(Study study, long actorUserId, List<VersionTerms> replaced, List<StudyRule> saved) {
+		if (saved.isEmpty() || replaced.equals(saved.stream().map(VersionTerms::of).toList())) {
 			return;
 		}
 		List<Long> recipients = this.membershipRepository.findActiveUserIds(study.getId())
@@ -155,6 +161,20 @@ public class StudyRuleService {
 			throw new IllegalStateException("시작 전 1기의 끝 날짜를 바꾸지 못했어요: season=" + first.getId());
 		}
 		return saved;
+	}
+
+	/** 이 날짜부터 적용하는 버전들의 값 (적용 시작일 순서). */
+	private static List<VersionTerms> termsFrom(List<StudyRule> rules, LocalDate from) {
+		return rules.stream().filter(rule -> !rule.getEffectiveFrom().isBefore(from)).map(VersionTerms::of).toList();
+	}
+
+	/** 규칙 버전 하나의 적용 시작일과 값. ID와 만든 시각은 뺀다. */
+	private record VersionTerms(LocalDate effectiveFrom, RuleSettings settings) {
+
+		static VersionTerms of(StudyRule rule) {
+			return new VersionTerms(rule.getEffectiveFrom(), RuleSettings.of(rule));
+		}
+
 	}
 
 }

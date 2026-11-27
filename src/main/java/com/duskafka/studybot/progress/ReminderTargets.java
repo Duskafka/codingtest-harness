@@ -26,6 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
  * 쉬는 날, 목표를 채운 멤버, 면제권을 쓴 멤버가 빠진다 (pseudocode '마감 전 알림'의 {@code judgeTargets ... where not rest day and
  * exemption not used and solvedCount < goal}). 면제권을 쓴 멤버를 빼는 것은 별도 통지가 아니라 이 재확인으로 한다 (알려진 충돌 10번).
  *
+ * <p>지금 탈퇴한 멤버(그날 다시 가입하지 않음)도 뺀다. 탈퇴한 뒤 들어온 풀이는 그날에도 세지 않으니(R14) 알려도 결과를 바꿀 수 없다 (사람이 정함,
+ * 2026-11-27 S13 '탈퇴한 멤버에게 보내지 않음'). 판정은 그대로 그날까지 한다.
+ *
  * <p>쿼리는 그날의 맥락(스터디·규칙·기수·멤버십) 4와 멤버 일 1이다. 멤버 수와 상관없다.
  */
 @Component
@@ -60,8 +63,8 @@ public class ReminderTargets {
 	}
 
 	/**
-	 * 그 멤버가 그날 아직 '남음'인지. 발송 직전에 다시 확인한다 (5.8 '발송 직전 다시 확인', T16). 그새 풀었거나, 면제권을 썼거나, 그날 멤버가
-	 * 아니게 됐으면 거짓이다.
+	 * 그 멤버가 그날 아직 '남음'인지. 발송 직전에 다시 확인한다 (5.8 '발송 직전 다시 확인', T16). 그새 풀었거나, 면제권을 썼거나, 탈퇴했으면
+	 * 거짓이다.
 	 */
 	@Transactional(readOnly = true)
 	public boolean stillRemaining(long studyId, long userId, LocalDate studyDay) {
@@ -80,6 +83,9 @@ public class ReminderTargets {
 	}
 
 	private static boolean isRemaining(StudyDayContext day, RosterMember member, @Nullable MemberDayRow row) {
+		if (!member.active()) {
+			return false;
+		}
 		boolean exemptionUsed = row != null && row.exemptionUsedAt() != null;
 		return MemberDayProgress.evaluate(member.judged(), day.restDay(), day.dailyGoal(), solvedCount(row),
 				exemptionUsed)
