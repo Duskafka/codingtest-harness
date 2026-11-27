@@ -4,7 +4,7 @@
 |---|---|
 | 상태 | 확정 |
 | 관련 | OD-11, S13 (만들 것 1·5·6), ADR-008, `docs/spec/processes/5.08-deadline-reminder.md`, `docs/spec/security.md` 9.7 '보내는 요청 (SSRF 방지)', `docs/spec/infra.md` 9.6 'VAPID 개인키', `docs/spec/architecture.md` 기술 스택·6장 ④⑥ |
-| 제안 | 에이전트, PR (이 docs PR) |
+| 제안 | 에이전트, PR #34 |
 | 날짜 | 제안 2026-11-27 / 결정 2026-11-27 |
 
 <!-- 여기부터 '검증 방법'까지 에이전트가 써요 -->

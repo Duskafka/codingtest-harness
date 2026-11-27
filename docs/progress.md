@@ -9,7 +9,7 @@
 - 다음: 이 PR 병합. 같은 세션에서 S13 구현(`feat/S13-notification-webpush`)을 이어 함. 결정은 이 PR이 병합돼야 효력이 생기니(workflow 4장) S13 PR은 이 PR 뒤에 병합
 - 막힌 것: 없음
 - 참고: zerodep이 Java 25에서 실제로 도는지는 아직 확인 못 함. 받은 jar를 빌드 밖에서 실행하는 실험은 세션 권한 설정(자동 모드)이 막아서, S13 테스트(Gradle 의존성, JDK로 복호화·JWT 서명 검증)가 처음 확인함. Maven Central에 curl을 자주 보내면 Gradle도 429를 받으니 피하기
-- PR: (이 PR)
+- PR: #34
 
 ## 2026-11-27 S12 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #32(병합)의 결정과 받아들인 스펙 변경 제안을 문서에 반영. 쿼리 수(S12 수용 기준, 5.10 '주의할 것', architecture 6장 ⑤: 조회는 스터디·날짜마다 한 번, 멤버마다는 잠금·저장), 정산 72시간(R13, 3.4 기수 상태, 5.13 흐름도·주의할 것, data-model `seasons.settling_started_at`), 5.13 알려진 한계(기수 하나보다 긴 장애 뒤 배치 전 구간), data-model 멤버 일(`result_source` = `BATCH`, 비어 있던 `season_id`를 판정이 채움), api.md 4.4 '현황의 정산 표시'(`penaltyType`·`fineAmount`·`failCount`·`fineTotal`), 알려진 충돌 9번 다룸·11번 ModuleRules 반영
