@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-27 OD-11 웹 푸시 라이브러리 결정 제안서 009 (docs PR, S13 세션 안)
+- 한 일: 결정 제안서 009(후보 A zerodep-web-push-java 2.1.5, B Tink apps-webpush 1.15.0, C nl.martijndwars web-push 5.1.2, D JDK 직접 구현. 보관된 dev.blanke, Kotlin interaso는 표에서 뺌). Maven Central POM·배포 시각, GitHub 저장소 페이지, zerodep jar의 `javap`로 확인. 사람이 A를 골라 '결정'에 받아 적고 결정 대장(OD-11 확정, 제안서 목록 009, ADR-008 행), architecture 기술 스택 '웹 푸시' 행, 5.8 '만들 것', S13 결정 게이트 칸에 반영
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎). 같은 세션 시작 때 master 빌드 통과 (테스트 761개, 첫 시도는 Maven Central 429)
+- 사람이 정한 것 (2026-11-27, 지시 "S13(알림 기반과 웹 푸시)을 시작", 세션 선택지, 모두 Recommended): OD-11 흐름 "Proposal first, decide in-session (Recommended)", OD-11 "A. zerodep 2.1.5 (Recommended)"(VAPID 헤더 값과 암호문만 받고 요청은 JDK `HttpClient`로 보냄), RULE_CHANGED 방식 "Listener in the same transaction (Recommended)"(알려진 충돌 5번, S13 PR 판단 기록·스펙 변경 제안으로)
+- 다음: 이 PR 병합. 같은 세션에서 S13 구현(`feat/S13-notification-webpush`)을 이어 함. 결정은 이 PR이 병합돼야 효력이 생기니(workflow 4장) S13 PR은 이 PR 뒤에 병합
+- 막힌 것: 없음
+- 참고: zerodep이 Java 25에서 실제로 도는지는 아직 확인 못 함. 받은 jar를 빌드 밖에서 실행하는 실험은 세션 권한 설정(자동 모드)이 막아서, S13 테스트(Gradle 의존성, JDK로 복호화·JWT 서명 검증)가 처음 확인함. Maven Central에 curl을 자주 보내면 Gradle도 429를 받으니 피하기
+- PR: (이 PR)
+
 ## 2026-11-27 S12 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #32(병합)의 결정과 받아들인 스펙 변경 제안을 문서에 반영. 쿼리 수(S12 수용 기준, 5.10 '주의할 것', architecture 6장 ⑤: 조회는 스터디·날짜마다 한 번, 멤버마다는 잠금·저장), 정산 72시간(R13, 3.4 기수 상태, 5.13 흐름도·주의할 것, data-model `seasons.settling_started_at`), 5.13 알려진 한계(기수 하나보다 긴 장애 뒤 배치 전 구간), data-model 멤버 일(`result_source` = `BATCH`, 비어 있던 `season_id`를 판정이 채움), api.md 4.4 '현황의 정산 표시'(`penaltyType`·`fineAmount`·`failCount`·`fineTotal`), 알려진 충돌 9번 다룸·11번 ModuleRules 반영
 - 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
@@ -134,14 +143,7 @@
 - PR: #19
 
 ## 2026-11-24 S08 push 처리와 풀이 기록 (세션 1/1)
-- 한 일: 만들 것 1~7. V7 `solve_records`(표 + `parser_version`, CHECK, 부분 UNIQUE 둘), `github.push.PushEventHandler`(삭제·연결 없음·기본 브랜치 아님 → IGNORED), `verification.GithubSolveRecorder`(문제마다 CONFIRMED, 식별 못 한 커밋은 접두사 안 첫 후보로 확인 대기 하나, 인정 시각 = 수신함 `received_at`), 배정 연결 지점 `progress.StudyDayAssignment`(새 CONFIRMED마다 같은 트랜잭션, 구현은 아무것도 안 함), 네 이벤트 처리기 필수(`GithubEventHandlers#requireAllEvents`)
-- 상태: 빌드 통과 (테스트 500개). 구현 전 새 테스트 36개 중 34개 실패 확인. 조건 빼 보기 5개 모두 해당 테스트 실패. spec-reviewer '통과'(코드 지적 없음, PR 본문 항목은 반영)
-- 사람이 정한 것 (2026-11-24, 세션 선택지): 빈 `path_prefix` "레포 전체로 봄", 확인 대기 "커밋마다 하나", 브랜치 "feat/S08-push-to-solve" (모두 Recommended)
-- PR 열린 질문 결정 (2026-11-24, PR을 연 뒤 세션 선택지): 1 기본 브랜치는 "레포마다 기본 브랜치 (Recommended)"(처음 지시는 "기본 브랜치는 master로 지정해"였고, master만 인정하면 기본 브랜치가 main인 레포는 모두 무시된다고 다시 물어 고름) → 연결 행의 `default_branch`와 비교하는 지금 구현 그대로. 2 경로 접두사 설정은 "지금은 만들지 않음 (Recommended)" → 레포 전체를 보는 지금 동작 유지, 확인 대기가 많이 쌓이면 다시 정함. 코드 변경 없음
-- 다음: PR 검토(판단 기록 '꼭 봐 주세요': 배정 연결 지점, 테이블 제약·`raw_path` UNIQUE) → 병합 뒤 받아들인 스펙 변경 제안을 docs PR로 → S09(배정, 선행 S02·S05·S08. S05는 '결정 대기'라 선행 조건 확인 필요)
-- 막힌 것: 없음. 실제 push 확인은 H-02
-- 참고: S09는 `progress.PendingStudyDayAssignment`를 실제 배정으로 바꾸면 된다(`SolveToAssign`에 기록 ID·사용자·플랫폼 문자열·번호·인정 시각). S06 웹훅 테스트의 `RecordingPushHandler`는 이제 실제 push 처리기를 감싸고 기본은 PROCESSED라, 실제 처리기를 쓰려면 `passThrough()`. 배정 연결 지점은 `RecordingStudyDayAssignment`로 호출을 본다
-- PR: #18
+- 요약: V7 `solve_records`, `PushEventHandler`(삭제·연결 없음·기본 브랜치 아님 → IGNORED), `GithubSolveRecorder`(문제마다 CONFIRMED, 식별 못 한 커밋은 확인 대기 하나, 인정 시각 = 수신함 `received_at`), 배정 연결 지점 `StudyDayAssignment`. 사람이 정함: 빈 `path_prefix` "레포 전체", 확인 대기 "커밋마다 하나", 기본 브랜치 "레포마다", 경로 접두사 설정 "지금은 만들지 않음". 빌드 통과(500개). PR: #18
 
 ## 2026-11-24 S07 후속: 설치 삭제 시각 deleted_at (V6, 같은 세션)
 - 요약: V6(`github_installations.deleted_at` + V5 시절 DELETED 행 백필 + 상태 CHECK). 사람이 정함: '삭제된 지 30일' 기준 "deleted_at 컬럼", "새 후속 PR로 V6". 교훈: 작업 전·마이그레이션을 고치기 전에 `git fetch origin master`로 병합 여부를 본다(병합된 V5를 고친 커밋을 push했던 일). 빌드 통과(463개). PR: #16, 재발 방지 chore PR #17

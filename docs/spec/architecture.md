@@ -111,7 +111,7 @@ flowchart TD
 | 스케줄러 잠금 | ShedLock (JDBC) | 확정 (4.1). 첫 스케줄러 단계(S12)에서 추가 |
 | API 명세 | springdoc-openapi (Boot 4 지원 계열) | 확정 (4.4) |
 | 요청 수 제한 | Bucket4j 등 (9.7) | 구현 단계에서 판단 기록 |
-| 웹 푸시 | 라이브러리 미정 | OD-11 |
+| 웹 푸시 | zerodep-web-push-java 2.1.5 (VAPID 헤더·암호문만 받고 요청은 JDK `HttpClient`로 보냄) | 확정 (OD-11, 결정 제안서 009). S13에서 추가 |
 | Redis | 쓰지 않음 (계획서) | OD-03 |
 | QueryDSL | 쓰지 않음, 조회 전용 DTO 쿼리 (계획서) | OD-04 |
 | Lombok | 허용 목록: `@Getter`, `@NoArgsConstructor(access = PROTECTED)`, `@RequiredArgsConstructor`, `@Slf4j`, `@Builder`. 나머지는 `lombok.config`로 막음. 값 객체·DTO는 record | 확정 (OD-05, 결정 제안서 003). 첫 엔티티 단계에서 추가 |
