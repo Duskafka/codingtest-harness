@@ -7,6 +7,7 @@ import com.duskafka.studybot.notification.persistence.NotificationQueue;
 import com.duskafka.studybot.notification.persistence.NotificationQueue.ClaimedNotification;
 import com.duskafka.studybot.notification.persistence.NotificationRepository;
 import com.duskafka.studybot.progress.ReminderTargets;
+import com.duskafka.studybot.study.StudyAccess;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Duration;
@@ -26,7 +27,8 @@ import org.springframework.stereotype.Component;
  * <li>잠금이 만료된 발송 중 행을 발송 대기로 되돌린다 (발송 중에 서버가 죽은 경우).</li>
  * <li>보낼 시각이 된 발송 대기 행을 {@value #BATCH_SIZE}개까지 {@code FOR UPDATE SKIP LOCKED}로 가져와 발송 중(잠금 만료 시각)으로 먼저
  * 커밋한다 ({@link NotificationQueue#claim}). 서버가 여러 대여도 같은 행을 둘이 가져가지 않는다. 그래서 ShedLock을 쓰지 않는다.</li>
- * <li>행마다 트랜잭션 밖에서: 만료됐으면 EXPIRED, 마감 전 알림인데 그새 풀었거나 면제권을 썼으면 SKIPPED (T16), 아니면 채널로 보낸다.</li>
+ * <li>행마다 트랜잭션 밖에서: 만료됐으면 EXPIRED, 마감 전 알림인데 그새 풀었거나 면제권을 썼거나 탈퇴했으면 SKIPPED (T16), 그 밖의 웹 푸시도
+ * 받는 사람이 그새 탈퇴했으면 SKIPPED (사람이 정함 2026-11-27 '탈퇴한 멤버에게 보내지 않음'), 아니면 채널로 보낸다.</li>
  * <li>결과: 받음 → SENT, 영구 실패 → FAILED, 일시 실패 → 재시도 시각을 정하고 PENDING (시도 횟수 +1).</li>
  * </ol>
  *
@@ -37,8 +39,9 @@ import org.springframework.stereotype.Component;
  * <p>재시도 백오프: {@code Retry-After}가 있으면 그만큼(1초~1시간), 없으면 30초 × 2^(시도 횟수 − 1), 최대 30분이다. 따로 횟수 한도는 두지
  * 않는다. 만료 시각이 지나면 EXPIRED가 되기 때문이다 (S13 PR 판단 기록).
  *
- * <p>지표: {@code studybot.notification.dispatched}(결과별 수, {@code result} 태그: SENT·FAILED·SKIPPED·EXPIRED·RETRY). 발송 성공률은
- * SENT ÷ (SENT + FAILED)다 (metrics.md 10.2).
+ * <p>지표: {@code studybot.notification.dispatched}(결과별 수, {@code result} 태그: SENT·FAILED·SKIPPED·EXPIRED·RETRY, {@code reason}
+ * 태그: 실패·재시도 까닭 또는 {@code none}). 발송 성공률은 SENT ÷ (SENT + FAILED)다 (metrics.md 10.2). 구독이 없는 사용자의 실패는
+ * {@code reason=NO_SUBSCRIPTION}이라 따로 뺄 수 있다.
  */
 @Slf4j
 @Component
@@ -60,6 +63,8 @@ public class NotificationDispatcher {
 
 	private final ReminderTargets reminderTargets;
 
+	private final StudyAccess studyAccess;
+
 	private final Map<NotificationChannel, NotificationSender> senders;
 
 	private final MeterRegistry meterRegistry;
@@ -67,10 +72,12 @@ public class NotificationDispatcher {
 	private final Clock clock;
 
 	NotificationDispatcher(NotificationQueue queue, NotificationRepository notifications,
-			ReminderTargets reminderTargets, List<NotificationSender> senders, MeterRegistry meterRegistry, Clock clock) {
+			ReminderTargets reminderTargets, StudyAccess studyAccess, List<NotificationSender> senders,
+			MeterRegistry meterRegistry, Clock clock) {
 		this.queue = queue;
 		this.notifications = notifications;
 		this.reminderTargets = reminderTargets;
+		this.studyAccess = studyAccess;
 		this.senders = new EnumMap<>(NotificationChannel.class);
 		for (NotificationSender sender : senders) {
 			if (this.senders.put(sender.channel(), sender) != null) {
@@ -119,7 +126,7 @@ public class NotificationDispatcher {
 		}
 		SendResult result;
 		try {
-			if (isReminder(notification) && !stillRemaining(notification)) {
+			if (!stillWanted(notification)) {
 				finish(notification, NotificationStatus.SKIPPED, 0, null, now);
 				return;
 			}
@@ -136,17 +143,17 @@ public class NotificationDispatcher {
 		}
 	}
 
-	private static boolean isReminder(ClaimedNotification notification) {
-		return NotificationType.REMINDER.name().equals(notification.type());
-	}
-
-	/** 마감 전 알림을 보내기 직전에 다시 확인한다 (5.8 '발송 직전 다시 확인', T16). */
-	private boolean stillRemaining(ClaimedNotification notification) {
+	/**
+	 * 보내기 직전에 아직 보낼 까닭이 있는지 다시 확인한다 (5.8 '발송 직전 다시 확인'). 마감 전 알림은 그날 아직 '남음'인지(T16, 탈퇴 포함),
+	 * 사람에게 가는 그 밖의 알림은 받는 사람이 아직 멤버인지 본다. 받는 사람이 없는 알림(스터디 채널, S14)은 그대로 보낸다.
+	 */
+	private boolean stillWanted(ClaimedNotification notification) {
 		Long userId = notification.userId();
-		if (userId == null || notification.studyDay() == null) {
-			return false;
+		if (NotificationType.REMINDER.name().equals(notification.type())) {
+			return userId != null && notification.studyDay() != null
+					&& this.reminderTargets.stillRemaining(notification.studyId(), userId, notification.studyDay());
 		}
-		return this.reminderTargets.stillRemaining(notification.studyId(), userId, notification.studyDay());
+		return userId == null || this.studyAccess.isActiveMember(notification.studyId(), userId);
 	}
 
 	private SendResult send(ClaimedNotification notification, Instant now) {
@@ -164,7 +171,7 @@ public class NotificationDispatcher {
 			log.warn("다른 발송기가 가져가 결과를 남기지 않았어요: notification={}", notification.id());
 			return;
 		}
-		count(status.name());
+		count(status.name(), lastError);
 	}
 
 	private void retryLater(ClaimedNotification notification, SendResult.Retry retry, Instant now) {
@@ -173,7 +180,7 @@ public class NotificationDispatcher {
 			log.warn("다른 발송기가 가져가 재시도 시각을 남기지 않았어요: notification={}", notification.id());
 			return;
 		}
-		count("RETRY");
+		count("RETRY", retry.reason());
 	}
 
 	/** {@code attempt}번째 시도가 실패한 뒤 기다릴 시간: 30초 × 2^(attempt − 1), 최대 30분. */
@@ -183,8 +190,11 @@ public class NotificationDispatcher {
 		return delay.compareTo(MAX_BACKOFF) > 0 ? MAX_BACKOFF : delay;
 	}
 
-	private void count(String result) {
-		this.meterRegistry.counter("studybot.notification.dispatched", "result", result).increment();
+	/** 결과와 실패 까닭(없으면 {@code none})을 태그로 센다. 태그 키는 늘 같다. */
+	private void count(String result, @Nullable String reason) {
+		this.meterRegistry
+			.counter("studybot.notification.dispatched", "result", result, "reason", reason == null ? "none" : reason)
+			.increment();
 	}
 
 }
