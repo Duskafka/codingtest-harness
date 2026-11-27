@@ -9,7 +9,7 @@
 - 다음: PR 검토(판단 기록 '꼭 봐 주세요': 현황 응답 모양, `result_source` 값, ShedLock 시간) → 열린 질문 1(기수 하나보다 긴 장애 뒤 첫 배치 전 몇 분) 결정 → 병합 → 받아들인 스펙 변경 제안을 docs PR로(쿼리 수 문구 세 곳, data-model `settling_started_at`·`result_source`, R13·5.13·3.4 정산 72시간, api.md 현황 필드, 알려진 충돌 9·11번) → S13 또는 S14
 - 막힌 것: 없음
 - 참고: 판정 테스트는 `DailyJudgmentBatch#judgeStudy`로 스터디 하나씩 돌린다. 모든 스터디를 도는 `run()`·ShedLock 진입점은 공유 DB에 쌓인 2026년 스터디를 피하려고 2025년 날짜로 본다(멤버십 가입 시각도 그해로). 테스트 설정은 `studybot.judgment.cron: "-"`. S13 알림 생성도 `common.scheduling`과 `@SchedulerLock`을 쓰면 된다. S14 결과 알림은 판정이 남긴 `result`·`judged_at`과 `last_judged_day`로 DB에서 다시 맞출 수 있다(judgment는 notification을 부르지 않음). 정산 중은 `last_judged_day`가 끝 날짜에 닿을 때, 종료는 `settling_started_at + 72h` 뒤 첫 배치. Maven Central 429가 잦으니 의존성을 더하면 일찍 받아 두기
-- PR: #
+- PR: #32
 
 ## 2026-11-26 S11 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #29(병합)의 결정과 받아들인 스펙 변경 제안을 문서에 반영. R7(그 스터디의 고른 날만, 유예 중 전날은 R4 전날 후보일 때만, '승인 필요'는 승인 API 전까지 409, 하루 5건에 철회 포함, 철회 때 같은 날 다른 풀이로 바꿔 끼움·다음 날 유예 안 같은 문제 풀이가 있으면 철회 불가), 5.6(만들 것·주의할 것, 수동 인증 비율은 그날이 속한 기수·방장만), api.md 4.4(승인 API 세 줄 '미정', 수동 인증·면제권 요청·응답, 현황 `exemptionsRemaining`·`selfReportRatio`, 오류 `code` 목록), architecture 알려진 충돌 6번, data-model '수동 인증 테이블' 메모·인덱스, S11 만들 것 2·4
