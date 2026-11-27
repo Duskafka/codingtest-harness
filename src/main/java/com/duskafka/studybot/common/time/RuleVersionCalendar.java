@@ -132,6 +132,11 @@ public final class RuleVersionCalendar {
 		return graceEndOf(studyDay).plus(StudyCalendar.JUDGE_MARGIN);
 	}
 
+	/** 마감 전 알림 시각 (S13). 테스트를 먼저 옮기려는 껍데기다. */
+	public Instant reminderAt(LocalDate studyDay) {
+		throw new UnsupportedOperationException("S13");
+	}
+
 	/** 시각이 속한 스터디 일의 다음 스터디 일. 가입하면 이날부터 판정하고(R14), 규칙 변경은 이날부터 적용한다(R2). */
 	public LocalDate nextStudyDayOf(Instant instant) {
 		return studyDayOf(instant).plusDays(1);

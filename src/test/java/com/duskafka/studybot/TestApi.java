@@ -92,6 +92,13 @@ public final class TestApi {
 			.exchange();
 	}
 
+	/** 로그인하지 않은 JSON POST (CSRF 포함). */
+	public MvcTestResult postJsonAnonymous(String uri, String body, Object... uriVariables) {
+		return withCsrf(this.mvc.post().uri(uri, uriVariables)).contentType(MediaType.APPLICATION_JSON)
+			.content(body)
+			.exchange();
+	}
+
 	public static JsonNode json(MvcTestResult result) {
 		try {
 			return JSON.readTree(result.getResponse().getContentAsString(StandardCharsets.UTF_8));
