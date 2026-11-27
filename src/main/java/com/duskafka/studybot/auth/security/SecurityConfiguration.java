@@ -46,6 +46,9 @@ public class SecurityConfiguration {
 	/** 로그인 없이 볼 수 있는 API: 초대 미리보기 {@code GET /api/invitations/{token}} (S05). */
 	static final String PUBLIC_INVITATION_PREVIEW = "/api/invitations/*";
 
+	/** 로그인 없이 볼 수 있는 API: 웹 푸시 VAPID 공개키 {@code GET /api/push/vapid-public-key} (S13). */
+	static final String PUBLIC_VAPID_KEY = "/api/push/vapid-public-key";
+
 	/** GitHub App Setup URL (S07). 로그인이 필요한 화면 경로다. */
 	static final String GITHUB_SETUP = "/github/setup";
 
@@ -69,6 +72,9 @@ public class SecurityConfiguration {
 		http.authorizeHttpRequests(authorize -> authorize
 			// 초대 미리보기는 공개다 (api.md 4.4, S05). 경로 한 칸만 열어서 수락(/accept, 로그인)은 아래 규칙을 따른다.
 			.requestMatchers(HttpMethod.GET, PUBLIC_INVITATION_PREVIEW)
+			.permitAll()
+			// 웹 푸시 VAPID 공개키는 공개다 (api.md 4.4, S13). 서비스 워커가 구독하기 전에 읽는다.
+			.requestMatchers(HttpMethod.GET, PUBLIC_VAPID_KEY)
 			.permitAll()
 			.requestMatchers("/api/**")
 			.authenticated()

@@ -31,6 +31,12 @@ spring:
           github:
             client-id: ${GITHUB_APP_CLIENT_ID}
             client-secret: ${GITHUB_APP_CLIENT_SECRET}
+  task:
+    scheduling:
+      pool:
+        # 스케줄 작업(판정 배치, 알림 생성, 알림 발송)이 스레드 하나를 나눠 쓰지 않게 한다. 기본은 1이라 웹 푸시 발송이 느리면
+        # 판정 배치가 밀린다 (architecture.md 6장 ⑥ '외부 의존 격리', S13 PR 판단 기록).
+        size: 4
   web:
     resources:
       # API 서버는 정적 파일을 주지 않는다. 프론트 정적 파일은 Nginx가 준다 (docs/spec/architecture.md 4.1).
@@ -87,3 +93,27 @@ studybot:
 # 판정 시각이 지난 날만 판정하니(R9) 주기는 판정이 얼마나 늦어질 수 있는지만 정한다. "-"면 끈다(Spring 비활성 cron).
   judgment:
     cron: "0 */5 * * * *"
+# 마감 전 알림 (S13, processes 5.8). 생성은 1분마다(ShedLock, notification.reminder.ReminderSchedule), 발송은 5초마다
+# (FOR UPDATE SKIP LOCKED라 ShedLock 없음, notification.dispatch.DispatchSchedule). "-"면 끈다.
+  notification:
+    reminder:
+      cron: "0 * * * * *"
+    dispatch:
+      cron: "*/5 * * * * *"
+# 웹 푸시 (S13, OD-11 결정 제안서 009). notification.webpush.WebPushProperties
+  webpush:
+    vapid:
+      # VAPID 키는 서버 .env의 환경 변수로만 받는다 (infra.md 9.6 'VAPID 개인키', 사람 할 일 H-04). 기본값이 없어 없으면 기동이 실패한다.
+      # 공개키는 압축하지 않은 P-256 점(65바이트), 개인키는 32바이트 스칼라, 둘 다 base64url이다. 한 번 만들면 바꾸지 않는다(바꾸면 모든 구독 무효).
+      public-key: ${WEBPUSH_VAPID_PUBLIC_KEY}
+      private-key: ${WEBPUSH_VAPID_PRIVATE_KEY}
+      # JWT sub. 운영자 연락처(mailto: 또는 https:)라 레포에 적지 않고 환경 변수로 받는다. 비밀값은 아니다.
+      subject: ${WEBPUSH_VAPID_SUBJECT}
+    # 받을 구독 주소의 호스트 (security.md 9.7, T28). "*."는 그 아래 호스트만. 근거는 S13 PR 판단 기록:
+    # Chrome·Edge(Windows 밖)·Samsung Internet 등은 FCM, Firefox는 Mozilla autopush, Safari는 APNs(*.push.apple.com),
+    # Windows의 Edge는 WNS(*.notify.windows.com).
+    allowed-hosts:
+      - fcm.googleapis.com
+      - updates.push.services.mozilla.com
+      - "*.push.apple.com"
+      - "*.notify.windows.com"

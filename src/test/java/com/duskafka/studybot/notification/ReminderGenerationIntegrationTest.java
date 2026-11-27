@@ -150,6 +150,23 @@ class ReminderGenerationIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("혼자 쓰기 스터디는 공유가 없어 공유 유도를 만들지 않는다 (R15). 마감 전 알림은 만든다")
+	void soloStudyHasNoSharePrompt() {
+		long alice = rows.newUser("s13-solo");
+		TestStudy study = rows.standardStudy(alice);
+		jdbc.sql("delete from studybot.memberships where study_id = :studyId").param("studyId", study.studyId()).update();
+		rows.joinAsOwner(study.studyId(), alice, NOV_1);
+		jdbc.sql("update studybot.studies set mode = 'SOLO' where id = :id").param("id", study.studyId()).update();
+		clock.setInstant(seoul(NOV_20, 22, 0));
+
+		generator.remindStudy(study.studyId());
+
+		assertThat(notifications.ofStudy(study.studyId(), "REMINDER")).extracting(NotificationRow::userId)
+			.containsExactly(alice);
+		assertThat(notifications.ofStudy(study.studyId(), "SHARE_PROMPT")).isEmpty();
+	}
+
+	@Test
 	@DisplayName("알림 시각 전에는 만들지 않고 진행 지점도 그대로다")
 	void nothingBeforeReminderTime() {
 		long alice = rows.newUser("s13-early");
