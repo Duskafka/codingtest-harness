@@ -97,13 +97,15 @@ class RuleChangeNotificationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("알림 행은 규칙 변경과 같은 트랜잭션에 들어간다: 규칙 변경이 롤백되면 알림도 남지 않는다")
+	@DisplayName("알림 행은 규칙 변경과 같은 트랜잭션에 들어간다: 커밋 전 같은 트랜잭션에서 이미 보이고, 규칙 변경이 롤백되면 알림도 남지 않는다")
 	void rolledBackChangeLeavesNoNotification() {
 		long before = latestRuleId();
 		TransactionTemplate transaction = new TransactionTemplate(transactionManager);
 
 		transaction.executeWithoutResult(status -> {
 			assertThat(putRules(rules(Map.of("dailyGoal", 2)))).hasStatus(HttpStatus.OK);
+			// 커밋 뒤 이벤트였다면 아직 없다. 같은 트랜잭션(같은 연결)이라 커밋 전에 보인다.
+			assertThat(notifications.ofStudy(studyId, "RULE_CHANGED")).hasSize(1);
 			status.setRollbackOnly();
 		});
 
