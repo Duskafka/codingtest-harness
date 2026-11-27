@@ -41,7 +41,8 @@ final class ModuleRules {
 			Map.entry("github", Set.of("verification", "common", "auth")),
 			Map.entry("verification", Set.of("progress", "common", "auth")),
 			Map.entry("progress", Set.of("study", "common", "auth")),
-			Map.entry("judgment", Set.of("progress", "ledger", "common", "auth")),
+			// judgment → study: 4.2에 더한 화살표 (사람이 정함 2026-11-25, PR #22, 알려진 충돌 11번). S12 판정 배치가 쓴다
+			Map.entry("judgment", Set.of("progress", "study", "ledger", "common", "auth")),
 			Map.entry("ledger", Set.of("common", "auth")),
 			Map.entry("appeal", Set.of("judgment", "common", "auth")),
 			Map.entry("notification", Set.of("progress", "study", "common", "auth")),

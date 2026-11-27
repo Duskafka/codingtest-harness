@@ -408,12 +408,13 @@ class DailyJudgmentIntegrationTest {
 		long studyId = rows.newStudy(SEOUL);
 		rows.addRule(studyId, mar1, 1, LocalTime.MIDNIGHT, 30, "");
 		judgments.insertSeason(studyId, 1, mar1, LocalDate.of(2025, 3, 28), "ACTIVE");
-		rows.join(studyId, alice, mar1);
+		rows.join(studyId, alice, seoul(LocalDate.of(2025, 2, 1), 9, 0), mar1);
 		clock.setInstant(seoul(LocalDate.of(2025, 3, 3), 0, 40));
 
 		JudgmentSummary summary = batch.run();
 
-		assertThat(judgments.judgedRows(studyId, alice)).extracting(Judged::studyDay).containsExactly(mar1, mar2);
+		assertThat(judgments.judgedRows(studyId, alice)).extracting(Judged::studyDay, Judged::result)
+			.containsExactly(tuple(mar1, "FAIL"), tuple(mar2, "FAIL"));
 		assertThat(judgments.lastJudgedDay(studyId)).isEqualTo(mar2);
 		assertThat(judgments.lastJudgedDay(brokenStudy)).as("규칙 버전이 없는 스터디").isNull();
 		assertThat(summary.judgedDays()).isGreaterThanOrEqualTo(2);

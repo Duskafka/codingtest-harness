@@ -72,7 +72,7 @@ class JudgmentScheduleLockIntegrationTest {
 		long studyId = rows.newStudy(SEOUL);
 		rows.addRule(studyId, MAR_1, 1, LocalTime.MIDNIGHT, 30, "");
 		judgments.insertSeason(studyId, 1, MAR_1, LocalDate.of(2025, 3, 28), "ACTIVE");
-		rows.join(studyId, alice, MAR_1);
+		rows.join(studyId, alice, seoul(LocalDate.of(2025, 2, 1), 9, 0), MAR_1);
 		judgments.setLastJudgedDay(studyId, LocalDate.of(2025, 3, 8));
 		clock.setInstant(seoul(LocalDate.of(2025, 3, 10), 0, 40));
 
@@ -107,6 +107,7 @@ class JudgmentScheduleLockIntegrationTest {
 			executor.shutdownNow();
 		}
 		assertThat(judgments.lastJudgedDay(studyId)).as("첫 실행만 판정했다").isEqualTo(LocalDate.of(2025, 3, 9));
+		assertThat(judgments.judged(studyId, alice, LocalDate.of(2025, 3, 9)).orElseThrow().result()).isEqualTo("FAIL");
 	}
 
 	private void deleteLock() {

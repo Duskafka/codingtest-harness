@@ -34,7 +34,8 @@ final class JudgmentRows {
 		return jdbc.sql("select last_judged_day from studybot.studies where id = :id")
 			.param("id", studyId)
 			.query((rs, rowNum) -> rs.getObject("last_judged_day", LocalDate.class))
-			.single();
+			.list()
+			.getFirst();
 	}
 
 	/** 멤버 일의 판정 값. 행이 없으면 빈 값. */
