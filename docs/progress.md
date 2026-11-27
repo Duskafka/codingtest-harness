@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-27 S13 알림 기반과 웹 푸시 (세션 1/1)
+- 한 일: 만들 것 1~7. 1(결정 제안서 009)은 docs PR #34. V11(`notifications`, `push_subscriptions`). `RuleVersionCalendar#reminderAt`(그날 규칙). study `ReminderDays`(지금 시각의 스터디 일, 진행 지점·알림 시각)·`StudyRulesChanged`(새 버전일 때 같은 트랜잭션에서 발행). progress `ReminderTargets`(현황과 같은 '남음' 계산, 발송 직전 재확인). notification `outbox`(dedupe_key, payload `{type,title,body,url}`), `reminder`(1분·ShedLock, 스터디마다 트랜잭션, SOLO는 공유 유도 없음 R15), `rule.RuleChangeNotifier`(같은 트랜잭션 리스너), `dispatch`(5초·SKIP LOCKED, 20개·잠금 2분, 잠금 만료 시각이 토큰, 백오프 30초×2^(n−1)·최대 30분, Retry-After), `webpush`(zerodep으로 VAPID·aes128gcm만, JDK HttpClient로 보냄, VAPID 키 기동 검사, 허용 도메인), 구독 API 3개, 지표, 스케줄러 스레드 4개
+- 상태: 빌드 통과 (테스트 815개). 구현 전 새 테스트 53개 중 47개 실패(통과 6개는 아무것도 안 해도 참). 조건 빼 보기 28개 모두 해당 테스트 실패(같은 트랜잭션은 커밋 전에 보이는지 테스트를 더해 가름, 혼자 쓰기 테스트는 구현 뒤 더해 조건 빼 보기로 실패 확인). zerodep이 Java 25에서 만든 요청을 테스트가 JDK로 복호화·VAPID 서명 검증해 통과
+- 사람이 정한 것 (2026-11-27, 지시 "S13(알림 기반과 웹 푸시)을 시작", 세션 선택지, 모두 Recommended): OD-11 흐름 "Proposal first, decide in-session", OD-11 "A. zerodep 2.1.5", RULE_CHANGED "Listener in the same transaction"
+- 다음: #34 병합 → 이 PR 검토(판단 기록 '꼭 봐 주세요': 구독 API·payload·RULE_CHANGED 방식·허용 도메인·VAPID 키·V11) → 병합(progress 충돌은 두 기록 모두 남김) → 받아들인 스펙 변경 제안을 docs PR로(4.2 같은 트랜잭션 리스너, data-model, api.md, 9.7 도메인, 5.8·pseudocode, infra 9.6 VAPID 형식·subject, glossary 채널) → S14
+- 막힌 것: 없음. 실제 기기 수신 확인은 H-04(운영 VAPID 키, `WEBPUSH_VAPID_SUBJECT` 포함)와 S16 뒤
+- 참고: S14는 `NotificationOutbox#addWebPush`처럼 디스코드용 넣기를 더하고 `NotificationSender`(채널 DISCORD)를 구현하면 발송기가 그대로 보낸다(지금 DISCORD 행은 `NO_SENDER`로 FAILED). 결과 알림도 같은 트랜잭션 리스너로 하면 알려진 충돌 2번이 같은 방식(PR 열린 질문). S15는 `notifications`·`push_subscriptions`를 사용자보다 먼저 지워야 한다(FK). 발송기 테스트는 `NotificationRows#expireLeftovers`로 다른 테스트의 발송 대기 행을 치운다. `@IntegrationTest` 밖에서 앱을 띄우는 테스트는 VAPID 테스트 키를 넣어야 뜬다(`WebPushTestKeys`)
+- PR: (이 PR)
+
 ## 2026-11-27 S12 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #32(병합)의 결정과 받아들인 스펙 변경 제안을 문서에 반영. 쿼리 수(S12 수용 기준, 5.10 '주의할 것', architecture 6장 ⑤: 조회는 스터디·날짜마다 한 번, 멤버마다는 잠금·저장), 정산 72시간(R13, 3.4 기수 상태, 5.13 흐름도·주의할 것, data-model `seasons.settling_started_at`), 5.13 알려진 한계(기수 하나보다 긴 장애 뒤 배치 전 구간), data-model 멤버 일(`result_source` = `BATCH`, 비어 있던 `season_id`를 판정이 채움), api.md 4.4 '현황의 정산 표시'(`penaltyType`·`fineAmount`·`failCount`·`fineTotal`), 알려진 충돌 9번 다룸·11번 ModuleRules 반영
 - 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
@@ -134,14 +143,7 @@
 - PR: #19
 
 ## 2026-11-24 S08 push 처리와 풀이 기록 (세션 1/1)
-- 한 일: 만들 것 1~7. V7 `solve_records`(표 + `parser_version`, CHECK, 부분 UNIQUE 둘), `github.push.PushEventHandler`(삭제·연결 없음·기본 브랜치 아님 → IGNORED), `verification.GithubSolveRecorder`(문제마다 CONFIRMED, 식별 못 한 커밋은 접두사 안 첫 후보로 확인 대기 하나, 인정 시각 = 수신함 `received_at`), 배정 연결 지점 `progress.StudyDayAssignment`(새 CONFIRMED마다 같은 트랜잭션, 구현은 아무것도 안 함), 네 이벤트 처리기 필수(`GithubEventHandlers#requireAllEvents`)
-- 상태: 빌드 통과 (테스트 500개). 구현 전 새 테스트 36개 중 34개 실패 확인. 조건 빼 보기 5개 모두 해당 테스트 실패. spec-reviewer '통과'(코드 지적 없음, PR 본문 항목은 반영)
-- 사람이 정한 것 (2026-11-24, 세션 선택지): 빈 `path_prefix` "레포 전체로 봄", 확인 대기 "커밋마다 하나", 브랜치 "feat/S08-push-to-solve" (모두 Recommended)
-- PR 열린 질문 결정 (2026-11-24, PR을 연 뒤 세션 선택지): 1 기본 브랜치는 "레포마다 기본 브랜치 (Recommended)"(처음 지시는 "기본 브랜치는 master로 지정해"였고, master만 인정하면 기본 브랜치가 main인 레포는 모두 무시된다고 다시 물어 고름) → 연결 행의 `default_branch`와 비교하는 지금 구현 그대로. 2 경로 접두사 설정은 "지금은 만들지 않음 (Recommended)" → 레포 전체를 보는 지금 동작 유지, 확인 대기가 많이 쌓이면 다시 정함. 코드 변경 없음
-- 다음: PR 검토(판단 기록 '꼭 봐 주세요': 배정 연결 지점, 테이블 제약·`raw_path` UNIQUE) → 병합 뒤 받아들인 스펙 변경 제안을 docs PR로 → S09(배정, 선행 S02·S05·S08. S05는 '결정 대기'라 선행 조건 확인 필요)
-- 막힌 것: 없음. 실제 push 확인은 H-02
-- 참고: S09는 `progress.PendingStudyDayAssignment`를 실제 배정으로 바꾸면 된다(`SolveToAssign`에 기록 ID·사용자·플랫폼 문자열·번호·인정 시각). S06 웹훅 테스트의 `RecordingPushHandler`는 이제 실제 push 처리기를 감싸고 기본은 PROCESSED라, 실제 처리기를 쓰려면 `passThrough()`. 배정 연결 지점은 `RecordingStudyDayAssignment`로 호출을 본다
-- PR: #18
+- 요약: V7 `solve_records`, `PushEventHandler`(삭제·연결 없음·기본 브랜치 아님 → IGNORED), `GithubSolveRecorder`(문제마다 CONFIRMED, 식별 못 한 커밋은 확인 대기 하나, 인정 시각 = 수신함 `received_at`), 배정 연결 지점 `StudyDayAssignment`. 사람이 정함: 빈 `path_prefix` "레포 전체", 확인 대기 "커밋마다 하나", 기본 브랜치 "레포마다", 경로 접두사 설정 "지금은 만들지 않음". 빌드 통과(500개). PR: #18
 
 ## 2026-11-24 S07 후속: 설치 삭제 시각 deleted_at (V6, 같은 세션)
 - 요약: V6(`github_installations.deleted_at` + V5 시절 DELETED 행 백필 + 상태 CHECK). 사람이 정함: '삭제된 지 30일' 기준 "deleted_at 컬럼", "새 후속 PR로 V6". 교훈: 작업 전·마이그레이션을 고치기 전에 `git fetch origin master`로 병합 여부를 본다(병합된 V5를 고친 커밋을 push했던 일). 빌드 통과(463개). PR: #16, 재발 방지 chore PR #17
