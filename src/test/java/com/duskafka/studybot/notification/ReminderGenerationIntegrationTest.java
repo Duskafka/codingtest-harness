@@ -131,7 +131,7 @@ class ReminderGenerationIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("그날 탈퇴한 멤버는 알림 대상도 공유 유도의 'N명'도 아니다 (사람이 정함 2026-11-27 '탈퇴한 멤버에게 보내지 않음'. 판정은 그날까지)")
+	@DisplayName("그날 탈퇴한 멤버는 알림 대상도 공유 유도의 'N명'도 아니다 (사람이 정함 2026-11-27 '탈퇴한 멤버에게 보내지 않음'. 그날 판정은 DailyJudgmentIntegrationTest가 봄)")
 	void memberWhoLeftThatDayIsNotReminded() {
 		long alice = rows.newUser("s13-today-stay");
 		long bob = rows.newUser("s13-today-left");

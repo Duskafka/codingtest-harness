@@ -33,7 +33,8 @@ public record StudyDayContext(long studyId, LocalDate studyDay, LocalDate today,
 	 * @param userId 사용자 ID
 	 * @param role 역할 (같은 날 다시 가입했으면 나중 멤버십의 역할)
 	 * @param judged 이 사용자를 그날 판정하는지 (R9 '판정 대상': 판정 시작일 이후, 탈퇴한 날까지, 기수 안)
-	 * @param active 지금 탈퇴하지 않은 멤버십이 있는지 (같은 날 다시 가입했으면 참). 마감 전 알림은 탈퇴한 멤버에게 보내지 않는다 (S13, 사람이 정함
+	 * @param active 그날 멤버였던 멤버십 중 지금 탈퇴하지 않은 것이 있는지 (같은 날 다시 가입했으면 참). 지난 날을 읽으면 그날 뒤에 다시 가입한
+	 * 멤버십은 보지 않는다. 마감 전 알림은 탈퇴한 멤버에게 보내지 않는다 (S13, 사람이 정함
 	 * 2026-11-27). 판정은 이 값을 보지 않는다 (탈퇴한 날까지 판정, R14)
 	 */
 	public record RosterMember(long userId, MembershipRole role, boolean judged, boolean active) {

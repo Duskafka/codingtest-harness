@@ -232,7 +232,7 @@ class NotificationDispatchIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("결과는 가져갈 때 정한 잠금 만료 시각이 같을 때만 남는다: 잠금이 만료돼 다른 발송기가 다시 가져간 행을 옛 발송기가 덮어쓰지 않는다")
+	@DisplayName("결과는 가져갈 때 정한 잠금 만료 시각이 같을 때만 남는다: 잠금이 만료돼 다른 발송기가 다시 가져간 행을 옛 발송기가 덮어쓰지 않는다 (5.8 '정확히 한 번은 불가능', pseudocode '발송')")
 	void staleTokenCannotOverwriteReclaimedRow() {
 		long alice = rows.newUser("s13-token");
 		TestStudy study = rows.standardStudy(alice);
@@ -256,7 +256,7 @@ class NotificationDispatchIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("시계에 나노초가 있어도 결과를 남긴다 (잠금 만료 시각 토큰이 DB 정밀도인 마이크로초와 어긋나지 않음)")
+	@DisplayName("시계에 나노초가 있어도 결과를 남긴다 (잠금 만료 시각 토큰이 DB 정밀도인 마이크로초와 어긋나지 않음. 방어용 확인)")
 	void subMicrosecondClockStillRecordsResult() {
 		Reminded reminded = remindedAlice("s13-nanos");
 		clock.setInstant(seoul(NOV_20, 22, 0).plusNanos(123_456_789));
@@ -264,6 +264,22 @@ class NotificationDispatchIntegrationTest {
 		dispatcher.run();
 
 		assertThat(notifications.byId(reminded.notificationId()).status()).isEqualTo("SENT");
+	}
+
+	@Test
+	@DisplayName("공유 유도도 받는 사람이 그새 탈퇴했으면(방장을 위임하고 탈퇴한 옛 방장) SKIPPED다 (에이전트 판단, 사람이 정한 '탈퇴한 멤버에게 보내지 않음'의 연장)")
+	void sharePromptToMemberWhoLeftIsSkipped() {
+		long alice = rows.newUser("s13-left-owner");
+		TestStudy study = rows.standardStudy(alice);
+		Instant now = seoul(NOV_20, 22, 0);
+		clock.setInstant(now);
+		long id = notifications.insertPending("SHARE_PROMPT", study.studyId(), alice, NOV_20, "{}", now,
+				seoul(NOV_21, 0, 0));
+		rows.leave(study.membershipId(), seoul(NOV_20, 21, 0));
+
+		dispatcher.run();
+
+		assertThat(notifications.byId(id).status()).isEqualTo("SKIPPED");
 	}
 
 }

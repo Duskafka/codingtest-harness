@@ -91,7 +91,7 @@ class RuleChangeNotificationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("1기 시작 전에 지금 규칙과 같게 보내면(버전은 다시 저장되지만 내용이 같음) 알림이 없다")
+	@DisplayName("1기 시작 전에 지금 규칙과 같게 보내면(버전은 다시 저장되지만 내용이 같음) 알림이 없다 (S13 만들 것 4, R2 '바뀌면 알림', S13 PR 판단 기록)")
 	void sameRulesBeforeFirstSeasonMakeNoNotification() {
 		setClock(CREATED_AT);
 
@@ -101,7 +101,7 @@ class RuleChangeNotificationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
-	@DisplayName("같은 예정 변경을 다시 보내면(예정 버전이 새 ID로 다시 저장되지만 내용이 같음) 알림을 또 만들지 않는다")
+	@DisplayName("같은 예정 변경을 다시 보내면(예정 버전이 새 ID로 다시 저장되지만 내용이 같음) 알림을 또 만들지 않는다 (S13 만들 것 4, S13 PR 판단 기록)")
 	void sameUpcomingChangeTwiceMakesOneNotification() {
 		assertThat(putRules(rules(Map.of("dailyGoal", 2)))).hasStatus(HttpStatus.OK);
 		assertThat(putRules(rules(Map.of("dailyGoal", 2)))).hasStatus(HttpStatus.OK);

@@ -44,8 +44,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>버전 행은 그날부터의 규칙 전체를 담는다(스냅샷). 테이블은 그대로다 ({@code (study_id, effective_from)} UNIQUE).
  * 같은 스터디의 규칙 변경·수락·위임은 스터디 행 잠금으로 차례로 실행된다 (결정 제안서 006).
  *
- * <p>새 버전을 만들었으면 같은 트랜잭션 안에서 {@link StudyRulesChanged}를 발행한다. notification이 같은 트랜잭션에서 멤버에게 알림을
- * 넣는다 (S13 만들 것 4, 알려진 충돌 5번, 사람이 정함 2026-11-27 "Listener in the same transaction (Recommended)").
+ * <p>예정된 규칙이 실제로 달라졌으면(바꾸기 전과 적용 예정 구간의 적용 시작일·규칙 값이 다르면) 같은 트랜잭션 안에서 {@link StudyRulesChanged}를
+ * 발행한다. notification이 같은 트랜잭션에서 멤버에게 알림을 넣는다 (S13 만들 것 4, 알려진 충돌 5번, 사람이 정함 2026-11-27 "Listener in the same transaction (Recommended)").
  */
 @Service
 @RequiredArgsConstructor
