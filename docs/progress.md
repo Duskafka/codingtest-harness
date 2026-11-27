@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-27 S12 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
+- 한 일: PR #32(병합)의 결정과 받아들인 스펙 변경 제안을 문서에 반영. 쿼리 수(S12 수용 기준, 5.10 '주의할 것', architecture 6장 ⑤: 조회는 스터디·날짜마다 한 번, 멤버마다는 잠금·저장), 정산 72시간(R13, 3.4 기수 상태, 5.13 흐름도·주의할 것, data-model `seasons.settling_started_at`), 5.13 알려진 한계(기수 하나보다 긴 장애 뒤 배치 전 구간), data-model 멤버 일(`result_source` = `BATCH`, 비어 있던 `season_id`를 판정이 채움), api.md 4.4 '현황의 정산 표시'(`penaltyType`·`fineAmount`·`failCount`·`fineTotal`), 알려진 충돌 9번 다룸·11번 ModuleRules 반영
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 사람이 정한 것: S12 세션(2026-11-27, 지시 "S12 시작해") "조회만 일정, 멤버별 잠금", "실제 판정 시각 + 72시간", "모든 멤버에게 멤버마다". PR #32 열린 질문 1(지시 "PR의 열린 질문 장단점을 비교해서 제시해 선택할게") "A. 지금대로 둠". 2026-11-27 지시 "병합했고 다음엔 뭘 하면 돼?" 뒤 세션 선택지: 순서 "docs PR → S13"(Recommended), 반영 범위 네 개 모두 "쿼리 수·알려진 한계", "정산 72시간", "result_source·season_id", "현황 응답 필드·충돌 9·11"(여러 개 고르는 질문, 추천 표시 없음), CI 캐시 "S17에서 다룸"(Recommended). spec-reviewer '통과'(필수 없음), 고려 4건 반영(알려진 한계 문구를 코드에 맞게 좁힘, R13에 예외 참조, 쿼리 수 문구 세 곳 맞춤, data-model 문구 다듬음)
+- 다음: 이 PR 병합 → 새 세션에서 S13(알림 기반과 웹 푸시, 결정 게이트 OD-11: 에이전트가 웹 푸시 라이브러리 결정 제안서를 먼저 씀, 1~5번은 진행 가능). '한 세션에 단계 하나'라 S13은 이 세션에서 하지 않음
+- 막힌 것: 없음
+- 참고: 결정 제안서 008은 '제안'이라 결정 대장 목록·ADR-006 행은 고치지 않았다(사람이 정할 때 반영). CI가 Maven Central 429로 실패하면 실패한 잡만 다시 돌린다(캐시 개선은 S17)
+- PR: #33
+
 ## 2026-11-27 S12 판정 배치와 기수 자동 연장 (세션 1/1)
 - 한 일: 만들 것 1~8. V10(`shedlock`, `seasons.settling_started_at` + 상태 CHECK), ShedLock 7.11.0(`common.scheduling`, DB 시각), judgment `DailyJudgmentBatch`(스터디마다 기수 준비 → 판정 시각이 지난 날을 오래된 순서로 → 멤버마다 트랜잭션 → 오류 없을 때만 진행 지점), `JudgmentSchedule`(5분, `@SchedulerLock` 30분/1분), `JudgmentRule`, study `StudySeasons`(스터디 행 잠금, 다음 기수 행 되풀이 생성·진행·72시간 뒤 종료)·`JudgingDays`(날·대상·진행 지점·정산 중), progress `MemberDayJudgments`(행 만들기·잠그기·`result IS NULL`일 때 저장, `BATCH`), 규칙 변경 때 다음 기수 행 끝 날짜 다시 세기, 현황 `penaltyType`·`fineAmount`·`members[].failCount`·`fineTotal`, `ModuleRules` judgment → study, 결정 제안서 008(기록용)
 - 상태: 빌드 통과 (테스트 761개). 구현 전 새 테스트 31개 중 30개 실패(통과 1개는 껍데기가 늘 FAIL을 돌려준 `otherwiseFail`). 조건 빼 보기 18개 모두 해당 테스트 실패. spec-reviewer '수정 필요' → 필수 1(5.10·architecture 6장 ⑤도 스펙 변경 제안에)과 고려 4건 반영(테스트 1개 더함, 008 지표 설명, 재기동 직후 구간은 열린 질문)
@@ -135,13 +144,7 @@
 - PR: #18
 
 ## 2026-11-24 S07 후속: 설치 삭제 시각 deleted_at (V6, 같은 세션)
-- 한 일: V6(`github_installations.deleted_at` 추가 → V5 시절 DELETED 행을 `updated_at`으로 백필 → CHECK `(status = 'DELETED') = (deleted_at IS NOT NULL)`). 아는 설치의 deleted(`markDeleted`)와 처음 보는 설치의 deleted(`recordStateIfAbsent`)가 삭제 시각을 채운다. 테스트: 늦은 removed·deleted·created가 삭제 시각을 바꾸지 않음(시계를 앞으로 돌려 확인), CHECK, V5→V6 백필(따로 띄운 컨테이너)
-- 상태: 빌드 통과 (테스트 463개). 새 테스트는 V6 없이 실패 확인(컬럼 없음, V6 없음). 백필 UPDATE를 빼면 백필 테스트가 실패하는 것 확인
-- 사람이 정한 것 (2026-11-24, 세션 선택지): '삭제된 지 30일'의 기준 "deleted_at 컬럼", #14가 먼저 병합돼서 "새 후속 PR로 V6", 원격 feat/S07-github-app에 남은 43359e4는 "그대로 둠" (모두 Recommended). docs PR #15의 열린 질문 결정: "계정 값만 비움", "API로 설치 삭제" (S15에서 구현)
-- 다음: 이 PR 병합 → docs PR #15 병합(deleted_at 문서가 이 PR에 기댐) → H-02(실제 App으로 확인) → S08
-- 막힌 것: 없음
-- 참고 (실수와 교훈): #14가 01:47Z에 병합된 것을 모르고, 그 뒤에 feat 브랜치에서 V5를 고친 커밋(43359e4)을 push했다. 로컬 origin/master가 병합 전에 멈춰 있어서 보호 훅도 막지 못했다. **작업을 시작하거나 마이그레이션을 고치기 전에 `git fetch origin master`로 병합 여부를 본다.** 43359e4는 master에 없고, 내용은 이 PR로 옮겼다(V5는 그대로)
-- PR: #16 (docs PR #15보다 먼저 병합). 재발 방지로 세션 시작 때 origin/master를 받아 오는 chore PR #17(사람이 정함 "스크립트 + 훅 패치 제안"). 세션 도중 병합까지 잡는 보호 훅 패치는 #17 본문에 제안만 했고 적용은 사람 몫
+- 요약: V6(`github_installations.deleted_at` + V5 시절 DELETED 행 백필 + 상태 CHECK). 사람이 정함: '삭제된 지 30일' 기준 "deleted_at 컬럼", "새 후속 PR로 V6". 교훈: 작업 전·마이그레이션을 고치기 전에 `git fetch origin master`로 병합 여부를 본다(병합된 V5를 고친 커밋을 push했던 일). 빌드 통과(463개). PR: #16, 재발 방지 chore PR #17
 
 ## 2026-11-23 S07 GitHub App 연결 (세션 1/1)
 - 요약: V5(`github_installations`, `linked_repositories`), 설치 웹훅 처리기, 가입 때 연결(커밋 뒤 `@Async`), App JWT·설치 토큰 캐시, `GET /api/github/install-url`·`GET /github/setup`(302)·레포 목록(1개면 자동 연결)·`PUT /api/me/linked-repository`. 리뷰 반영으로 웹훅 행 잠금, `repositories_revision`, 잠근 뒤 확인은 네이티브 쿼리(open-in-view). 사람이 정함: 키는 파일 경로로만, 계정 값 NULL 허용, 설치 중 + 삭제 뒤 30일. 빌드 통과(460개). PR: #14, docs PR #15
