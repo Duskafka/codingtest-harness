@@ -24,7 +24,7 @@ import java.util.Objects;
  * </ul>
  *
  * <p>시간 규칙 하나로만 계산한다. 규칙 버전이 여럿이면 스터디 일은 {@link RuleVersionCalendar}로 센다 (기준 시각이 바뀌는 새 기수
- * 첫날, R2·OD-08). 유예 구간과 판정 시각도 그쪽에서 센다 (바뀐 뒤의 유예). 알림 시각은 버전에 걸쳐 정하지 않았다 (S13).
+ * 첫날, R2·OD-08). 유예 구간과 판정 시각도 그쪽에서 센다 (바뀐 뒤의 유예). 알림 시각도 그쪽에서 센다 (그날의 규칙, S13).
  */
 public final class StudyCalendar {
 

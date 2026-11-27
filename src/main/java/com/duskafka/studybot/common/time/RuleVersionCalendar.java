@@ -19,9 +19,8 @@ import java.util.Objects;
  * <li>버전이 하나면 {@link StudyCalendar}와 같다. 하루 기준 시각은 {@link StudyCalendar#boundaryOf}로 센다(서머타임 처리 포함).</li>
  * <li>유예 구간과 판정 시각은 유예 구간이 시작되는 날의 규칙(바뀐 뒤)의 유예를 쓴다 (사람이 정함, 2026-11-24 "바꾼 뒤의 유예").
  * 날 D의 판정 시각은 {@code startOf(D+1) + D+1의 유예 + 10분}이다.</li>
+ * <li>마감 전 알림 시각은 그날 규칙으로 센 마감에서 그날 규칙의 알림 오프셋을 뺀다 ({@link #reminderAt}, S13).</li>
  * </ul>
- *
- * <p>알림 시각은 여기서 다루지 않는다. 알림 오프셋이 바뀐 날 어느 버전을 쓸지는 정하지 않았다 (S13, PR #21 열린 질문).
  */
 public final class RuleVersionCalendar {
 
@@ -132,9 +131,13 @@ public final class RuleVersionCalendar {
 		return graceEndOf(studyDay).plus(StudyCalendar.JUDGE_MARGIN);
 	}
 
-	/** 마감 전 알림 시각 (S13). 테스트를 먼저 옮기려는 껍데기다. */
+	/**
+	 * 마감 전 알림 시각: 그날의 규칙으로 센 마감(다음 날 시작) − 그날 규칙의 알림 오프셋 (S13 만들 것 2, 5.8, 사람이 정함 2026-11-25
+	 * "그날(D)의 규칙"). 오늘 바꾼 오프셋은 다음 스터디 일 버전에 들어가니 다음 날부터 적용된다 (R2). 마감은 {@link #startOf}(D+1)이고,
+	 * 이것은 D의 규칙으로 센 D+1의 기준 시각이다.
+	 */
 	public Instant reminderAt(LocalDate studyDay) {
-		throw new UnsupportedOperationException("S13");
+		return startOf(studyDay.plusDays(1)).minus(ruleFor(studyDay).reminderOffset());
 	}
 
 	/** 시각이 속한 스터디 일의 다음 스터디 일. 가입하면 이날부터 판정하고(R14), 규칙 변경은 이날부터 적용한다(R2). */
