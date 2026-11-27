@@ -30,6 +30,10 @@ dependencies {
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	// Boot BOM 밖. 3.2.0은 springdoc의 Spring Boot 4.1.x 계열(4.1.2 기반). 3.2.1은 Boot 4.2.0 기반이라 쓰지 않음 (S01 PR 판단 기록)
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api:3.2.0'
+	// Boot BOM 밖. 스케줄러가 서버 여러 대에서도 한 번만 돌게 한다 (S12 만들 것 1, data-model shedlock). 7.11.0은 Spring 7.0.10·Boot 4.1.2
+	// 기준으로 빌드한 4.1.x 계열이다. 7.12.0은 Spring 7.1·Boot 4.2.0 기준이라 쓰지 않음 (springdoc과 같은 이유, S12 PR 판단 기록)
+	implementation 'net.javacrumbs.shedlock:shedlock-spring:7.11.0'
+	implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:7.11.0'
 	runtimeOnly 'org.postgresql:postgresql'
 	// 허용 목록만 쓴다. 나머지 기능은 레포 루트 lombok.config가 컴파일 오류로 막는다 (결정 제안서 003). 버전은 Boot BOM
 	compileOnly 'org.projectlombok:lombok'
