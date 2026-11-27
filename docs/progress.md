@@ -9,7 +9,7 @@
 - 다음: 이 PR 병합 → 새 세션에서 S13(알림 기반과 웹 푸시, 결정 게이트 OD-11: 에이전트가 웹 푸시 라이브러리 결정 제안서를 먼저 씀, 1~5번은 진행 가능). '한 세션에 단계 하나'라 S13은 이 세션에서 하지 않음
 - 막힌 것: 없음
 - 참고: 결정 제안서 008은 '제안'이라 결정 대장 목록·ADR-006 행은 고치지 않았다(사람이 정할 때 반영). CI가 Maven Central 429로 실패하면 실패한 잡만 다시 돌린다(캐시 개선은 S17)
-- PR: #
+- PR: #33
 
 ## 2026-11-27 S12 판정 배치와 기수 자동 연장 (세션 1/1)
 - 한 일: 만들 것 1~8. V10(`shedlock`, `seasons.settling_started_at` + 상태 CHECK), ShedLock 7.11.0(`common.scheduling`, DB 시각), judgment `DailyJudgmentBatch`(스터디마다 기수 준비 → 판정 시각이 지난 날을 오래된 순서로 → 멤버마다 트랜잭션 → 오류 없을 때만 진행 지점), `JudgmentSchedule`(5분, `@SchedulerLock` 30분/1분), `JudgmentRule`, study `StudySeasons`(스터디 행 잠금, 다음 기수 행 되풀이 생성·진행·72시간 뒤 종료)·`JudgingDays`(날·대상·진행 지점·정산 중), progress `MemberDayJudgments`(행 만들기·잠그기·`result IS NULL`일 때 저장, `BATCH`), 규칙 변경 때 다음 기수 행 끝 날짜 다시 세기, 현황 `penaltyType`·`fineAmount`·`members[].failCount`·`fineTotal`, `ModuleRules` judgment → study, 결정 제안서 008(기록용)
