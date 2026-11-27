@@ -9,7 +9,7 @@
 - 다음: #34 병합 → 이 PR 검토(판단 기록 '꼭 봐 주세요': 구독 API·payload·RULE_CHANGED 방식·허용 도메인·VAPID 키·V11) → 병합(progress 충돌은 두 기록 모두 남김) → 받아들인 스펙 변경 제안을 docs PR로(4.2 같은 트랜잭션 리스너, data-model, api.md, 9.7 도메인, 5.8·pseudocode(탈퇴 제외 포함), infra 9.6 VAPID 형식·subject, glossary 채널, RULE_CHANGED는 내용이 바뀔 때만) → S14
 - 막힌 것: 없음. 실제 기기 수신 확인은 H-04(운영 VAPID 키, `WEBPUSH_VAPID_SUBJECT` 포함)와 S16 뒤
 - 참고: S14는 V11 CHECK와 `NotificationType`·`NotificationChannel`에 디스코드·결과 알림을 새 마이그레이션으로 더하고, `NotificationOutbox`에 디스코드용 넣기, `NotificationSender`(채널 DISCORD)를 구현하면 발송기가 그대로 보낸다(받는 사람 없는 알림은 멤버 재확인을 건너뜀). 결과 알림도 같은 트랜잭션 리스너로 하면 알려진 충돌 2번이 같은 방식(PR 열린 질문). S15는 `notifications`·`push_subscriptions`를 사용자보다 먼저 지워야 한다(FK). 발송기 테스트는 `NotificationRows#expireLeftovers`로 다른 테스트의 발송 대기 행을 치운다. `@IntegrationTest` 밖에서 앱을 띄우는 테스트는 VAPID 테스트 키를 넣어야 뜬다(`WebPushTestKeys`)
-- PR: (이 PR)
+- PR: #35
 
 ## 2026-11-27 S12 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #32(병합)의 결정과 받아들인 스펙 변경 제안을 문서에 반영. 쿼리 수(S12 수용 기준, 5.10 '주의할 것', architecture 6장 ⑤: 조회는 스터디·날짜마다 한 번, 멤버마다는 잠금·저장), 정산 72시간(R13, 3.4 기수 상태, 5.13 흐름도·주의할 것, data-model `seasons.settling_started_at`), 5.13 알려진 한계(기수 하나보다 긴 장애 뒤 배치 전 구간), data-model 멤버 일(`result_source` = `BATCH`, 비어 있던 `season_id`를 판정이 채움), api.md 4.4 '현황의 정산 표시'(`penaltyType`·`fineAmount`·`failCount`·`fineTotal`), 알려진 충돌 9번 다룸·11번 ModuleRules 반영
