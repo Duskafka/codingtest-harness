@@ -99,7 +99,8 @@ public class NotificationDispatcher {
 		if (released > 0) {
 			log.warn("잠금이 만료된 발송 중 알림 {}개를 발송 대기로 되돌렸어요", released);
 		}
-		// 잠금 만료 시각이 이 발송기의 소유 표시라 DB 정밀도(마이크로초)로 자른다. 그래야 결과를 남길 때 같은 값으로 찾는다.
+		// 잠금 만료 시각이 이 발송기의 소유 표시다. 메모리의 토큰이 DB에 저장된 값과 같도록 DB 정밀도(마이크로초)로 자른다. PostgreSQL JDBC
+		// 드라이버도 쓸 때와 비교할 때 같은 방식으로 마이크로초에 맞추므로 자르지 않아도 지금은 같아지지만, 드라이버 동작에 기대지 않으려는 것이다.
 		Instant lockedUntil = now.plus(LOCK_DURATION).truncatedTo(ChronoUnit.MICROS);
 		List<ClaimedNotification> claimed = this.queue.claim(now, lockedUntil, BATCH_SIZE);
 		for (ClaimedNotification notification : claimed) {

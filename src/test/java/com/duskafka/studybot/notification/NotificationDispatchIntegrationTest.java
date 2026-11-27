@@ -256,7 +256,7 @@ class NotificationDispatchIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("시계에 나노초가 있어도 결과를 남긴다 (잠금 만료 시각을 DB 정밀도인 마이크로초로 잘라 토큰으로 씀)")
+	@DisplayName("시계에 나노초가 있어도 결과를 남긴다 (잠금 만료 시각 토큰이 DB 정밀도인 마이크로초와 어긋나지 않음)")
 	void subMicrosecondClockStillRecordsResult() {
 		Reminded reminded = remindedAlice("s13-nanos");
 		clock.setInstant(seoul(NOV_20, 22, 0).plusNanos(123_456_789));
