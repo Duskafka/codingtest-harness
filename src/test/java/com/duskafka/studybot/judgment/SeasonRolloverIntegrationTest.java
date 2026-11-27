@@ -108,6 +108,23 @@ class SeasonRolloverIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("다음 기수 행의 길이는 그 시작일에 적용되는 규칙 버전(다음 기수부터 적용하기로 한 변경 포함)이다 (R2)")
+	void nextSeasonUsesRuleVersionOfItsStartDay() {
+		long alice = rows.newUser("s12-next-length");
+		long studyId = scheduledStudy(alice);
+		long fourteenDays = rows.addRule(studyId, NOV_29, 1, LocalTime.MIDNIGHT, 30, "");
+		jdbc.sql("update studybot.study_rules set season_length_days = 14 where id = :id")
+			.param("id", fourteenDays)
+			.update();
+
+		clock.setInstant(seoul(NOV_1, 0, 0));
+		batch.judgeStudy(studyId);
+
+		assertThat(judgments.seasons(studyId)).extracting(SeasonRow::seq, SeasonRow::startDay, SeasonRow::endDay)
+			.containsExactly(tuple(1, NOV_1, NOV_28), tuple(2, NOV_29, DEC_12));
+	}
+
+	@Test
 	@DisplayName("기수 마지막 날 판정 → 정산 중 → 72시간 뒤 종료. 다음 기수는 마지막 날 다음 날부터 진행되고 판정된다 (OD-07)")
 	void lastDayJudgedThenSettlingThenClosed() {
 		long alice = rows.newUser("s12-settle");
