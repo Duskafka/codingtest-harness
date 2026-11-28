@@ -17,9 +17,12 @@ import com.duskafka.studybot.progress.StudyDayRows.TestStudy;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
@@ -72,6 +75,8 @@ class DiscordSendIntegrationTest {
 
 	private long bob;
 
+	private long bobMembership;
+
 	@BeforeEach
 	void setUp() {
 		rows = new StudyDayRows(jdbc);
@@ -82,7 +87,7 @@ class DiscordSendIntegrationTest {
 		bob = rows.newUser("s14-send-bob");
 		TestStudy study = rows.standardStudy(alice);
 		studyId = study.studyId();
-		rows.join(studyId, bob, NOV_1);
+		bobMembership = rows.join(studyId, bob, NOV_1);
 		owner = notifications.ownerOf(studyId);
 		rows.joinAsOwner(studyId, owner, NOV_1);
 		clock.setInstant(NOW);
@@ -196,11 +201,12 @@ class DiscordSendIntegrationTest {
 		assertThat(waiting.nextAttemptAt()).isEqualTo(NOW.plus(Duration.ofMillis(2500)));
 	}
 
-	@Test
-	@DisplayName("T18: 디스코드가 404를 주면 웹훅을 끄고(마지막 오류 HTTP_404) 알림은 FAILED, 방장에게 웹 푸시 알림(DISCORD_DISABLED)을 만든다")
-	void t18NotFoundDisablesAndNotifiesOwner() {
+	@ParameterizedTest(name = "{0}")
+	@ValueSource(ints = { 404, 401, 403 })
+	@DisplayName("T18: 디스코드가 404(지워짐)·401·403(쓸 수 없음)을 주면 웹훅을 끄고(마지막 오류) 알림은 FAILED, 방장에게 웹 푸시 알림(DISCORD_DISABLED)을 만든다 (401·403은 사람이 정함 2026-11-28)")
+	void t18GoneDisablesAndNotifiesOwner(int status) {
 		Webhook webhook = registered();
-		DiscordStub.reply(webhook, 404);
+		DiscordStub.reply(webhook, status);
 		long revision = notifications.channel(studyId).orElseThrow().revision();
 		long id = statusRow();
 
@@ -208,10 +214,10 @@ class DiscordSendIntegrationTest {
 
 		NotificationRow row = notifications.byId(id);
 		assertThat(row.status()).isEqualTo("FAILED");
-		assertThat(row.lastError()).isEqualTo("HTTP_404");
+		assertThat(row.lastError()).isEqualTo("HTTP_" + status);
 		ChannelRow channel = notifications.channel(studyId).orElseThrow();
 		assertThat(channel.enabled()).isFalse();
-		assertThat(channel.lastError()).isEqualTo("HTTP_404");
+		assertThat(channel.lastError()).isEqualTo("HTTP_" + status);
 		NotificationRow notice = notifications.ofStudy(studyId, "DISCORD_DISABLED").getFirst();
 		assertThat(notice.channel()).isEqualTo("WEB_PUSH");
 		assertThat(notice.userId()).isEqualTo(owner);
@@ -227,7 +233,7 @@ class DiscordSendIntegrationTest {
 		long oldRevision = notifications.channel(studyId).orElseThrow().revision();
 		registered();
 
-		boolean disabled = discordChannels.markGone(studyId, oldRevision);
+		boolean disabled = discordChannels.markGone(studyId, oldRevision, "HTTP_404");
 
 		assertThat(disabled).isFalse();
 		ChannelRow channel = notifications.channel(studyId).orElseThrow();
@@ -312,6 +318,126 @@ class DiscordSendIntegrationTest {
 			.doesNotContain(notifications.loginOf(alice));
 		assertThat(embed.path("url").asString())
 			.isEqualTo("https://studybot.example.invalid/studies/" + studyId + "/days/2026-11-20");
+	}
+
+
+	private static final String RESULT_PAYLOAD = "{\"type\":\"DAILY_RESULT\",\"title\":\"S09 스터디\",\"body\":\"11/20 결과: 실패 1명\",\"url\":\"/studies/%d/days/2026-11-20\"}";
+
+	private long resultRow() {
+		clock.setInstant(seoul(NOV_21, 0, 45));
+		return notifications.insertDiscordPending("DAILY_RESULT", studyId, NOV_20, RESULT_PAYLOAD.formatted(studyId),
+				seoul(NOV_21, 0, 45), seoul(LocalDate.of(2026, 11, 22), 0, 0));
+	}
+
+	private List<NotificationRow> ownerResultFallbacks() {
+		return notifications.ofStudy(studyId, "DAILY_RESULT")
+			.stream()
+			.filter(row -> row.channel().equals("WEB_PUSH"))
+			.toList();
+	}
+
+	@Test
+	@DisplayName("현황 게시: 지금 탈퇴한 멤버(그날 다시 가입하지 않음)는 완료·남음 수와 이름에서 뺀다 (사람이 정함 2026-11-28)")
+	void statusPostExcludesMemberWhoLeft() {
+		Webhook webhook = registered();
+		DiscordStub.reply(webhook, 204);
+		rows.putMemberDay(studyId, alice, NOV_20, 1, null, null);
+		rows.putMemberDay(studyId, owner, NOV_20, 1, null, null);
+		rows.leave(bobMembership, seoul(NOV_20, 9, 0));
+		statusRow();
+
+		dispatcher.run();
+
+		String description = onlyRequestBody(webhook).path("embeds").get(0).path("description").asString();
+		assertThat(description).contains("완료 2명").contains("남음 0명").doesNotContain(notifications.loginOf(bob));
+	}
+
+	@Test
+	@DisplayName("결과 게시: 그날 탈퇴한 멤버도 그날까지 판정하므로(R14) 실패 이름에 남는다")
+	void dailyResultPostKeepsMemberWhoLeft() {
+		Webhook webhook = registered();
+		DiscordStub.reply(webhook, 204);
+		rows.leave(bobMembership, seoul(NOV_20, 9, 0));
+		rows.markJudged(studyId, alice, NOV_20, "SUCCESS");
+		rows.markJudged(studyId, bob, NOV_20, "FAIL");
+		resultRow();
+
+		dispatcher.run();
+
+		assertThat(onlyRequestBody(webhook).path("embeds").get(0).path("description").asString())
+			.contains("실패 1명")
+			.contains(notifications.loginOf(bob));
+	}
+
+	@Test
+	@DisplayName("디스코드 결과 알림을 보내기 전에 방장이 디스코드를 해제했으면 SKIPPED로 두고 같은 내용을 방장 웹 푸시로 대신 넣는다 (사람이 정함 2026-11-28)")
+	void dailyResultFallsBackToOwnerWhenUnregistered() {
+		Webhook webhook = registered();
+		DiscordStub.reply(webhook, 204);
+		long id = resultRow();
+		assertThat(api.putJson(owner, "/api/studies/{id}/channels/discord", "{\"webhookUrl\":null}", studyId))
+			.hasStatusOk();
+
+		dispatcher.run();
+
+		assertThat(notifications.byId(id).status()).isEqualTo("SKIPPED");
+		assertThat(DiscordStub.requestsTo(webhook)).isEmpty();
+		assertThat(ownerResultFallbacks()).singleElement().satisfies(row -> {
+			assertThat(row.userId()).isEqualTo(owner);
+			assertThat(row.studyDay()).isEqualTo(NOV_20);
+			assertThat(row.dedupeKey()).isEqualTo("DAILY_RESULT:" + studyId + ":" + NOV_20 + ":owner");
+			assertThat(row.status()).isEqualTo("PENDING");
+			assertThat(row.expiresAt()).isEqualTo(seoul(LocalDate.of(2026, 11, 22), 0, 0));
+			assertThat(JSON.readTree(row.payload())).isEqualTo(JSON.readTree(RESULT_PAYLOAD.formatted(studyId)));
+		});
+
+		dispatcher.run();
+		assertThat(ownerResultFallbacks()).as("대신 보낸 알림은 하나").hasSize(1);
+	}
+
+	@ParameterizedTest(name = "{0}")
+	@ValueSource(ints = { 404, 401, 403 })
+	@DisplayName("디스코드 결과 알림이 404·401·403을 받으면 웹훅을 끄고 FAILED, 방장에게 꺼짐 알림과 결과 알림 웹 푸시를 넣는다 (사람이 정함 2026-11-28)")
+	void dailyResultFallsBackToOwnerWhenGone(int status) {
+		Webhook webhook = registered();
+		DiscordStub.reply(webhook, status);
+		long id = resultRow();
+
+		dispatcher.run();
+
+		assertThat(notifications.byId(id).status()).isEqualTo("FAILED");
+		assertThat(notifications.ofStudy(studyId, "DISCORD_DISABLED")).hasSize(1);
+		assertThat(ownerResultFallbacks()).singleElement().satisfies(row -> {
+			assertThat(row.userId()).isEqualTo(owner);
+			assertThat(row.dedupeKey()).isEqualTo("DAILY_RESULT:" + studyId + ":" + NOV_20 + ":owner");
+		});
+	}
+
+	@Test
+	@DisplayName("디스코드 결과 알림이 그 밖의 실패(5xx 재시도, 400)면 방장 웹 푸시로 대신 넣지 않는다")
+	void dailyResultDoesNotFallBackOnOtherFailures() {
+		Webhook webhook = registered();
+		DiscordStub.reply(webhook, 400);
+		long id = resultRow();
+
+		dispatcher.run();
+
+		assertThat(notifications.byId(id).status()).isEqualTo("FAILED");
+		assertThat(ownerResultFallbacks()).isEmpty();
+	}
+
+	@Test
+	@DisplayName("현황 게시(DISCORD_STATUS)는 꺼진 채널이어도 방장 웹 푸시로 대신 넣지 않는다 (방장에게는 공유 유도가 따로 감)")
+	void statusPostDoesNotFallBack() {
+		registered();
+		long id = statusRow();
+		assertThat(api.putJson(owner, "/api/studies/{id}/channels/discord", "{\"webhookUrl\":null}", studyId))
+			.hasStatusOk();
+
+		dispatcher.run();
+
+		assertThat(notifications.byId(id).status()).isEqualTo("SKIPPED");
+		assertThat(notifications.ofStudy(studyId)).extracting(NotificationRow::channel).containsOnly("DISCORD");
 	}
 
 }

@@ -129,6 +129,28 @@ class ShareCardIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("지금 탈퇴한 멤버(그날 다시 가입하지 않음)는 완료·남음 수와 이름에서 빼고, 그날 탈퇴했다 다시 가입한 멤버는 넣는다 (사람이 정함 2026-11-28)")
+	void membersWhoLeftAreExcluded() {
+		long carol = rows.newUser("s14-card-carol");
+		long dave = rows.newUser("s14-card-dave");
+		long carolMembership = rows.join(studyId, carol, NOV_1);
+		long daveMembership = rows.join(studyId, dave, NOV_1);
+		rows.leave(carolMembership, seoul(NOV_20, 9, 0));
+		rows.leave(daveMembership, seoul(NOV_20, 9, 0));
+		rows.join(studyId, dave, seoul(NOV_20, 10, 0), NOV_1);
+		rows.putMemberDay(studyId, alice, NOV_20, 1, null, null);
+
+		JsonNode json = TestApi.json(card(alice, studyId));
+
+		String summary = json.path("summary").asString();
+		assertThat(summary).startsWith("완료 1명 · 남음 2명 (")
+			.contains(notifications.loginOf(bob))
+			.contains(notifications.loginOf(dave))
+			.doesNotContain(notifications.loginOf(carol));
+		assertThat(json.path("counts").path("remaining").asInt()).isEqualTo(2);
+	}
+
+	@Test
 	@DisplayName("남은 멤버가 10명보다 많으면 앞 10명만 쓰고 '외 N명'을 붙인다")
 	void manyRemainingNamesAreCut() {
 		List<String> logins = new ArrayList<>();

@@ -133,6 +133,10 @@ public class DiscordChannels {
 	 * @param revision 404를 받은 웹훅의 등록 리비전
 	 * @return 껐는지
 	 */
+	public boolean markGone(long studyId, long revision, String reason) {
+		return markGone(studyId, revision);
+	}
+
 	public boolean markGone(long studyId, long revision) {
 		return Boolean.TRUE.equals(this.transactions.execute(status -> disableAndNotify(studyId, revision)));
 	}

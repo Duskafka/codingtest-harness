@@ -274,11 +274,12 @@ class DiscordChannelIntegrationTest {
 		assertThat(TestApi.json(result).path("code").asString()).isEqualTo("DISCORD_NOT_REGISTERED");
 	}
 
-	@Test
-	@DisplayName("테스트 게시: 디스코드가 404면 웹훅이 지워진 것이라 끄고 409(DISCORD_WEBHOOK_GONE)")
-	void testPostGoneDisables() {
+	@ParameterizedTest(name = "{0}")
+	@ValueSource(ints = { 404, 401, 403 })
+	@DisplayName("테스트 게시: 디스코드가 404(지워짐)·401·403(쓸 수 없음)이면 끄고 409(DISCORD_WEBHOOK_GONE) (사람이 정함 2026-11-28 '401·403도 404처럼')")
+	void testPostGoneDisables(int status) {
 		Webhook webhook = DiscordStub.newWebhook();
-		DiscordStub.reply(webhook, 404);
+		DiscordStub.reply(webhook, status);
 		register(owner, studyId, webhook.officialUrl());
 
 		MvcTestResult result = testPost(owner, studyId);
@@ -287,7 +288,7 @@ class DiscordChannelIntegrationTest {
 		assertThat(TestApi.json(result).path("code").asString()).isEqualTo("DISCORD_WEBHOOK_GONE");
 		ChannelRow channel = notifications.channel(studyId).orElseThrow();
 		assertThat(channel.enabled()).isFalse();
-		assertThat(channel.lastError()).isEqualTo("HTTP_404");
+		assertThat(channel.lastError()).isEqualTo("HTTP_" + status);
 		assertThat(testPost(owner, studyId)).as("꺼진 뒤에는 보내지 않는다").hasStatus(HttpStatus.CONFLICT);
 		assertThat(DiscordStub.requestsTo(webhook)).hasSize(1);
 	}
@@ -308,10 +309,10 @@ class DiscordChannelIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("테스트 게시: 그 밖의 4xx(토큰 무효 401 등)는 409(DISCORD_WEBHOOK_REJECTED)이고 마지막 오류를 남긴다. 끄지는 않는다")
+	@DisplayName("테스트 게시: 그 밖의 4xx(400 등)는 409(DISCORD_WEBHOOK_REJECTED)이고 마지막 오류를 남긴다. 끄지는 않는다")
 	void testPostRejected() {
 		Webhook webhook = DiscordStub.newWebhook();
-		DiscordStub.reply(webhook, 401);
+		DiscordStub.reply(webhook, 400);
 		register(owner, studyId, webhook.officialUrl());
 
 		MvcTestResult result = testPost(owner, studyId);
@@ -320,7 +321,7 @@ class DiscordChannelIntegrationTest {
 		assertThat(TestApi.json(result).path("code").asString()).isEqualTo("DISCORD_WEBHOOK_REJECTED");
 		ChannelRow channel = notifications.channel(studyId).orElseThrow();
 		assertThat(channel.enabled()).isTrue();
-		assertThat(channel.lastError()).isEqualTo("HTTP_401");
+		assertThat(channel.lastError()).isEqualTo("HTTP_400");
 	}
 
 }
