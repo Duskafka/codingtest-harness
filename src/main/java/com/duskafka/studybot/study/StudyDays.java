@@ -97,15 +97,18 @@ public class StudyDays {
 	}
 
 	/**
-	 * 멤버십(ID 순서)을 사용자마다 하나로 합친다. 자리는 처음 멤버십, 역할은 나중 멤버십이다. 판정 대상({@link JudgingDays})도 이것으로 고른다.
+	 * 멤버십(ID 순서)을 사용자마다 하나로 합친다. 자리는 처음 멤버십, 역할은 나중 멤버십이다. 멤버십 중 하나라도 그날을 판정하면 판정하고, 하나라도
+	 * 탈퇴하지 않았으면 지금 멤버다. 판정 대상({@link JudgingDays})도 이것으로 고른다.
 	 */
 	static List<RosterMember> rosterOf(List<Membership> memberships, LocalDate day, boolean inSeason) {
 		Map<Long, RosterMember> byUser = new LinkedHashMap<>();
 		for (Membership membership : memberships) {
 			long userId = membership.getUserId();
 			boolean judged = inSeason && !day.isBefore(membership.getJudgedFrom());
+			boolean active = membership.getLeftAt() == null;
 			RosterMember earlier = byUser.get(userId);
-			byUser.put(userId, new RosterMember(userId, membership.getRole(), judged || (earlier != null && earlier.judged())));
+			byUser.put(userId, new RosterMember(userId, membership.getRole(), judged || (earlier != null && earlier.judged()),
+					active || (earlier != null && earlier.active())));
 		}
 		return List.copyOf(byUser.values());
 	}

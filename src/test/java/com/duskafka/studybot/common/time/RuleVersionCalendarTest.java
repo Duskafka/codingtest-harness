@@ -203,6 +203,40 @@ class RuleVersionCalendarTest {
 		assertThat(calendar.judgeAt(SEASON_2)).isEqualTo(calendar.graceEndOf(SEASON_2).plusSeconds(600));
 	}
 
+	private static StudyTimeRule ruleWithOffset(String dayBoundary, int reminderOffsetMinutes) {
+		return new StudyTimeRule(SEOUL, LocalTime.parse(dayBoundary), 30, reminderOffsetMinutes, Set.of());
+	}
+
+	@Test
+	@DisplayName("S13: 알림 시각은 그날 규칙으로 센 마감(다음 날 시작)에서 그날 규칙의 알림 오프셋을 뺀 시각이다")
+	void reminderAtIsDeadlineMinusThatDaysOffset() {
+		RuleVersionCalendar calendar = RuleVersionCalendar.of(List.of(version("2026-11-01", ruleWithOffset("00:00", 120))));
+
+		assertThat(calendar.reminderAt(day("2026-11-20"))).isEqualTo(at("2026-11-20T22:00:00+09:00"));
+		assertThat(calendar.reminderAt(day("2026-11-20"))).isEqualTo(calendar.startOf(day("2026-11-21")).minusSeconds(7200));
+	}
+
+	@Test
+	@DisplayName("S13: 오늘 바꾼 알림 오프셋은 다음 스터디 일부터 적용된다 (R2). 그날의 알림은 그날 규칙의 오프셋이다")
+	void changedReminderOffsetAppliesFromNextStudyDay() {
+		RuleVersionCalendar calendar = RuleVersionCalendar.of(List.of(version("2026-11-01", ruleWithOffset("00:00", 120)),
+				version("2026-11-21", ruleWithOffset("00:00", 60))));
+
+		assertThat(calendar.reminderAt(day("2026-11-20"))).isEqualTo(at("2026-11-20T22:00:00+09:00"));
+		assertThat(calendar.reminderAt(day("2026-11-21"))).isEqualTo(at("2026-11-21T23:00:00+09:00"));
+	}
+
+	@Test
+	@DisplayName("S13: 기준 시각이 바뀌는 날, 지난 버전의 마지막 날은 옛 기준 시각에 끝나고 새 첫날은 새 기준 시각으로 센 마감에서 새 오프셋을 뺀다")
+	void reminderAtAcrossBoundaryChangeUsesEachDaysRule() {
+		RuleVersionCalendar calendar = RuleVersionCalendar.of(List.of(version("2026-11-21", ruleWithOffset("00:00", 120)),
+				version("2026-12-19", ruleWithOffset("02:00", 90))));
+
+		assertThat(calendar.reminderAt(day("2026-12-18"))).isEqualTo(at("2026-12-18T22:00:00+09:00"));
+		// 새 첫날(26시간)은 12/20 02:00에 끝난다. 그 90분 전.
+		assertThat(calendar.reminderAt(SEASON_2)).isEqualTo(at("2026-12-20T00:30:00+09:00"));
+	}
+
 	@Test
 	@DisplayName("S05: 버전이 없거나, 적용 시작일이 겹치거나, 시간대가 다르면 만들 수 없다")
 	void rejectsInvalidVersions() {

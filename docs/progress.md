@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-27 S13 알림 기반과 웹 푸시 (세션 1/1)
+- 한 일: 만들 것 1~7. 1(결정 제안서 009)은 docs PR #34. V11(`notifications`, `push_subscriptions`, S13 종류·채널만). `RuleVersionCalendar#reminderAt`(그날 규칙). study `ReminderDays`(지금 시각의 스터디 일, 진행 지점·알림 시각)·`StudyRulesChanged`(예정 규칙이 달라지거나 취소될 때 같은 트랜잭션에서 발행). progress `ReminderTargets`(현황과 같은 '남음' 계산 + 탈퇴한 멤버 제외, 발송 직전 재확인). 규칙 변경은 예정 구간 내용이 같으면 알리지 않고, 예정 변경을 취소하면 알림(`:cancelled` 키). 내 구독 목록 `GET /api/me/push-subscriptions`. notification `outbox`(dedupe_key, payload `{type,title,body,url}`), `reminder`(1분·ShedLock, 스터디마다 트랜잭션, SOLO는 공유 유도 없음 R15), `rule.RuleChangeNotifier`(같은 트랜잭션 리스너), `dispatch`(5초·SKIP LOCKED, 20개·잠금 2분, 잠금 만료 시각이 토큰, 백오프 30초×2^(n−1)·최대 30분, Retry-After), `webpush`(zerodep으로 VAPID·aes128gcm만, JDK HttpClient로 보냄, VAPID 키 기동 검사, 허용 도메인), 구독 API 4개(공개키·등록·목록·해제), 지표, 스케줄러 스레드 4개
+- 상태: 빌드 통과 (테스트 832개). 구현 전 새 테스트 53개 중 47개 실패(통과 6개는 아무것도 안 해도 참). 조건 빼 보기 28개 모두 해당 테스트 실패(같은 트랜잭션은 커밋 전에 보이는지 테스트를 더해 가름, 혼자 쓰기 테스트는 구현 뒤 더해 조건 빼 보기로 실패 확인). zerodep이 Java 25에서 만든 요청을 테스트가 JDK로 복호화·VAPID 서명 검증해 통과. spec-reviewer 1차·2차 '통과'(필수 없음) → 1차 고려 10건: 테스트 10개 더함(구현 전 6개 실패), 조건 빼 보기 9개 중 8개 걸림(마이크로초 자르기는 PostgreSQL JDBC가 같은 방식으로 맞춰 안 걸림, 방어로 남김), 나머지는 PR 판단 기록. 열린 질문 결정 반영: 테스트 5개 구현 전 모두 실패, 조건 빼 보기 4개 모두 걸림. 3차 검토 '통과' → 테스트 2개(두 버전 취소 키, 더 새 규칙 알림이 있으면 옛것 SKIPPED), 조건 빼 보기 2개 모두 걸림
+- 사람이 정한 것 (2026-11-27, 지시 "S13(알림 기반과 웹 푸시)을 시작", 세션 선택지, 모두 Recommended): OD-11 흐름 "Proposal first, decide in-session", OD-11 "A. zerodep 2.1.5", RULE_CHANGED "Listener in the same transaction", spec-reviewer 뒤 그날 탈퇴한 멤버 "보내지 않음"(알림 시각·발송 직전에 탈퇴 상태면 빼거나 SKIPPED, 판정은 그대로). PR 열린 질문 (2026-11-28): 지시 "예정된 규칙 변경을 취소만 할 때도 알리자", '알림 구독 상태' "S13에서 목록 API로", S14 결과 알림 방식 "S14 결정 제안서에서 정함"(뒤 둘은 지시 "…선택지와 장단점을 가져오면 선택할게" 뒤 세션 선택지, 모두 Recommended)
+- 다음: (#34 병합됨, 2026-11-28. master를 이 브랜치에 병합하고 이 파일 충돌을 풀었다, 두 기록 모두 남김) 이 PR 검토(판단 기록 '꼭 봐 주세요': 구독 API·payload·RULE_CHANGED 방식·허용 도메인·VAPID 키·V11) → 병합(progress 충돌은 두 기록 모두 남김) → 받아들인 스펙 변경 제안을 docs PR로(4.2 같은 트랜잭션 리스너, data-model, api.md, 9.7 도메인, 5.8·pseudocode(탈퇴 제외 포함), infra 9.6 VAPID 형식·subject, glossary 채널, RULE_CHANGED는 내용이 바뀔 때·취소할 때와 취소 키, api.md '알림 구독 상태'를 목록 API로) → S14
+- 막힌 것: 없음. 실제 기기 수신 확인은 H-04(운영 VAPID 키, `WEBPUSH_VAPID_SUBJECT` 포함)와 S16 뒤
+- 참고: S14는 V11 CHECK와 `NotificationType`·`NotificationChannel`에 디스코드·결과 알림을 새 마이그레이션으로 더하고, `NotificationOutbox`에 디스코드용 넣기, `NotificationSender`(채널 DISCORD)를 구현하면 발송기가 그대로 보낸다(받는 사람 없는 알림은 멤버 재확인을 건너뜀). 결과 알림의 방식(알려진 충돌 2번)은 S14 결정 제안서에서 정한다(사람이 정함 2026-11-28). S15는 `notifications`·`push_subscriptions`를 사용자보다 먼저 지워야 한다(FK). 발송기 테스트는 `NotificationRows#expireLeftovers`로 다른 테스트의 발송 대기 행을 치운다. `@IntegrationTest` 밖에서 앱을 띄우는 테스트는 VAPID 테스트 키를 넣어야 뜬다(`WebPushTestKeys`)
+- PR: #35
+
 ## 2026-11-27 OD-11 웹 푸시 라이브러리 결정 제안서 009 (docs PR, S13 세션 안)
 - 한 일: 결정 제안서 009(후보 A zerodep-web-push-java 2.1.5, B Tink apps-webpush 1.15.0, C nl.martijndwars web-push 5.1.2, D JDK 직접 구현. 보관된 dev.blanke, Kotlin interaso는 표에서 뺌). Maven Central POM·배포 시각, GitHub 저장소 페이지, zerodep jar의 `javap`로 확인. 사람이 A를 골라 '결정'에 받아 적고 결정 대장(OD-11 확정, 제안서 목록 009, ADR-008 행), architecture 기술 스택 '웹 푸시' 행, 5.8 '만들 것', S13 결정 게이트 칸에 반영
 - 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎). 같은 세션 시작 때 master 빌드 통과 (테스트 761개, 첫 시도는 Maven Central 429)
@@ -134,13 +143,7 @@
 - PR: #20
 
 ## 2026-11-24 S08 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
-- 한 일: PR #18(병합)의 스펙 변경 제안 1~3을 사람이 골라 문서에 반영. spec-reviewer '수정 필요' 9건 중 5건은 문서를 고침(사람이 고르지 않은 정규화 문장·`return PROCESSED` 빼기, 부작용 문구 바로잡기), 나머지는 PR 근거·열린 질문으로. data-model `solve_records`(표에 `parser_version`·경로 UNIQUE, 새 메모 '풀이 기록 테이블': 경로 UNIQUE의 목적과 부작용, CHECK), `linked_repositories`의 빈 `path_prefix`, 5.4 흐름도와 '확인 대기' 단서(레포 전체, 커밋마다 하나, P1에는 설정 없음), pseudocode `processPush` 순서·확인 대기 분기, 5.3 'push 처리 순서' 1·2(항목 번호는 그대로)
-- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
-- 사람이 정한 것 (2026-11-24, 세션 선택지): 제안 1 "셋 다 반영", 제안 2 "data-model과 5.4 둘 다", 제안 3 "pseudocode와 5.3 둘 다" (모두 Recommended)
-- 다음: 이 PR 병합 → S09(선행 S05가 '결정 대기'라 OD-07·OD-08을 정하거나 S05를 어떻게 볼지 먼저 정해야 함)
-- 막힌 것: 없음
-- 참고: 5.3 'push 처리 순서'는 코드 주석이 번호(2·3·6)를 가리켜서 항목을 합치기만 하고 번호를 밀지 않았다
-- PR: #19
+- 요약: PR #18 제안 1~3 반영(data-model `solve_records` `parser_version`·경로 UNIQUE와 부작용·CHECK, 빈 `path_prefix`, 5.4 '확인 대기', pseudocode `processPush`, 5.3 'push 처리 순서'). 사람이 정함: 제안 1~3 모두 반영. 5.3 항목 번호는 코드 주석이 가리켜 밀지 않음. PR: #19
 
 ## 2026-11-24 S08 push 처리와 풀이 기록 (세션 1/1)
 - 요약: V7 `solve_records`, `PushEventHandler`(삭제·연결 없음·기본 브랜치 아님 → IGNORED), `GithubSolveRecorder`(문제마다 CONFIRMED, 식별 못 한 커밋은 확인 대기 하나, 인정 시각 = 수신함 `received_at`), 배정 연결 지점 `StudyDayAssignment`. 사람이 정함: 빈 `path_prefix` "레포 전체", 확인 대기 "커밋마다 하나", 기본 브랜치 "레포마다", 경로 접두사 설정 "지금은 만들지 않음". 빌드 통과(500개). PR: #18

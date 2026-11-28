@@ -37,4 +37,17 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
 			""", nativeQuery = true)
 	int advanceLastJudgedDay(@Param("id") long id, @Param("day") LocalDate day);
 
+	/**
+	 * 마감 전 알림 생성의 진행 지점을 그 스터디 일로 올린다 (5.8, pseudocode {@code study.lastRemindedDay = day}, S13 만들 것 2). 이미 그날이나
+	 * 그 뒤면 바꾸지 않는다. 엔티티를 거치지 않는다.
+	 *
+	 * @return 바뀐 행 수
+	 */
+	@Modifying(flushAutomatically = true, clearAutomatically = true)
+	@Query(value = """
+			update studybot.studies set last_reminded_day = :day
+			where id = :id and (last_reminded_day is null or last_reminded_day < :day)
+			""", nativeQuery = true)
+	int advanceLastRemindedDay(@Param("id") long id, @Param("day") LocalDate day);
+
 }

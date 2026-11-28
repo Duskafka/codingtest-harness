@@ -29,3 +29,14 @@ studybot:
   # 테스트는 judgment.DailyJudgmentBatch를 직접 부르고, ShedLock 테스트만 judgment.JudgmentSchedule 진입점을 부른다 (S12).
   judgment:
     cron: "-"
+  # 알림 생성·발송 스케줄을 끈다 (S13). 테스트는 notification.reminder.ReminderGenerator와 notification.dispatch.NotificationDispatcher를
+  # 직접 부른다. 공유 DB에 쌓인 다른 테스트의 스터디·알림을 저절로 건드리지 않게 한다.
+  notification:
+    reminder:
+      cron: "-"
+    dispatch:
+      cron: "-"
+  # 웹 푸시 VAPID (S13). 키는 테스트 안에서 만든다 (WebPushTestConfiguration). subject는 연락처 자리의 가짜 값이다.
+  webpush:
+    vapid:
+      subject: "mailto:studybot-test@example.invalid"

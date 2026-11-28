@@ -52,6 +52,12 @@ public class StudyAccess {
 			.toStudyMember();
 	}
 
+	/** 지금 탈퇴하지 않은 멤버(방장 포함)인지. 알림을 보내기 직전에 확인한다 (S13, 사람이 정함 2026-11-27 '탈퇴한 멤버에게 보내지 않음'). */
+	@Transactional(readOnly = true)
+	public boolean isActiveMember(long studyId, long userId) {
+		return this.membershipRepository.findByStudyIdAndUserIdAndLeftAtIsNull(studyId, userId).isPresent();
+	}
+
 	/** 방장인지 확인한다. 멤버가 아니면 404, 멤버지만 방장이 아니면 403. */
 	@Transactional(readOnly = true)
 	public StudyMember requireOwner(long studyId, long userId) {

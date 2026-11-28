@@ -25,6 +25,10 @@ public interface MembershipRepository extends JpaRepository<Membership, Long> {
 			""", nativeQuery = true)
 	Optional<Long> lockActive(@Param("studyId") long studyId, @Param("userId") long userId);
 
+	/** 스터디의 탈퇴하지 않은 멤버의 사용자 ID, 멤버십 ID 순서 (규칙 변경 알림, S13 만들 것 4). */
+	@Query("select m.userId from Membership m where m.studyId = :studyId and m.leftAt is null order by m.id")
+	List<Long> findActiveUserIds(@Param("studyId") long studyId);
+
 	/** 스터디의 탈퇴하지 않은 멤버 수 (정원 검사, 5.1). */
 	long countByStudyIdAndLeftAtIsNull(long studyId);
 
