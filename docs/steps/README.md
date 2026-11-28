@@ -30,7 +30,7 @@
 | [S11](S11-self-report-exemption.md) | 수동 인증과 면제권 | P1 | S09 | OD-09 | — | 완료 |
 | [S12](S12-daily-judgment.md) | 판정 배치와 기수 자동 연장 | P1 | S11 | OD-07 | — | 완료 |
 | [S13](S13-notification-webpush.md) | 알림 기반과 웹 푸시 | P1 | S11 | OD-11 | H-04 | 완료 |
-| [S14](S14-discord-share.md) | 디스코드·결과 알림·공유 카드 | P1 | S12, S13 | — | H-05 | 대기 |
+| [S14](S14-discord-share.md) | 디스코드·결과 알림·공유 카드 | P1 | S12, S13 | — | H-05 | 완료 |
 | [S15](S15-account-deletion-admin.md) | 계정 삭제와 운영 도구 | P1 | S07, S12, S13 | — | — | 대기 |
 | [S16](S16-frontend.md) | 프론트엔드 (PWA) | P1 | S10, S11, S14 | OD-10 | H-06 | 대기 |
 | [S17](S17-deploy-artifacts.md) | 배포 산출물 | P1 | S01 | — | H-07, H-08 | 대기 |
