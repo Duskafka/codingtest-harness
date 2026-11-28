@@ -9,6 +9,8 @@ import com.duskafka.studybot.notification.webpush.VapidKeys;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
@@ -67,6 +69,17 @@ public class PushSubscriptionService {
 		return new RegisteredSubscription(saved.getId(), saved.getCreatedAt());
 	}
 
+	/**
+	 * 내 구독(기기) 한 페이지, ID 순서 (사람이 정함, 2026-11-28 'S13에서 목록 API로'). 구독 주소와 키는 돌려주지 않는다 (기기를 가리키는 비밀
+	 * 주소, 9.8 최소 노출). 다른 사용자의 구독은 보이지 않는다 (T19).
+	 */
+	@Transactional(readOnly = true)
+	public Page<SubscriptionSummary> mine(long userId, int page, int size) {
+		return this.subscriptions.findByUserIdOrderById(userId, PageRequest.of(page, size))
+			.map(row -> new SubscriptionSummary(row.getId(), row.getCreatedAt(), row.getLastSuccessAt(),
+					row.getUserAgent()));
+	}
+
 	/** 본인 구독을 해제한다. 남의 것이나 없는 것이면 404. */
 	@Transactional
 	public void delete(long userId, long subscriptionId) {
@@ -98,6 +111,18 @@ public class PushSubscriptionService {
 			Objects.requireNonNull(auth, "auth");
 		}
 
+	}
+
+	/**
+	 * 내 구독 목록의 한 줄.
+	 *
+	 * @param id 구독 ID (해제할 때 씀)
+	 * @param createdAt 처음 등록한 시각
+	 * @param lastSuccessAt 마지막으로 이 기기에 보내기에 성공한 시각. 없으면 {@code null}
+	 * @param userAgent 등록할 때의 User-Agent (기기 구분 표시용). 없으면 {@code null}
+	 */
+	public record SubscriptionSummary(long id, Instant createdAt, @Nullable Instant lastSuccessAt,
+			@Nullable String userAgent) {
 	}
 
 	/**

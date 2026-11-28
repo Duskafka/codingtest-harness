@@ -67,6 +67,14 @@ public class NotificationOutbox {
 	}
 
 	/**
+	 * 예정된 규칙 변경 취소의 키. 규칙 버전 ID는 취소된 마지막 예정 버전이다. 그 변경을 알린 키({@link #ruleChangedKey})와 겹치지 않게
+	 * {@code :cancelled}를 붙인다 (사람이 정함 2026-11-28 '취소도 알림', 5.8 표에 없는 형식이라 S13 PR 스펙 변경 제안).
+	 */
+	public static String ruleChangeCancelledKey(long studyId, long cancelledRuleId, long userId) {
+		return ruleChangedKey(studyId, cancelledRuleId, userId) + ":cancelled";
+	}
+
+	/**
 	 * 넣을 웹 푸시 알림.
 	 *
 	 * @param studyDay 알림이 가리키는 스터디 일. 날과 상관없으면 {@code null}

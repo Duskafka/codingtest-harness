@@ -4,14 +4,18 @@ import com.duskafka.studybot.auth.LoginUser;
 import com.duskafka.studybot.notification.subscription.PushSubscriptionService;
 import com.duskafka.studybot.notification.subscription.PushSubscriptionService.NewPushSubscription;
 import com.duskafka.studybot.notification.subscription.PushSubscriptionService.RegisteredSubscription;
+import com.duskafka.studybot.notification.subscription.PushSubscriptionService.SubscriptionSummary;
 import com.duskafka.studybot.notification.webpush.PushEndpointPolicy;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,16 +25,20 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 웹 푸시 공개키와 구독 API (api.md 4.4, S13 만들 것 5). 권한: 공개키는 공개, 등록은 로그인, 해제는 본인. 응답 모양은 프론트(S16)가 쓰는
+ * 웹 푸시 공개키와 구독 API (api.md 4.4, S13 만들 것 5). 권한: 공개키는 공개, 등록·목록은 로그인, 해제는 본인. 응답 모양은 프론트(S16)가 쓰는
  * 계약이라 S13 PR 판단 기록에 '꼭 봐 주세요'로 남긴다.
  */
 @RestController
 @RequiredArgsConstructor
 class PushSubscriptionController {
+
+	/** 목록 한 페이지의 최대 크기 ({@code GET /api/me/solves}와 같음). */
+	static final int MAX_PAGE_SIZE = 50;
 
 	private final PushSubscriptionService service;
 
@@ -49,6 +57,17 @@ class PushSubscriptionController {
 		RegisteredSubscription saved = this.service.register(loginUser.userId(),
 				new NewPushSubscription(request.endpoint(), request.keys().p256dh(), request.keys().auth(), userAgent));
 		return new SubscriptionResponse(saved.id(), saved.createdAt());
+	}
+
+	/**
+	 * 내 구독(기기) 목록 (사람이 정함, 2026-11-28 'S13에서 목록 API로'. api.md 4.4 '알림 구독 상태'). 페이지 모양은 {@code GET /api/me/solves}와
+	 * 같다. 구독 주소와 키는 주지 않는다. 화면이 '이 기기'를 알려면 등록 응답의 {@code id}를 저장해 쓴다.
+	 */
+	@GetMapping("/api/me/push-subscriptions")
+	PagedModel<SubscriptionSummary> mine(@AuthenticationPrincipal LoginUser loginUser,
+			@RequestParam(defaultValue = "0") @Min(0) int page,
+			@RequestParam(defaultValue = "20") @Min(1) @Max(MAX_PAGE_SIZE) int size) {
+		return new PagedModel<>(this.service.mine(loginUser.userId(), page, size));
 	}
 
 	/** 구독을 해제한다. 남의 것이나 없는 것은 404. */

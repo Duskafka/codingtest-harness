@@ -44,8 +44,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>버전 행은 그날부터의 규칙 전체를 담는다(스냅샷). 테이블은 그대로다 ({@code (study_id, effective_from)} UNIQUE).
  * 같은 스터디의 규칙 변경·수락·위임은 스터디 행 잠금으로 차례로 실행된다 (결정 제안서 006).
  *
- * <p>예정된 규칙이 실제로 달라졌으면(바꾸기 전과 적용 예정 구간의 적용 시작일·규칙 값이 다르면) 같은 트랜잭션 안에서 {@link StudyRulesChanged}를
- * 발행한다. notification이 같은 트랜잭션에서 멤버에게 알림을 넣는다 (S13 만들 것 4, 알려진 충돌 5번, 사람이 정함 2026-11-27 "Listener in the same transaction (Recommended)").
+ * <p>예정된 규칙이 실제로 달라졌거나(바꾸기 전과 적용 예정 구간의 적용 시작일·규칙 값이 다르면) 예정된 변경을 취소했으면 같은 트랜잭션 안에서
+ * {@link StudyRulesChanged}를 발행한다. notification이 같은 트랜잭션에서 멤버에게 알림을 넣는다 (S13 만들 것 4, 알려진 충돌 5번, 사람이 정함 2026-11-27 "Listener in the same transaction (Recommended)").
  */
 @Service
 @RequiredArgsConstructor
@@ -84,7 +84,7 @@ public class StudyRuleService {
 		Season first = seasons.getFirst();
 
 		if (today.isBefore(first.getStartDay())) {
-			List<VersionTerms> replaced = termsFrom(rules, first.getStartDay());
+			UpcomingVersions replaced = UpcomingVersions.from(rules, first.getStartDay());
 			StudyRule saved = changeBeforeFirstSeason(studyId, study, first, desired, now);
 			publishChanged(study, actorUserId, replaced, List.of(saved));
 			return;
@@ -93,7 +93,7 @@ public class StudyRuleService {
 		LocalDate nextDay = today.plusDays(1);
 		LocalDate nextSeasonStart = StudyTimeline.nextSeasonStart(seasons, rules, today);
 		RuleSettings current = RuleSettings.of(StudyTimeline.ruleOn(rules, today));
-		List<VersionTerms> replaced = termsFrom(rules, nextDay);
+		UpcomingVersions replaced = UpcomingVersions.from(rules, nextDay);
 		this.ruleRepository.deleteFrom(studyId, nextDay);
 		List<StudyRule> saved = new ArrayList<>();
 		if (nextSeasonStart.equals(nextDay)) {
@@ -114,25 +114,33 @@ public class StudyRuleService {
 	}
 
 	/**
-	 * 예정된 규칙이 실제로 달라졌으면 규칙 변경을 알린다 (S13 만들 것 4). 받는 사람은 탈퇴하지 않은 멤버 중 바꾼 방장을 뺀 사람이다. 받는 쪽이 같은
+	 * 예정된 규칙이 실제로 달라졌거나 취소됐으면 알린다 (S13 만들 것 4). 받는 사람은 탈퇴하지 않은 멤버 중 바꾼 방장을 뺀 사람이다. 받는 쪽이 같은
 	 * 트랜잭션에서 알림 행을 넣는다.
 	 *
-	 * <p>예정 버전은 바꿀 때마다 지우고 새 ID로 다시 만든다. 그래서 같은 예정 변경을 다시 보내거나 1기 시작 전에 지금 규칙과 같게 보내도 새 행이
-	 * 생긴다. 이때는 바꾸기 전과 (적용 시작일, 규칙 값)이 모두 같으니 알리지 않는다.
+	 * <ul>
+	 * <li>예정 버전은 바꿀 때마다 지우고 새 ID로 다시 만든다. 그래서 같은 예정 변경을 다시 보내거나 1기 시작 전에 지금 규칙과 같게 보내도 새 행이
+	 * 생긴다. 이때는 바꾸기 전과 (적용 시작일, 규칙 값)이 모두 같으니 알리지 않는다.</li>
+	 * <li>예정 버전이 있었는데 새로 만든 것이 없으면(지금 규칙과 같게 보냄) 예정된 변경을 취소한 것이다. 취소도 알린다 (사람이 정함, 2026-11-28
+	 * "예정된 규칙 변경을 취소만 할 때도 알리자"). 예정 버전도 없었으면 아무것도 바뀌지 않았으니 알리지 않는다.</li>
+	 * </ul>
 	 *
-	 * @param replaced 이번에 지운 버전들의 값 (적용 시작일 순서)
-	 * @param saved 이번에 만든 버전들 (적용 시작일 순서). 비어 있으면 알리지 않는다 (예정된 변경을 취소만 함)
+	 * @param replaced 이번에 지운 예정 버전들
+	 * @param saved 이번에 만든 버전들 (적용 시작일 순서)
 	 */
-	private void publishChanged(Study study, long actorUserId, List<VersionTerms> replaced, List<StudyRule> saved) {
-		if (saved.isEmpty() || replaced.equals(saved.stream().map(VersionTerms::of).toList())) {
+	private void publishChanged(Study study, long actorUserId, UpcomingVersions replaced, List<StudyRule> saved) {
+		boolean cancelled = saved.isEmpty();
+		if (cancelled ? replaced.isEmpty() : replaced.terms().equals(saved.stream().map(VersionTerms::of).toList())) {
 			return;
 		}
 		List<Long> recipients = this.membershipRepository.findActiveUserIds(study.getId())
 			.stream()
 			.filter(userId -> userId != actorUserId)
 			.toList();
-		this.events.publishEvent(new StudyRulesChanged(study.getId(), study.getName(), saved.getLast().getId(),
-				saved.getFirst().getEffectiveFrom(), actorUserId, recipients));
+		long ruleId = cancelled ? replaced.ruleIds().getLast() : saved.getLast().getId();
+		LocalDate effectiveFrom = cancelled ? replaced.terms().getFirst().effectiveFrom()
+				: saved.getFirst().getEffectiveFrom();
+		this.events.publishEvent(new StudyRulesChanged(study.getId(), study.getName(), ruleId, effectiveFrom, cancelled,
+				actorUserId, recipients));
 	}
 
 	/**
@@ -163,9 +171,24 @@ public class StudyRuleService {
 		return saved;
 	}
 
-	/** 이 날짜부터 적용하는 버전들의 값 (적용 시작일 순서). */
-	private static List<VersionTerms> termsFrom(List<StudyRule> rules, LocalDate from) {
-		return rules.stream().filter(rule -> !rule.getEffectiveFrom().isBefore(from)).map(VersionTerms::of).toList();
+	/**
+	 * 바꾸기 전, 이 날짜부터 적용하는 버전들 (적용 시작일 순서). 지우기 전에 값을 잡아 둔다.
+	 *
+	 * @param terms 버전마다 적용 시작일과 규칙 값
+	 * @param ruleIds 버전 ID (같은 순서)
+	 */
+	private record UpcomingVersions(List<VersionTerms> terms, List<Long> ruleIds) {
+
+		static UpcomingVersions from(List<StudyRule> rules, LocalDate from) {
+			List<StudyRule> upcoming = rules.stream().filter(rule -> !rule.getEffectiveFrom().isBefore(from)).toList();
+			return new UpcomingVersions(upcoming.stream().map(VersionTerms::of).toList(),
+					upcoming.stream().map(StudyRule::getId).toList());
+		}
+
+		boolean isEmpty() {
+			return this.terms.isEmpty();
+		}
+
 	}
 
 	/** 규칙 버전 하나의 적용 시작일과 값. ID와 만든 시각은 뺀다. */

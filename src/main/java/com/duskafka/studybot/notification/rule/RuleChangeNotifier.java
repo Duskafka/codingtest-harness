@@ -22,6 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
  * in the same transaction (Recommended)"). 그래서 이벤트가 사라질 틈이 없고 규칙 변경과 알림이 함께 커밋되거나 함께 롤백된다. 4.2의 '커밋
  * 뒤 이벤트' 문구와는 다르다 (S13 PR 스펙 변경 제안). 외부 발송은 여기서 하지 않는다. 발송기가 커밋된 행만 본다.
  *
+ * <p>예정된 변경을 취소한 것도 같은 종류(RULE_CHANGED)로 알린다. 문구와 키만 다르다 (사람이 정함, 2026-11-28 "예정된 규칙 변경을 취소만 할
+ * 때도 알리자"). Topic이 같아서 기기가 꺼져 있었으면 푸시 서비스에서 새 알림이 옛 알림을 덮는다.
+ *
  * <p>만료는 만든 뒤 24시간이다. 날과 상관없는 알림이라 그 안에 보내지 못하면 의미가 줄어든다고 봤다 (S13 PR 판단 기록).
  */
 @Component
@@ -39,13 +42,17 @@ public class RuleChangeNotifier {
 	@Transactional(propagation = Propagation.MANDATORY)
 	public void on(StudyRulesChanged event) {
 		Instant expiresAt = this.clock.instant().plus(TIME_TO_LIVE);
-		PushMessage message = new PushMessage(NotificationType.RULE_CHANGED.name(), event.studyName(),
-				"규칙이 바뀌어요. " + event.effectiveFrom().getMonthValue() + "월 " + event.effectiveFrom().getDayOfMonth()
-						+ "일부터 적용돼요",
+		String body = event.cancelled() ? "예정된 규칙 변경이 취소됐어요. 지금 규칙이 그대로 이어져요"
+				: "규칙이 바뀌어요. " + event.effectiveFrom().getMonthValue() + "월 " + event.effectiveFrom().getDayOfMonth()
+						+ "일부터 적용돼요";
+		PushMessage message = new PushMessage(NotificationType.RULE_CHANGED.name(), event.studyName(), body,
 				"/studies/" + event.studyId());
 		for (long userId : event.recipientUserIds()) {
-			this.outbox.addWebPush(new NewWebPush(NotificationType.RULE_CHANGED, event.studyId(), userId, null,
-					NotificationOutbox.ruleChangedKey(event.studyId(), event.latestRuleId(), userId), message, expiresAt));
+			String key = event.cancelled()
+					? NotificationOutbox.ruleChangeCancelledKey(event.studyId(), event.latestRuleId(), userId)
+					: NotificationOutbox.ruleChangedKey(event.studyId(), event.latestRuleId(), userId);
+			this.outbox.addWebPush(new NewWebPush(NotificationType.RULE_CHANGED, event.studyId(), userId, null, key,
+					message, expiresAt));
 		}
 	}
 

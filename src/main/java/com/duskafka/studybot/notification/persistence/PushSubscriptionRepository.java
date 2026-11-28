@@ -3,6 +3,8 @@ package com.duskafka.studybot.notification.persistence;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -36,6 +38,9 @@ public interface PushSubscriptionRepository extends JpaRepository<PushSubscripti
 
 	/** 사용자의 구독들 (ID 순서). 발송기가 알림 하나를 기기마다 보낸다. */
 	List<PushSubscription> findByUserIdOrderById(long userId);
+
+	/** 사용자의 구독 한 페이지 (ID 순서). 내 구독 목록 API가 쓴다. */
+	Page<PushSubscription> findByUserIdOrderById(long userId, Pageable pageable);
 
 	/**
 	 * 본인의 구독을 지운다. 남의 것이나 없는 것은 지우지 않는다 (T19).
