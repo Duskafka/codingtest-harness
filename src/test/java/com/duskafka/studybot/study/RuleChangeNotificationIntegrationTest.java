@@ -91,6 +91,42 @@ class RuleChangeNotificationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
+	@DisplayName("예정된 변경을 취소하면(지금 규칙과 같게 보냄) 바꾼 방장을 뺀 멤버에게 취소 알림을 만든다 (사람이 정함 2026-11-28 '예정된 규칙 변경을 취소만 할 때도 알리자')")
+	void cancellingUpcomingChangeNotifiesMembers() {
+		assertThat(putRules(rules(Map.of("dailyGoal", 2)))).hasStatus(HttpStatus.OK);
+		long cancelledRuleId = latestRuleId();
+
+		assertThat(putRules(rules(Map.of()))).hasStatus(HttpStatus.OK);
+
+		List<NotificationRow> cancels = notifications.ofStudy(studyId, "RULE_CHANGED")
+			.stream()
+			.filter(row -> row.dedupeKey().endsWith(":cancelled"))
+			.toList();
+		assertThat(cancels).singleElement().satisfies(row -> {
+			assertThat(row.userId()).isEqualTo(member.id());
+			assertThat(row.dedupeKey())
+				.isEqualTo("RULE:" + studyId + ":" + cancelledRuleId + ":" + member.id() + ":cancelled");
+			assertThat(JSON.readTree(row.payload()).path("body").asString()).contains("취소");
+			assertThat(JSON.readTree(row.payload()).path("url").asString()).isEqualTo("/studies/" + studyId);
+		});
+		assertThat(notifications.ofStudy(studyId, "RULE_CHANGED")).hasSize(2);
+	}
+
+	@Test
+	@DisplayName("바꾸고 취소하기를 두 번 하면 취소 알림도 두 번이다 (취소된 버전 ID가 달라 키가 겹치지 않음)")
+	void cancellingTwiceMakesTwoCancelNotifications() {
+		putRules(rules(Map.of("dailyGoal", 2)));
+		putRules(rules(Map.of()));
+		putRules(rules(Map.of("dailyGoal", 3)));
+		putRules(rules(Map.of()));
+
+		assertThat(notifications.ofStudy(studyId, "RULE_CHANGED")).filteredOn(row -> row.dedupeKey().endsWith(":cancelled"))
+			.extracting(NotificationRow::dedupeKey)
+			.doesNotHaveDuplicates()
+			.hasSize(2);
+	}
+
+	@Test
 	@DisplayName("1기 시작 전에 지금 규칙과 같게 보내면(버전은 다시 저장되지만 내용이 같음) 알림이 없다 (S13 만들 것 4, R2 '바뀌면 알림', S13 PR 판단 기록)")
 	void sameRulesBeforeFirstSeasonMakeNoNotification() {
 		setClock(CREATED_AT);

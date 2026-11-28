@@ -177,6 +177,55 @@ class PushSubscriptionIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("내 구독 목록은 내 기기만 ID 순서로 페이지에 담아 준다. 구독 주소와 키는 내보내지 않는다 (사람이 정함 2026-11-28 'S13에서 목록 API로')")
+	void listsOwnSubscriptionsWithoutSecrets() {
+		long alice = rows.newUser("s13-list");
+		long first = TestApi.json(register(alice, fcmEndpoint(), PushReceiver.create())).path("id").asLong();
+		long second = TestApi.json(register(alice, fcmEndpoint(), PushReceiver.create())).path("id").asLong();
+
+		MvcTestResult result = api.get(alice, "/api/me/push-subscriptions");
+
+		assertThat(result).hasStatus(HttpStatus.OK);
+		JsonNode body = TestApi.json(result);
+		JsonNode content = body.path("content");
+		assertThat(content).hasSize(2);
+		assertThat(content.get(0).path("id").asLong()).isEqualTo(first);
+		assertThat(content.get(1).path("id").asLong()).isEqualTo(second);
+		assertThat(content.get(0).has("createdAt")).isTrue();
+		assertThat(content.get(0).has("lastSuccessAt")).isTrue();
+		assertThat(content.get(0).has("userAgent")).isTrue();
+		assertThat(content.get(0).has("endpoint")).isFalse();
+		assertThat(content.get(0).has("p256dh")).isFalse();
+		assertThat(content.get(0).has("auth")).isFalse();
+		assertThat(body.path("page").path("totalElements").asLong()).isEqualTo(2);
+	}
+
+	@Test
+	@DisplayName("T19: 내 구독 목록에 남의 구독은 나오지 않는다")
+	void t19OthersSubscriptionsAreNotListed() {
+		long alice = rows.newUser("s13-list-alice");
+		long bob = rows.newUser("s13-list-bob");
+		register(alice, fcmEndpoint(), PushReceiver.create());
+		long bobs = TestApi.json(register(bob, fcmEndpoint(), PushReceiver.create())).path("id").asLong();
+
+		JsonNode content = TestApi.json(api.get(bob, "/api/me/push-subscriptions")).path("content");
+
+		assertThat(content).hasSize(1);
+		assertThat(content.get(0).path("id").asLong()).isEqualTo(bobs);
+	}
+
+	@Test
+	@DisplayName("내 구독 목록: 로그인하지 않으면 401, 한 페이지는 50개까지(51이면 400)")
+	void listRequiresLoginAndBoundsPageSize() {
+		long alice = rows.newUser("s13-list-bounds");
+
+		assertThat(api.getAnonymous("/api/me/push-subscriptions")).hasStatus(HttpStatus.UNAUTHORIZED);
+		assertThat(api.getWithParams(alice, "/api/me/push-subscriptions", "size", "51"))
+			.hasStatus(HttpStatus.BAD_REQUEST);
+		assertThat(api.getWithParams(alice, "/api/me/push-subscriptions", "size", "50")).hasStatus(HttpStatus.OK);
+	}
+
+	@Test
 	@DisplayName("내 구독을 해제하면 204이고 행이 지워진다")
 	void deletesOwnSubscription() {
 		long alice = rows.newUser("s13-unsub");
