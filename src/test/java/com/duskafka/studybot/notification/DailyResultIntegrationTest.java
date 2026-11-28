@@ -15,6 +15,7 @@ import com.duskafka.studybot.notification.DiscordStub.Webhook;
 import com.duskafka.studybot.notification.NotificationRows.NotificationRow;
 import com.duskafka.studybot.progress.StudyDayRows;
 import com.duskafka.studybot.progress.StudyDayRows.TestStudy;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import org.jspecify.annotations.Nullable;
@@ -105,7 +106,8 @@ class DailyResultIntegrationTest {
 		return jdbc.sql("select last_judged_day from studybot.studies where id = :id")
 			.param("id", study)
 			.query((rs, rowNum) -> rs.getObject("last_judged_day", LocalDate.class))
-			.single();
+			.list()
+			.getFirst();
 	}
 
 	private @Nullable String result(long study, long userId, LocalDate day) {
@@ -204,12 +206,22 @@ class DailyResultIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("한 스터디의 결과 알림이 실패해도 판정 배치 전체(run)는 다른 스터디를 계속 판정한다")
-	void failureDoesNotStopOtherStudies() {
-		long carol = rows.newUser("s14-result-carol");
-		TestStudy other = rows.standardStudy(carol);
-		setLastJudgedDay(other.studyId(), NOV_19);
-		String trigger = "s14_fail_daily_result_run_" + studyId;
+	@DisplayName("한 스터디의 결과 알림이 실패해도 판정 배치 전체(run)는 다른 스터디를 계속 판정하고 그 실패를 오류로 센다")
+	void failureDoesNotStopOtherStudiesInRun() {
+		// run()은 DB의 모든 활성 스터디를 돈다. 다른 테스트가 남긴 2026년 스터디에 걸리지 않게 2025년 날짜로 본다
+		// (DailyJudgmentIntegrationTest#runJudgesEveryStudyAndIsolatesStudies와 같은 방식). 5/1의 판정 시각은 5/2 00:40이다.
+		LocalDate may1 = LocalDate.of(2025, 5, 1);
+		LocalDate may28 = LocalDate.of(2025, 5, 28);
+		Instant joinedAt = seoul(LocalDate.of(2025, 4, 1), 9, 0);
+		long broken = rows.newStudy(SEOUL);
+		long healthy = rows.newStudy(SEOUL);
+		for (long study : new long[] { broken, healthy }) {
+			rows.addRule(study, may1, 1, LocalTime.MIDNIGHT, 30, "");
+			rows.addSeason(study, 1, may1, may28);
+			rows.join(study, rows.newUser("s14-result-run"), joinedAt, may1);
+		}
+		clock.setInstant(seoul(LocalDate.of(2025, 5, 2), 0, 40));
+		String trigger = "s14_fail_daily_result_run_" + broken;
 		jdbc.sql("""
 				create function studybot.%1$s() returns trigger language plpgsql as $f$
 				begin
@@ -218,20 +230,23 @@ class DailyResultIntegrationTest {
 					end if;
 					return new;
 				end $f$
-				""".formatted(trigger, studyId)).update();
+				""".formatted(trigger, broken)).update();
 		jdbc.sql("create trigger %1$s before insert on studybot.notifications for each row execute function studybot.%1$s()"
 			.formatted(trigger)).update();
+		JudgmentSummary summary;
 		try {
-			batch.judgeStudy(studyId);
-			batch.judgeStudy(other.studyId());
+			summary = batch.run();
 		}
 		finally {
 			jdbc.sql("drop trigger %1$s on studybot.notifications".formatted(trigger)).update();
 			jdbc.sql("drop function studybot.%1$s()".formatted(trigger)).update();
 		}
 
-		assertThat(lastJudgedDay(studyId)).isEqualTo(NOV_19);
-		assertThat(lastJudgedDay(other.studyId())).isEqualTo(NOV_20);
+		assertThat(lastJudgedDay(broken)).isNull();
+		assertThat(notifications.ofStudy(broken, "DAILY_RESULT")).isEmpty();
+		assertThat(lastJudgedDay(healthy)).isEqualTo(may1);
+		assertThat(notifications.ofStudy(healthy, "DAILY_RESULT")).hasSize(1);
+		assertThat(summary.errors()).isPositive();
 	}
 
 	@Test
