@@ -4,7 +4,7 @@
 |---|---|
 | 단계 | P1 |
 | 선행 | S11 (S12 뒤를 권장) |
-| 결정 게이트 | OD-11 (웹 푸시 라이브러리). 에이전트가 결정 제안서를 먼저 써요 |
+| 결정 게이트 | OD-11 (웹 푸시 라이브러리). 에이전트가 결정 제안서를 먼저 써요. 확정: zerodep-web-push-java (결정 제안서 009, 2026-11-27) |
 | 사람 할 일 | H-04 (운영용 VAPID 키, 배포 전) |
 | T번호 | T14, T15, T16, T17, T28, T19 |
 
@@ -20,6 +20,7 @@
 - `docs/spec/security.md`: 9.7 '보내는 요청 (SSRF 방지)'
 - `docs/spec/external-systems.md`: 웹 푸시 행
 - `docs/spec/architecture.md`: '알려진 충돌과 빈 곳' 5번, 10번
+- `docs/decisions/009-web-push-library.md`: OD-11 결정(낮은 단계 API만 쓰고 요청은 우리 `HttpClient`로 보냄)과 '검증 방법'
 
 ## 만들 것
 
