@@ -9,6 +9,7 @@ import com.duskafka.studybot.notification.outbox.NotificationType;
 import com.duskafka.studybot.notification.persistence.NotificationQueue.ClaimedNotification;
 import com.duskafka.studybot.notification.persistence.StudyChannel;
 import com.duskafka.studybot.notification.persistence.StudyChannelRepository;
+import com.duskafka.studybot.notification.result.DailyResultFallback;
 import com.duskafka.studybot.progress.StudyDayBoards;
 import com.duskafka.studybot.progress.StudyDayBoards.StudyDayBoard;
 import com.duskafka.studybot.study.StudyProfiles;
@@ -25,8 +26,10 @@ import lombok.extern.slf4j.Slf4j;
  * <li>보낼 때 채널 행을 읽어 웹훅 주소를 푼다. 꺼졌거나 없으면 보내지 않는다 (발송기가 직전에 SKIPPED로 거르지만 그 뒤에 꺼진 경우).</li>
  * <li>임베드는 보낼 때 DB에서 만든다: 현황({@code DISCORD_STATUS})은 그날 멤버별 상태, 결과({@code DAILY_RESULT})는 그날 판정 결과와 실패한
  * 멤버 이름이다. 그래서 outbox payload에 이름을 남기지 않고, 현황은 보내는 시각의 최신 값이다 (S14 PR 판단 기록).</li>
- * <li>응답: 받음 → 보냄, 404 → 웹훅을 끄고 방장 알림({@link DiscordChannels#markGone}) 뒤 실패, 429 → 디스코드가 준 시간만큼 뒤에 재시도,
+ * <li>응답: 받음 → 보냄, 404·401·403 → 웹훅을 끄고 방장 알림({@link DiscordChannels#markGone}) 뒤 실패, 429 → 디스코드가 준 시간만큼 뒤에 재시도,
  * 5xx·연결 실패 → 발송기 백오프로 재시도, 그 밖의 4xx → 실패(채널에 마지막 오류를 남김).</li>
+ * <li>채널이 꺼졌거나(해제·그사이 꺼짐) 404·401·403을 받은 결과 알림은 방장 웹 푸시로 대신 넣는다 ({@link DailyResultFallback}, 사람이 정함
+ * 2026-11-28). 현황 게시는 대신 보내지 않는다.</li>
  * </ul>
  */
 @Slf4j
@@ -44,14 +47,17 @@ public class DiscordSender implements NotificationSender {
 
 	private final PublicLinks links;
 
+	private final DailyResultFallback dailyResultFallback;
+
 	DiscordSender(StudyChannelRepository channels, DiscordChannels discordChannels, DiscordClient client,
-			StudyProfiles studyProfiles, StudyDayBoards boards, PublicLinks links) {
+			StudyProfiles studyProfiles, StudyDayBoards boards, PublicLinks links, DailyResultFallback dailyResultFallback) {
 		this.channels = channels;
 		this.discordChannels = discordChannels;
 		this.client = client;
 		this.studyProfiles = studyProfiles;
 		this.boards = boards;
 		this.links = links;
+		this.dailyResultFallback = dailyResultFallback;
 	}
 
 	@Override
@@ -63,6 +69,7 @@ public class DiscordSender implements NotificationSender {
 	public SendResult send(ClaimedNotification notification, Instant now) {
 		Optional<StudyChannel> found = this.channels.findById(notification.studyId()).filter(StudyChannel::isPostable);
 		if (found.isEmpty()) {
+			this.dailyResultFallback.toOwner(notification);
 			return new SendResult.Failed("DISCORD_DISABLED");
 		}
 		StudyChannel channel = found.get();
@@ -93,8 +100,9 @@ public class DiscordSender implements NotificationSender {
 		return switch (result) {
 			case DiscordPostResult.Delivered delivered -> new SendResult.Delivered();
 			case DiscordPostResult.Gone gone -> {
-				this.discordChannels.markGone(notification.studyId(), channel.getDiscordRevision());
-				yield new SendResult.Failed("HTTP_404");
+				this.discordChannels.markGone(notification.studyId(), channel.getDiscordRevision(), gone.reason());
+				this.dailyResultFallback.toOwner(notification);
+				yield new SendResult.Failed(gone.reason());
 			}
 			case DiscordPostResult.Retry retry -> new SendResult.Retry(retry.retryAfter(), retry.reason());
 			case DiscordPostResult.Rejected rejected -> {

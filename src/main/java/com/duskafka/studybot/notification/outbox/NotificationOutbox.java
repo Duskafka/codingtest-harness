@@ -103,6 +103,14 @@ public class NotificationOutbox {
 	}
 
 	/**
+	 * 디스코드 결과 알림을 방장 웹 푸시로 대신 보낼 때의 키 (사람이 정함, 2026-11-28 PR #37 열린 질문 7). 디스코드 행의 키
+	 * ({@link #dailyResultKey})와 겹치지 않게 {@code :owner}를 붙인다. 5.8 표에 없는 형식이라 S14 PR 스펙 변경 제안.
+	 */
+	public static String dailyResultOwnerKey(long studyId, LocalDate studyDay) {
+		return dailyResultKey(studyId, studyDay) + ":owner";
+	}
+
+	/**
 	 * 디스코드 꺼짐 알림의 키. 등록 리비전마다 하나다. 같은 웹훅이 404를 여러 번 받아도 방장에게 한 번만 알리고, 다시 등록한 웹훅이 또 지워지면 다시
 	 * 알린다 (5.8 표에 없는 형식이라 S14 PR 스펙 변경 제안).
 	 */

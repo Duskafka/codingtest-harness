@@ -7,6 +7,7 @@ import com.duskafka.studybot.notification.persistence.NotificationQueue;
 import com.duskafka.studybot.notification.persistence.NotificationQueue.ClaimedNotification;
 import com.duskafka.studybot.notification.persistence.NotificationRepository;
 import com.duskafka.studybot.notification.persistence.StudyChannelRepository;
+import com.duskafka.studybot.notification.result.DailyResultFallback;
 import com.duskafka.studybot.progress.ReminderTargets;
 import com.duskafka.studybot.study.StudyAccess;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -70,6 +71,8 @@ public class NotificationDispatcher {
 
 	private final StudyChannelRepository studyChannels;
 
+	private final DailyResultFallback dailyResultFallback;
+
 	private final Map<NotificationChannel, NotificationSender> senders;
 
 	private final MeterRegistry meterRegistry;
@@ -78,12 +81,14 @@ public class NotificationDispatcher {
 
 	NotificationDispatcher(NotificationQueue queue, NotificationRepository notifications,
 			ReminderTargets reminderTargets, StudyAccess studyAccess, StudyChannelRepository studyChannels,
-			List<NotificationSender> senders, MeterRegistry meterRegistry, Clock clock) {
+			DailyResultFallback dailyResultFallback, List<NotificationSender> senders, MeterRegistry meterRegistry,
+			Clock clock) {
 		this.queue = queue;
 		this.notifications = notifications;
 		this.reminderTargets = reminderTargets;
 		this.studyAccess = studyAccess;
 		this.studyChannels = studyChannels;
+		this.dailyResultFallback = dailyResultFallback;
 		this.senders = new EnumMap<>(NotificationChannel.class);
 		for (NotificationSender sender : senders) {
 			if (this.senders.put(sender.channel(), sender) != null) {
@@ -154,11 +159,16 @@ public class NotificationDispatcher {
 	 * 보내기 직전에 아직 보낼 까닭이 있는지 다시 확인한다 (5.8 '발송 직전 다시 확인'). 마감 전 알림은 그날 아직 '남음'인지(T16, 탈퇴 포함),
 	 * 사람에게 가는 그 밖의 알림은 받는 사람이 아직 멤버인지 본다. 규칙 알림은 같은 사람에게 더 새 규칙 알림이 있으면 옛 정보라 보내지 않는다
 	 * (예: 변경 알림이 재시도로 밀린 사이 취소됨. 에이전트 판단, S13 PR 판단 기록). 디스코드 스터디 채널 알림(받는 사람 없음, S14)은 그 스터디의
-	 * 디스코드가 아직 켜져 있을 때만 보낸다(해제했거나 404로 꺼졌으면 SKIPPED).
+	 * 디스코드가 아직 켜져 있을 때만 보낸다(해제했거나 404·401·403으로 꺼졌으면 SKIPPED). 꺼졌으면 결과 알림은 방장 웹 푸시로 대신 넣는다
+	 * ({@link DailyResultFallback}, 사람이 정함 2026-11-28).
 	 */
 	private boolean stillWanted(ClaimedNotification notification) {
 		if (NotificationChannel.DISCORD.name().equals(notification.channel())) {
-			return this.studyChannels.isPostable(notification.studyId());
+			if (this.studyChannels.isPostable(notification.studyId())) {
+				return true;
+			}
+			this.dailyResultFallback.toOwner(notification);
+			return false;
 		}
 		Long userId = notification.userId();
 		if (NotificationType.REMINDER.name().equals(notification.type())) {

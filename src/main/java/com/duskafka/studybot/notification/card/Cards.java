@@ -19,8 +19,10 @@ import java.util.Objects;
  *
  * <ul>
  * <li>현황: 제목 {@code [스터디 이름] 11/20 인증 현황}, 요약 {@code 완료 5명 · 남음 2명 (민수, 지은) · 마감 24:00}. 면제가 있으면
- * {@code · 면제 N명}을 마감 앞에 더한다. 쉬는 날·판정하지 않는 날은 그 안내만 쓴다.</li>
- * <li>결과: 제목 {@code [스터디 이름] 11/20 결과}, 요약 {@code 성공 5명 · 실패 2명 (민수, 지은) · 면제 1명}. 0명인 항목은 쓰지 않는다.</li>
+ * {@code · 면제 N명}을 마감 앞에 더한다. 쉬는 날·판정하지 않는 날은 그 안내만 쓴다. 지금 탈퇴한 멤버(그날 다시 가입하지 않음)는 수와 이름에서
+ * 뺀다. 공유 유도 웹 푸시의 'N명'(S13)과 맞추고, 탈퇴한 사람 이름이 '남음'으로 공유되지 않게 하려는 것이다 (사람이 정함 2026-11-28).</li>
+ * <li>결과: 판정 대상 모두를 센다. 그날 탈퇴한 멤버도 그날까지 판정한다 (R14).</li>
+ * <li>결과 문구: 제목 {@code [스터디 이름] 11/20 결과}, 요약 {@code 성공 5명 · 실패 2명 (민수, 지은) · 면제 1명}. 0명인 항목은 쓰지 않는다.</li>
  * <li>이름은 GitHub 로그인명이고 가입 순서로 앞 {@value #MAX_NAMES}명까지, 넘으면 {@code 외 N명}이다 (카카오톡 공유 카드는 짧아야 한다).
  * 벌금 금액은 넣지 않는다 (5.9, 사람이 정함 2026-11-28 'S14는 늘 뺌').</li>
  * <li>마감은 스터디 시간대의 24시간+ 표기다: 다음 날 00:00은 {@code 24:00}, 다음 날 02:00은 {@code 26:00} (S14 PR 판단 기록).</li>
@@ -39,9 +41,9 @@ public final class Cards {
 	/** 그날 현황 카드. */
 	public static StatusCard status(String studyName, StudyDayBoard board, ZoneId zoneId, String url) {
 		String title = "[" + studyName + "] " + dateText(board.studyDay()) + " 인증 현황";
-		List<BoardMember> done = board.withStatus(MemberDayStatus.DONE);
-		List<BoardMember> remaining = board.withStatus(MemberDayStatus.REMAINING);
-		List<BoardMember> exempt = board.withStatus(MemberDayStatus.EXEMPT);
+		List<BoardMember> done = active(board.withStatus(MemberDayStatus.DONE));
+		List<BoardMember> remaining = active(board.withStatus(MemberDayStatus.REMAINING));
+		List<BoardMember> exempt = active(board.withStatus(MemberDayStatus.EXEMPT));
 		String summary;
 		if (!board.inSeason()) {
 			summary = "오늘은 판정하지 않는 날이에요";
@@ -103,6 +105,11 @@ public final class Cards {
 	public static ResultCounts resultCounts(Map<JudgmentResult, Integer> byResult) {
 		return new ResultCounts(byResult.getOrDefault(JudgmentResult.SUCCESS, 0),
 				byResult.getOrDefault(JudgmentResult.FAIL, 0), byResult.getOrDefault(JudgmentResult.EXEMPT_TICKET, 0));
+	}
+
+	/** 지금 탈퇴하지 않은 멤버만. 그날 탈퇴했다 다시 가입한 멤버는 들어간다. */
+	private static List<BoardMember> active(List<BoardMember> members) {
+		return members.stream().filter(BoardMember::active).toList();
 	}
 
 	/** 날짜 {@code 11/20}. */

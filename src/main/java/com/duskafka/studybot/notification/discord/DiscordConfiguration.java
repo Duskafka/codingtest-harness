@@ -2,6 +2,7 @@ package com.duskafka.studybot.notification.discord;
 
 import com.duskafka.studybot.notification.link.PublicLinks;
 import com.duskafka.studybot.notification.persistence.StudyChannelRepository;
+import com.duskafka.studybot.notification.result.DailyResultFallback;
 import com.duskafka.studybot.progress.StudyDayBoards;
 import com.duskafka.studybot.study.StudyProfiles;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -32,8 +33,8 @@ class DiscordConfiguration {
 
 	@Bean
 	DiscordSender discordSender(StudyChannelRepository channels, DiscordChannels discordChannels, DiscordClient client,
-			StudyProfiles studyProfiles, StudyDayBoards boards, PublicLinks links) {
-		return new DiscordSender(channels, discordChannels, client, studyProfiles, boards, links);
+			StudyProfiles studyProfiles, StudyDayBoards boards, PublicLinks links, DailyResultFallback dailyResultFallback) {
+		return new DiscordSender(channels, discordChannels, client, studyProfiles, boards, links, dailyResultFallback);
 	}
 
 }

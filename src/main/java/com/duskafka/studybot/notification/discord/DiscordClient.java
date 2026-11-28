@@ -25,8 +25,8 @@ import tools.jackson.databind.json.JsonMapper;
  * <li>JDK {@link HttpClient}: 리다이렉트를 따라가지 않고, 연결 3초·응답 10초로 자른다 (9.7 '리다이렉트를 따라가지 않기, 응답 시간·크기
  * 제한'). 응답 본문은 429일 때만 {@value #MAX_BODY_BYTES}바이트까지 읽고 나머지는 버린다.</li>
  * <li>주소는 설정한 API 주소 + 웹훅 ID·토큰이다. 사용자가 준 호스트로는 보내지 않는다 ({@link DiscordWebhookPolicy}).</li>
- * <li>응답: 2xx 받음, 404 웹훅이 지워짐, 429는 {@code Retry-After} 헤더(초), 없으면 본문 {@code retry_after}(초)만큼 뒤에 다시, 5xx·연결
- * 실패는 나중에 다시(발송기 백오프), 그 밖(리다이렉트, 401·403 등 4xx)은 다시 보내도 같아 그만둔다.</li>
+ * <li>응답: 2xx 받음, 404(지워짐)·401·403(토큰 무효·권한 없음)은 더 쓸 수 없음, 429는 {@code Retry-After} 헤더(초), 없으면 본문 {@code retry_after}(초)만큼 뒤에 다시, 5xx·연결
+ * 실패는 나중에 다시(발송기 백오프), 그 밖(리다이렉트, 400 등 4xx)은 다시 보내도 같아 그만둔다.</li>
  * </ul>
  *
  * <p>로그에는 웹훅 ID와 상태 코드만 남긴다. 토큰·주소·본문은 남기지 않는다.
@@ -101,8 +101,8 @@ public class DiscordClient {
 			return new DiscordPostResult.Delivered();
 		}
 		log.info("디스코드가 거절했어요: webhook={}, status={}", webhook.id(), status);
-		if (status == 404) {
-			return new DiscordPostResult.Gone();
+		if (status == 404 || status == 401 || status == 403) {
+			return new DiscordPostResult.Gone("HTTP_" + status);
 		}
 		if (status == 429) {
 			Duration retryAfter = retryAfterHeader(response).or(() -> retryAfterBody(response.body()))

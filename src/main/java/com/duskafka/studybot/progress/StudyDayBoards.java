@@ -26,7 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
  * (notification → progress, architecture.md 4.2). 권한 검사는 하지 않는다. 부르는 쪽이 먼저 {@code StudyAccess}로 한다.
  *
  * <p>멤버와 상태는 오늘 현황({@code GET /api/studies/{id}/today}, S10)과 같은 계산이다: 그날 멤버였던 사람(그날 탈퇴한 사람 포함, R14),
- * {@link MemberDayProgress#evaluate}. 카드의 링크가 여는 화면과 숫자가 같게 하려는 것이다 (S14 PR 판단 기록). 벌금 값은 주지 않는다
+ * {@link MemberDayProgress#evaluate}. 지금 탈퇴했는지도 함께 줘서, 현황 카드는 탈퇴한 멤버를 뺄 수 있다 (사람이 정함 2026-11-28 PR #37 열린
+ * 질문 5). 벌금 값은 주지 않는다
  * (5.9 '벌금 금액은 기본으로 빼고', 사람이 정함 2026-11-28 'S14는 늘 뺌').
  *
  * <p>쿼리는 그날의 맥락(스터디·규칙·기수·멤버십) 4, 멤버 일 1, 사용자 1이다. 멤버 수와 상관없다. 여러 문장을 한 스냅샷에서 읽도록
@@ -65,7 +66,7 @@ public class StudyDayBoards {
 				.evaluate(member.judged(), day.restDay(), day.dailyGoal(), solvedCount, exemptionUsed)
 				.status();
 			return new BoardMember(member.userId(), logins.getOrDefault(member.userId(), ""), status,
-					row == null ? null : row.result());
+					row == null ? null : row.result(), member.active());
 		}).toList();
 		return new StudyDayBoard(studyId, day.studyDay(), day.endsAt(), day.restDay(), day.inSeason(), members);
 	}
@@ -132,8 +133,11 @@ public class StudyDayBoards {
 	 * @param login GitHub 로그인명 (따로 정하는 이름이 없다)
 	 * @param status 지금 센 수로 정한 그날 상태
 	 * @param result 그날 판정 결과. 아직 판정하지 않았으면 {@code null}
+	 * @param active 지금 탈퇴하지 않았는지 (그날 탈퇴했다 다시 가입했으면 참, {@code StudyDayContext.RosterMember#active}). 현황 카드는 탈퇴한
+	 * 멤버를 뺀다 (사람이 정함 2026-11-28). 판정 결과는 그날까지 판정하니(R14) 이 값과 상관없다
 	 */
-	public record BoardMember(long userId, String login, MemberDayStatus status, @Nullable JudgmentResult result) {
+	public record BoardMember(long userId, String login, MemberDayStatus status, @Nullable JudgmentResult result,
+			boolean active) {
 
 		public BoardMember {
 			Objects.requireNonNull(login, "login");
