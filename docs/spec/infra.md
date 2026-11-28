@@ -174,6 +174,11 @@ sequenceDiagram
 - 레포, 이미지, 로그에는 비밀을 넣지 않아요. 푸시 보호는 탐지 형식이 한정적이라 보조 수단일 뿐이에요.
 - 비밀이 레포에 한 번이라도 올라갔다면 커밋을 지우는 게 아니라 **비밀 자체를 교체**해요.
 - 교체 절차는 `docs/ops/runbooks/secret-rotation.md`에 적어 두고 한 번 연습해요.
+- **VAPID 키 (S13, H-04):** 환경 변수 셋을 넣어요. 셋 중 하나라도 없거나 형식이 틀리면 앱이 뜨지 않아요. 기동할 때 형식, 곡선 위의 점인지, 두 키가 짝인지 확인해요.
+    - `WEBPUSH_VAPID_PUBLIC_KEY`: 압축하지 않은 P-256 공개키(65바이트)의 base64url
+    - `WEBPUSH_VAPID_PRIVATE_KEY`: 개인키(32바이트)의 base64url. 비밀이에요(위 표 'VAPID 개인키')
+    - 두 키는 `npx web-push generate-vapid-keys`가 만드는 형식과 같아요.
+    - `WEBPUSH_VAPID_SUBJECT`: `mailto:` 또는 `https://`로 시작하는 운영자 연락처예요(RFC 8292). 비밀값은 아니지만 개인 연락처일 수 있어 레포에 넣지 않고 기본값도 없어요.
 
 **백업**
 

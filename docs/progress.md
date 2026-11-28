@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-28 S13 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
+- 한 일: PR #35(병합)의 스펙 변경 제안 1~11을 문서에 반영. architecture 4.2(outbox 행을 넣는 통지는 같은 트랜잭션 리스너로 넣을 수 있음)·알려진 충돌 5번 다룸, data-model `notifications.created_at`·'알림 테이블 (S13)'(payload, 잠금 토큰, CHECK, 구독 재등록 이동·`failure_count`), api.md 4.4(`GET /api/me`에서 '알림 구독 상태'를 빼고 `GET /api/me/push-subscriptions` 행, '웹 푸시 구독' 요청·응답), security 9.7 푸시 도메인 규칙, 5.8(상태 그림 SKIPPED·EXPIRED는 SENDING에서, 표 SHARE_PROMPT 혼자 쓰기 없음·RULE_CHANGED 시점과 취소 키, 주의할 것 7줄), pseudocode '마감 전 알림'(탈퇴 제외, SOLO, 더 새 규칙 알림, 기기 여럿, 백오프), R2 한 마디, infra 9.6 VAPID 환경 변수 셋, H-04 메모, glossary 알림 채널
+- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
+- 사람이 정한 것 (2026-11-28, 지시 "두 개 모두 병합했어 다음에 뭘 할까" 뒤 세션 선택지): 순서 "docs PR → S14 (Recommended)", 반영 범위 네 묶음 모두 "4.2 리스너·충돌 5번", "data-model·api.md", "5.8·pseudocode·R2", "9.7·9.6·glossary"(여러 개 고르는 질문, 추천 표시 없음)
+- 다음: 이 PR 병합 → 새 세션에서 S14(디스코드·결과 알림·공유 카드, 결정 게이트 없음, 첫 일은 `DAILY_RESULT` 방식 결정 제안서(알려진 충돌 2번, 사람이 정함 2026-11-28)). '한 세션에 단계 하나'라 S14는 이 세션에서 하지 않음
+- 막힌 것: 없음
+- 참고: 제안 목록 밖이라 넣지 않은 두 가지(5.8·pseudocode의 '201'과 코드의 2xx·그 밖의 4xx, pseudocode `limit 100`과 코드 20)는 PR 열린 질문. 4.2 문구는 S14 결과 알림 방식을 미리 정하지 않게 '넣을 수 있어요'로 씀(PR 판단 기록)
+- PR: (이 PR)
+
 ## 2026-11-27 S13 알림 기반과 웹 푸시 (세션 1/1)
 - 한 일: 만들 것 1~7. 1(결정 제안서 009)은 docs PR #34. V11(`notifications`, `push_subscriptions`, S13 종류·채널만). `RuleVersionCalendar#reminderAt`(그날 규칙). study `ReminderDays`(지금 시각의 스터디 일, 진행 지점·알림 시각)·`StudyRulesChanged`(예정 규칙이 달라지거나 취소될 때 같은 트랜잭션에서 발행). progress `ReminderTargets`(현황과 같은 '남음' 계산 + 탈퇴한 멤버 제외, 발송 직전 재확인). 규칙 변경은 예정 구간 내용이 같으면 알리지 않고, 예정 변경을 취소하면 알림(`:cancelled` 키). 내 구독 목록 `GET /api/me/push-subscriptions`. notification `outbox`(dedupe_key, payload `{type,title,body,url}`), `reminder`(1분·ShedLock, 스터디마다 트랜잭션, SOLO는 공유 유도 없음 R15), `rule.RuleChangeNotifier`(같은 트랜잭션 리스너), `dispatch`(5초·SKIP LOCKED, 20개·잠금 2분, 잠금 만료 시각이 토큰, 백오프 30초×2^(n−1)·최대 30분, Retry-After), `webpush`(zerodep으로 VAPID·aes128gcm만, JDK HttpClient로 보냄, VAPID 키 기동 검사, 허용 도메인), 구독 API 4개(공개키·등록·목록·해제), 지표, 스케줄러 스레드 4개
 - 상태: 빌드 통과 (테스트 832개). 구현 전 새 테스트 53개 중 47개 실패(통과 6개는 아무것도 안 해도 참). 조건 빼 보기 28개 모두 해당 테스트 실패(같은 트랜잭션은 커밋 전에 보이는지 테스트를 더해 가름, 혼자 쓰기 테스트는 구현 뒤 더해 조건 빼 보기로 실패 확인). zerodep이 Java 25에서 만든 요청을 테스트가 JDK로 복호화·VAPID 서명 검증해 통과. spec-reviewer 1차·2차 '통과'(필수 없음) → 1차 고려 10건: 테스트 10개 더함(구현 전 6개 실패), 조건 빼 보기 9개 중 8개 걸림(마이크로초 자르기는 PostgreSQL JDBC가 같은 방식으로 맞춰 안 걸림, 방어로 남김), 나머지는 PR 판단 기록. 열린 질문 결정 반영: 테스트 5개 구현 전 모두 실패, 조건 빼 보기 4개 모두 걸림. 3차 검토 '통과' → 테스트 2개(두 버전 취소 키, 더 새 규칙 알림이 있으면 옛것 SKIPPED), 조건 빼 보기 2개 모두 걸림
@@ -134,13 +143,7 @@
 - PR: #21
 
 ## 2026-11-24 OD-07·OD-08 결정 반영 (docs PR, 단계 진행 아님)
-- 한 일: 사람이 정한 OD-07·OD-08을 결정 대장(확정), 스펙(R2·R9·R13, glossary `JudgmentResult`, 5.13, api `PUT /rules`, testing T11, product 기능 표), 단계 문서(S05 만들 것 4·T11·판단 기록, S09 판정 대상, S12 만들 것 6·수용 기준, steps README의 S05 상태 '대기')에 반영
-- 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
-- 사람이 정한 것 (2026-11-24, 세션 선택지, 모두 Recommended): 다음 기수 "마지막 날 다음 날 바로", 기수 밖 날 "판정 대상에서 뺀", 규칙 변경 "일부는 다음 기수부터"(기준 시각·기수 길이·기수당 면제권·벌금), 기준 시각이 바뀌는 경계의 길이가 달라지는 하루(18~30시간) "새 기수 첫날"
-- 다음: 이 PR 병합 → S05 남은 일(규칙 변경 API `PUT /rules`, T11) → S09. docs PR #19가 먼저 병합돼서(사람이 정함 "#19 먼저") master를 이 브랜치에 병합하고 이 파일 충돌을 풀었다
-- 막힌 것: 없음
-- 참고: spec-reviewer가 찾은 세부 질문 8개(다음 기수 행을 만드는 시점, 새 기수 첫날 계산을 맡을 단계, 유예가 바뀌는 날, 1기 시작 전 변경의 적용 기수 등)는 PR 열린 질문. S05 남은 PR은 `StudyTimeline.currentRule`(규칙 버전이 둘이면 예외)부터 손봐야 함
-- PR: #20
+- 요약: OD-07·OD-08을 결정 대장(확정), 스펙(R2·R9·R13, glossary `JudgmentResult`, 5.13, api `PUT /rules`, testing T11, product), 단계 문서(S05·S09·S12)에 반영. 사람이 정함: 다음 기수 "마지막 날 다음 날 바로", 기수 밖 날 "판정 대상에서 뺀", 규칙 변경 "일부는 다음 기수부터", 길이가 달라지는 하루 "새 기수 첫날". 세부 질문 8개는 PR 열린 질문. PR: #20
 
 ## 2026-11-24 S08 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 요약: PR #18 제안 1~3 반영(data-model `solve_records` `parser_version`·경로 UNIQUE와 부작용·CHECK, 빈 `path_prefix`, 5.4 '확인 대기', pseudocode `processPush`, 5.3 'push 처리 순서'). 사람이 정함: 제안 1~3 모두 반영. 5.3 항목 번호는 코드 주석이 가리켜 밀지 않음. PR: #19

@@ -12,7 +12,7 @@
 
 | 메서드·경로                                      | 용도                                     | 권한      | 단계 |
 |--------------------------------------------------|------------------------------------------|-----------|------|
-| `GET /api/me`                                    | 내 정보, 연결된 레포, 알림 구독 상태     | 로그인    | P1   |
+| `GET /api/me`                                    | 내 정보, 연결된 레포                     | 로그인    | P1   |
 | `POST /logout`                                   | 로그아웃                                 | 로그인    | P1   |
 | `DELETE /api/me`                                 | 탈퇴                                     | 로그인    | P1   |
 | `POST /api/studies`                              | 스터디 만들기 (규칙, 첫 기수 포함)       | 로그인    | P1   |
@@ -43,6 +43,7 @@
 | `GET /api/studies/{id}/share-card?type=today`    | 공유 카드 내용                           | 멤버      | P1   |
 | `GET /api/push/vapid-public-key`                 | 웹 푸시 공개키                           | 공개      | P1   |
 | `POST /api/me/push-subscriptions`                | 푸시 구독 등록                           | 로그인    | P1   |
+| `GET /api/me/push-subscriptions?page=&size=`    | 내 푸시 구독(기기) 목록                  | 로그인    | P1   |
 | `DELETE /api/me/push-subscriptions/{id}`         | 구독 해제                                | 본인      | P1   |
 | `PUT /api/studies/{id}/channels/discord`         | 디스코드 웹훅 등록·해제                  | 방장      | P1   |
 | `POST /api/studies/{id}/channels/discord/test`   | 테스트 게시                              | 방장      | P1   |
@@ -93,6 +94,14 @@
     - 권한을 먼저 봐요. 기준 버전 ID가 틀려도 멤버는 403, 멤버가 아니면 404예요.
     - 응답은 스터디 상세예요. 스터디 상세의 `rule`(현재 규칙)과 `upcomingRules[]`(예정된 변경, 적용 시작일 순서, 없으면 `[]`)에는 버전 `id`가 있어요.
     - 초대 미리보기의 `upcomingRules[]`에는 적용 시작일과 규칙 요약만 있어요 (버전 ID·알림 시각 없음).
+- **웹 푸시 구독 (`/api/push/vapid-public-key`, `/api/me/push-subscriptions`, 5.8, S13):** S13 PR #35에서 정한 모양이에요 (에이전트가 정했고, 사람이 스펙 반영을 정함, 2026-11-28). 내 구독 목록은 `GET /api/me`의 '알림 구독 상태' 대신이에요 (사람이 정함, 2026-11-28 S13).
+    - 공개키: 200과 `{publicKey}`예요. 압축하지 않은 P-256 공개키(65바이트)의 base64url이라 브라우저 `pushManager.subscribe`의 `applicationServerKey`에 그대로 넣어요. 로그인 없이 읽어요.
+    - 등록: 본문은 브라우저 `PushSubscription.toJSON()` 그대로 `{endpoint, expirationTime, keys: {p256dh, auth}}`예요(`expirationTime`은 받기만 하고 쓰지 않음). 기기 구분 표시용으로 요청의 `User-Agent`를 512자까지 남겨요. 201과 `{id, createdAt}`을 줘요.
+        - 같은 `endpoint`를 다시 등록해도 201이고 같은 `id`예요. 다른 사용자가 등록한 주소면 지금 사용자로 옮기고 키를 바꿔요 (data-model '알림 테이블').
+        - 주소가 알려진 푸시 서비스가 아니거나(9.7, T28) 키 형식이 틀리면 400이에요.
+    - 내 구독 목록: 로그인한 사용자의 구독만 ID 순서로 줘요. `GET /api/me/solves`와 같은 페이지 모양(Spring `PagedModel`)이에요. `content[]`에 `{id, createdAt, lastSuccessAt, userAgent}`, `page`에 크기·번호·전체 수가 있어요. `page`는 0부터(기본 0), `size`는 기본 20·최대 50이고 범위 밖이면 400이에요.
+        - 구독 주소(`endpoint`)와 키는 내보내지 않아요. 기기를 가리키는 비밀 주소예요 (9.8 최소 노출). 화면이 '이 기기'를 알려면 등록 응답의 `id`를 저장해 써요.
+    - 해제: 204예요. 남의 것이나 없는 것은 404예요 (T19).
 
 ## 4.5 로그인과 권한
 
