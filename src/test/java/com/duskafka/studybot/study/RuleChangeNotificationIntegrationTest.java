@@ -113,6 +113,39 @@ class RuleChangeNotificationIntegrationTest extends StudyTestSupport {
 	}
 
 	@Test
+	@DisplayName("예정 버전 둘(다음 날·다음 기수)을 한꺼번에 취소하면 멤버마다 취소 알림 하나이고 키는 취소된 마지막 예정 버전이다")
+	void cancellingTwoUpcomingVersionsMakesOneNoticeKeyedByLastVersion() {
+		assertThat(putRules(rules(Map.of("dailyGoal", 2, "seasonLengthDays", 14)))).hasStatus(HttpStatus.OK);
+		long lastUpcomingRuleId = latestRuleId();
+		assertThat(jdbc.sql("select count(*) from studybot.study_rules where study_id = :studyId")
+			.param("studyId", studyId)
+			.query(Long.class)
+			.single()).isEqualTo(3);
+
+		assertThat(putRules(rules(Map.of()))).hasStatus(HttpStatus.OK);
+
+		assertThat(notifications.ofStudy(studyId, "RULE_CHANGED")).filteredOn(row -> row.dedupeKey().endsWith(":cancelled"))
+			.extracting(NotificationRow::dedupeKey)
+			.containsExactly("RULE:" + studyId + ":" + lastUpcomingRuleId + ":" + member.id() + ":cancelled");
+	}
+
+	@Test
+	@DisplayName("변경 알림이 아직 안 나간 채로 취소되면 옛 변경 알림은 SKIPPED다: 나중에 나가 틀린 정보가 마지막에 남지 않게 (같은 스터디·사람의 더 새 규칙 알림이 있으면 옛것은 보내지 않음)")
+	void olderRuleNoticeIsSkippedWhenNewerExists() {
+		notifications.expireLeftovers();
+		putRules(rules(Map.of("dailyGoal", 2)));
+		putRules(rules(Map.of()));
+
+		dispatcher.run();
+
+		List<NotificationRow> rows = notifications.ofStudy(studyId, "RULE_CHANGED");
+		assertThat(rows).hasSize(2);
+		assertThat(rows.get(0).status()).isEqualTo("SKIPPED");
+		assertThat(rows.get(1).dedupeKey()).endsWith(":cancelled");
+		assertThat(rows.get(1).status()).isNotEqualTo("SKIPPED");
+	}
+
+	@Test
 	@DisplayName("바꾸고 취소하기를 두 번 하면 취소 알림도 두 번이다 (취소된 버전 ID가 달라 키가 겹치지 않음)")
 	void cancellingTwiceMakesTwoCancelNotifications() {
 		putRules(rules(Map.of("dailyGoal", 2)));
