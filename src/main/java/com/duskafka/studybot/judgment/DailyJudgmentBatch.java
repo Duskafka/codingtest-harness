@@ -24,8 +24,9 @@ import org.springframework.stereotype.Component;
  * <li>그날 오류가 없을 때만 진행 지점을 올린다 ({@link JudgingDays#markJudged}). 오류가 있으면 그 스터디는 멈추고 다음 실행에 그날부터 다시
  * 한다(이미 판정한 멤버는 건너뜀). 날을 건너뛰어 판정하지 않는다.</li>
  * </ol>
- * 한 스터디의 오류는 다른 스터디를 막지 않는다. 결과 알림(DAILY_RESULT)은 S14이고 judgment에서 notification을 부르지 않는다
- * (알려진 충돌 2번).
+ * 한 스터디의 오류는 다른 스터디를 막지 않는다. 결과 알림(DAILY_RESULT)은 judgment가 부르지 않는다 (알려진 충돌 2번). study가 진행
+ * 지점을 올리는 트랜잭션에서 이벤트를 발행하고 notification이 같은 트랜잭션에서 알림 행을 넣는다 (결정 제안서 010). 그래서 진행 지점 저장이
+ * 실패할 수 있고, 그 실패도 오류로 세고 그 스터디만 멈춘다 (S14).
  *
  * <p>지표 (5.10 '지표', metrics.md 10.2 '판정 배치 소요 시간, 따라잡은 날 수'): {@code studybot.judgment.batch}(배치 한 번의 소요 시간), {@code studybot.judgment.days}(진행
  * 지점을 올린 날 수 = 따라잡은 날 포함), {@code studybot.judgment.results}(결과별 판정 수, {@code result} 태그. 실패 판정은
@@ -62,7 +63,7 @@ public class DailyJudgmentBatch {
 			.description("진행 지점을 올린 날 수 (따라잡은 날 포함)")
 			.register(meterRegistry);
 		this.errorCounter = Counter.builder("studybot.judgment.errors")
-			.description("판정 배치의 오류 수 (멤버 판정, 기수 준비, 판정할 날 조회)")
+			.description("판정 배치의 오류 수 (멤버 판정, 기수 준비, 판정할 날 조회, 진행 지점 저장)")
 			.register(meterRegistry);
 	}
 
@@ -130,7 +131,18 @@ public class DailyJudgmentBatch {
 				log.warn("오류가 있어 진행 지점을 올리지 않고 멈춰요: study={}, day={}, 오류 {}건", studyId, day.studyDay(), dayErrors);
 				break;
 			}
-			if (!this.judgingDays.markJudged(studyId, day.studyDay())) {
+			boolean advanced;
+			try {
+				advanced = this.judgingDays.markJudged(studyId, day.studyDay());
+			}
+			catch (RuntimeException ex) {
+				// 진행 지점과 같은 트랜잭션에서 결과 알림 행을 넣는다 (결정 제안서 010). 그게 실패하면 진행 지점도 롤백된다. 이 스터디만 멈추고
+				// 다른 스터디는 계속 판정한다 (5.10 처리 순서 3의 오류 격리). 다음 실행이 그날부터 다시 한다.
+				log.error("진행 지점을 올리지 못해 멈춰요: study={}, day={}", studyId, day.studyDay(), ex);
+				errors++;
+				break;
+			}
+			if (!advanced) {
 				log.warn("진행 지점이 이미 그날 뒤라 멈춰요: study={}, day={}", studyId, day.studyDay());
 				break;
 			}

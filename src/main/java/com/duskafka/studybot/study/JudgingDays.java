@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,8 @@ public class JudgingDays {
 	private final SeasonRepository seasonRepository;
 
 	private final MembershipRepository membershipRepository;
+
+	private final ApplicationEventPublisher events;
 
 	private final Clock clock;
 
@@ -91,6 +94,9 @@ public class JudgingDays {
 	 * 하루치 판정을 모두 마쳤을 때 진행 지점을 그날로 올린다 (5.10 처리 순서 3, S12 만들 것 5). 마지막 날까지 판정한 진행 기수는 정산 중이 되고
 	 * 그 시각을 남긴다 (R13, 3.4 'ACTIVE → SETTLING'). 판정 결과·진행 지점 저장은 스터디 행 잠금의 범위가 아니다 (결정 제안서 006).
 	 *
+	 * <p>진행 지점을 실제로 올렸으면 같은 트랜잭션에서 {@link StudyDayJudged}를 발행한다 (S14 만들 것 5, 결정 제안서 010). 받는 쪽(결과
+	 * 알림)이 실패하면 이 트랜잭션도 롤백돼 진행 지점이 올라가지 않는다. 이미 올라가 있었으면(두 실행이 겹침) 발행하지 않는다.
+	 *
 	 * @return 진행 지점을 올렸는지. 이미 그날이거나 그 뒤면 거짓이다
 	 */
 	@Transactional
@@ -99,6 +105,12 @@ public class JudgingDays {
 			return false;
 		}
 		this.seasonRepository.markSettling(studyId, day, this.clock.instant());
+		Study study = this.studyRepository.findById(studyId)
+			.orElseThrow(() -> new NotFoundException(StudyAccess.NOT_FOUND_DETAIL));
+		RuleVersionCalendar calendar = StudyTimeline
+			.calendar(this.ruleRepository.findByStudyIdOrderByEffectiveFromAsc(studyId), study.zoneId());
+		this.events.publishEvent(new StudyDayJudged(studyId, study.getName(), study.getMode(), study.getOwnerId(), day,
+				calendar.startOf(day.plusDays(2))));
 		return true;
 	}
 
