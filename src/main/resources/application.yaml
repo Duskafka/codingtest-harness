@@ -100,6 +100,21 @@ studybot:
       cron: "0 * * * * *"
     dispatch:
       cron: "*/5 * * * * *"
+# 디스코드 채널 웹훅 (S14, processes 5.8·5.9). notification.discord.DiscordProperties
+  discord:
+    # 게시할 디스코드 API 주소. 등록은 공식 주소(https://discord.com/api/webhooks/…)만 받고(T27), 보낼 때는 이 주소에 웹훅 ID·토큰을 붙인다.
+    # 테스트만 WireMock 주소로 바꾼다.
+    api-base-url: "https://discord.com/api"
+    encryption:
+      # 웹훅 URL 암호화 키(AES-256, 32바이트의 base64)는 서버 .env의 환경 변수로만 받는다 (infra.md 9.6 '디스코드 웹훅 URL 암호화 키').
+      # 기본값이 없어 없거나 형식이 틀리면 기동이 실패한다. 예: openssl rand -base64 32
+      key: ${DISCORD_WEBHOOK_ENCRYPTION_KEY}
+      # 키를 교체하는 동안만 옛 키를 넣는다. 기동할 때 옛 키로 저장된 주소를 새 키로 다시 암호화한다. 끝나면 비운다 (S14 PR 판단 기록).
+      previous-key: ${DISCORD_WEBHOOK_ENCRYPTION_KEY_PREVIOUS:}
+# 화면 주소 (S14 공유 카드·디스코드 게시의 링크). notification.link.PublicLinkProperties
+# 운영 도메인(https, 경로 없음)을 환경 변수로 받는다. 기본값이 없어 없으면 기동이 실패한다. 비밀값은 아니다.
+  app:
+    public-base-url: ${STUDYBOT_PUBLIC_BASE_URL}
 # 웹 푸시 (S13, OD-11 결정 제안서 009). notification.webpush.WebPushProperties
   webpush:
     vapid:

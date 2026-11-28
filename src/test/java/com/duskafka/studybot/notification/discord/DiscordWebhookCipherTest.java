@@ -54,8 +54,10 @@ class DiscordWebhookCipherTest {
 	void tamperedFails() {
 		DiscordWebhookCipher cipher = new DiscordWebhookCipher(DiscordTestKeys.generate(), null);
 		String encrypted = cipher.encrypt(7L, URL);
-		char last = encrypted.charAt(encrypted.length() - 1);
-		String tampered = encrypted.substring(0, encrypted.length() - 1) + (last == 'A' ? 'B' : 'A');
+		// 본문 가운데 글자를 바꾼다. 마지막 글자는 쓰지 않는 비트만 담을 수 있어(패딩 없는 base64) 바꿔도 같은 바이트일 수 있다.
+		int at = cipher.currentPrefix().length() + 20;
+		char original = encrypted.charAt(at);
+		String tampered = encrypted.substring(0, at) + (original == 'A' ? 'B' : 'A') + encrypted.substring(at + 1);
 
 		assertThatThrownBy(() -> cipher.decrypt(7L, tampered)).isInstanceOf(IllegalStateException.class);
 	}

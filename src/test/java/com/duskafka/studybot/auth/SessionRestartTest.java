@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.duskafka.studybot.StudybotApplication;
 import com.duskafka.studybot.github.GithubApiStub;
 import com.duskafka.studybot.github.GithubAppTestKeys;
+import com.duskafka.studybot.notification.DiscordTestKeys;
 import com.duskafka.studybot.notification.WebPushTestKeys;
 import java.io.IOException;
 import java.net.URI;
@@ -83,12 +84,14 @@ class SessionRestartTest {
 		// S07부터 GitHub App private key가 없으면 앱이 뜨지 않는다. 다른 통합 테스트와 같은 테스트 키와 WireMock 주소를 넣는다
 		// (GithubAppTestConfiguration). properties()는 기본값이라 application.yaml의 빈 값에 밀려서 실행 인자로 넣는다.
 		// S13부터 웹 푸시 VAPID 키가 없어도 앱이 뜨지 않는다. 같은 방식으로 테스트 안에서 만든 키를 넣는다 (WebPushTestConfiguration).
-		// 이 테스트가 보는 것(세션 유지)과 기대값은 그대로다.
+		// S14부터 디스코드 웹훅 URL 암호화 키가 없어도 앱이 뜨지 않는다. 같은 방식으로 테스트 안에서 만든 키를 넣는다
+		// (DiscordTestConfiguration). 이 테스트가 보는 것(세션 유지)과 기대값은 그대로다.
 		return new SpringApplicationBuilder(StudybotApplication.class).properties(properties)
 			.run("--studybot.github.app.private-key-path=" + GithubAppTestKeys.pkcs1PemFile(),
 					"--studybot.github.app.api-base-url=" + GithubApiStub.baseUrl(),
 					"--studybot.webpush.vapid.public-key=" + WebPushTestKeys.vapidPublicKeyBase64Url(),
-					"--studybot.webpush.vapid.private-key=" + WebPushTestKeys.vapidPrivateKeyBase64Url());
+					"--studybot.webpush.vapid.private-key=" + WebPushTestKeys.vapidPrivateKeyBase64Url(),
+					"--studybot.discord.encryption.key=" + DiscordTestKeys.current());
 	}
 
 	private static String baseUrl(ConfigurableApplicationContext app) {

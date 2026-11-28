@@ -6,6 +6,7 @@ import com.duskafka.studybot.notification.outbox.NotificationType;
 import com.duskafka.studybot.notification.persistence.NotificationQueue;
 import com.duskafka.studybot.notification.persistence.NotificationQueue.ClaimedNotification;
 import com.duskafka.studybot.notification.persistence.NotificationRepository;
+import com.duskafka.studybot.notification.persistence.StudyChannelRepository;
 import com.duskafka.studybot.progress.ReminderTargets;
 import com.duskafka.studybot.study.StudyAccess;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -27,7 +28,8 @@ import org.springframework.stereotype.Component;
  * <li>잠금이 만료된 발송 중 행을 발송 대기로 되돌린다 (발송 중에 서버가 죽은 경우).</li>
  * <li>보낼 시각이 된 발송 대기 행을 {@value #BATCH_SIZE}개까지 {@code FOR UPDATE SKIP LOCKED}로 가져와 발송 중(잠금 만료 시각)으로 먼저
  * 커밋한다 ({@link NotificationQueue#claim}). 서버가 여러 대여도 같은 행을 둘이 가져가지 않는다. 그래서 ShedLock을 쓰지 않는다.</li>
- * <li>행마다 트랜잭션 밖에서: 만료됐으면 EXPIRED, 마감 전 알림인데 그새 풀었거나 면제권을 썼거나 탈퇴했으면 SKIPPED (T16), 규칙 변경 알림도
+ * <li>행마다 트랜잭션 밖에서: 만료됐으면 EXPIRED, 디스코드 채널 알림인데 그새 디스코드가 꺼졌으면 SKIPPED (S14), 마감 전 알림인데 그새 풀었거나
+ * 면제권을 썼거나 탈퇴했으면 SKIPPED (T16), 규칙 변경 알림도
  * 받는 사람이 그새 탈퇴했으면 SKIPPED (사람이 정함 2026-11-27 '탈퇴한 멤버에게 보내지 않음'), 아니면 채널로 보낸다. 같은 확인을 공유 유도(방장을
  * 위임하고 탈퇴한 옛 방장)에도 거는 것은 에이전트 판단이다 (S13 PR 판단 기록).</li>
  * <li>결과: 받음 → SENT, 영구 실패 → FAILED, 일시 실패 → 재시도 시각을 정하고 PENDING (시도 횟수 +1).</li>
@@ -66,6 +68,8 @@ public class NotificationDispatcher {
 
 	private final StudyAccess studyAccess;
 
+	private final StudyChannelRepository studyChannels;
+
 	private final Map<NotificationChannel, NotificationSender> senders;
 
 	private final MeterRegistry meterRegistry;
@@ -73,12 +77,13 @@ public class NotificationDispatcher {
 	private final Clock clock;
 
 	NotificationDispatcher(NotificationQueue queue, NotificationRepository notifications,
-			ReminderTargets reminderTargets, StudyAccess studyAccess, List<NotificationSender> senders,
-			MeterRegistry meterRegistry, Clock clock) {
+			ReminderTargets reminderTargets, StudyAccess studyAccess, StudyChannelRepository studyChannels,
+			List<NotificationSender> senders, MeterRegistry meterRegistry, Clock clock) {
 		this.queue = queue;
 		this.notifications = notifications;
 		this.reminderTargets = reminderTargets;
 		this.studyAccess = studyAccess;
+		this.studyChannels = studyChannels;
 		this.senders = new EnumMap<>(NotificationChannel.class);
 		for (NotificationSender sender : senders) {
 			if (this.senders.put(sender.channel(), sender) != null) {
@@ -148,9 +153,13 @@ public class NotificationDispatcher {
 	/**
 	 * 보내기 직전에 아직 보낼 까닭이 있는지 다시 확인한다 (5.8 '발송 직전 다시 확인'). 마감 전 알림은 그날 아직 '남음'인지(T16, 탈퇴 포함),
 	 * 사람에게 가는 그 밖의 알림은 받는 사람이 아직 멤버인지 본다. 규칙 알림은 같은 사람에게 더 새 규칙 알림이 있으면 옛 정보라 보내지 않는다
-	 * (예: 변경 알림이 재시도로 밀린 사이 취소됨. 에이전트 판단, S13 PR 판단 기록). 받는 사람이 없는 알림(스터디 채널, S14)은 그대로 보낸다.
+	 * (예: 변경 알림이 재시도로 밀린 사이 취소됨. 에이전트 판단, S13 PR 판단 기록). 디스코드 스터디 채널 알림(받는 사람 없음, S14)은 그 스터디의
+	 * 디스코드가 아직 켜져 있을 때만 보낸다(해제했거나 404로 꺼졌으면 SKIPPED).
 	 */
 	private boolean stillWanted(ClaimedNotification notification) {
+		if (NotificationChannel.DISCORD.name().equals(notification.channel())) {
+			return this.studyChannels.isPostable(notification.studyId());
+		}
 		Long userId = notification.userId();
 		if (NotificationType.REMINDER.name().equals(notification.type())) {
 			return userId != null && notification.studyDay() != null
