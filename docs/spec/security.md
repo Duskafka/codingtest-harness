@@ -31,7 +31,10 @@
 서버가 사용자가 입력한 주소로 요청을 보내는 곳이 두 군데 있어요. 그대로 두면 공격자가 내부 주소 (예: 클라우드 메타데이터 주소 `169.254.169.254`)로 요청을 보내게 만들 수 있어요.
 
 - 디스코드 웹훅 URL: `https://discord.com/api/webhooks/` 같은 공식 주소로 시작하는 것만 허용 (T27)
-- 웹 푸시 구독 주소: 알려진 푸시 서비스 도메인만 허용 (정확한 목록은 구현 때 확인) (T28)
+- 웹 푸시 구독 주소: 알려진 푸시 서비스 도메인만 허용 (T28, S13)
+    - `https`만, 사용자 정보(`user@`) 없이, 기본 포트(443)만, 2048자까지
+    - 호스트: `fcm.googleapis.com`(Chrome), `updates.push.services.mozilla.com`(Firefox), `*.push.apple.com`(Safari), `*.notify.windows.com`(Edge·Windows). 목록은 설정 `studybot.webpush.allowed-hosts`라 브라우저가 새 푸시 서비스를 쓰면 설정으로 더해요
+    - `*.`은 그 아래 이름 단위로만 맞아요(`web.push.apple.com`은 맞고 `push.apple.com`, `evilnotify.windows.com`은 안 맞음). 그 밖은 정확히 같아야 해요. 소문자로 비교해요
 - 리다이렉트를 따라가지 않기, 응답 시간·크기 제한
 - 증거 링크는 표시만 하고 서버가 접속하지 않음
 

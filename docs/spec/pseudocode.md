@@ -107,16 +107,18 @@ every 5 minutes with ShedLock:
 ```
 every minute with ShedLock:                          -- 생성
   for study in activeStudies:
-    day = cal.studyDayOf(now)
+    day = cal.studyDayOf(now)                       -- 지금 시각의 스터디 일이라 now < cal.startOf(day + 1)이 늘 참:
+                                                    -- 마감이 지난 날은 따로 막지 않아도 만들지 않음
     if study.lastRemindedDay == day: continue
     if now < cal.reminderAt(day): continue
-    if now >= cal.startOf(day + 1): continue         -- 마감이 지났으면 만들지 않음
     transaction:
         for m in judgeTargets(study, day)
-                 where not rest day and exemption not used and solvedCount < goal:
+                 where not rest day and exemption not used and solvedCount < goal
+                   and m has not left the study now      -- 그날 다시 가입했으면 대상 (사람이 정함, 2026-11-27 S13)
             insert notifications(REMINDER, m, day, expiresAt = cal.startOf(day + 1)) on conflict do nothing
         if any targets:
-            insert notifications(SHARE_PROMPT, owner, day) on conflict do nothing
+            if study.mode != SOLO:                    -- 혼자 쓰기는 공유 유도 없음 (R15)
+                insert notifications(SHARE_PROMPT, owner, day) on conflict do nothing
             if study.discordEnabled: insert notifications(DISCORD_STATUS, study, day) on conflict do nothing
         study.lastRemindedDay = day
 
@@ -127,11 +129,13 @@ every 5 seconds:                                      -- 발송
     for n in rows:
         n.status = SENDING, n.lockedUntil = now + 2m  -- 먼저 커밋
         if now >= n.expiresAt:            n.status = EXPIRED; continue
-        if n is REMINDER and (solved or exempted): n.status = SKIPPED; continue
-        r = send(n)
-        201       → SENT
-        404, 410  → delete subscription, FAILED
-        429, 5xx  → PENDING, nextAttemptAt = backoff(n.attempts++)
+        if n is REMINDER and (solved or exempted or left the study): n.status = SKIPPED; continue
+        if n is RULE_CHANGED and a newer RULE_CHANGED exists for (n.study, n.user): n.status = SKIPPED; continue
+        if n has a user and n.user is no longer a member of n.study: n.status = SKIPPED; continue
+        r = send(n)                               -- 웹 푸시는 받는 사람의 구독(기기)마다 보내고 모아서 정함 (5.8 '기기 여럿')
+        201       → SENT                          -- 한 기기라도 받음
+        404, 410  → delete subscription, FAILED   -- 그 기기의 구독만 지움. 다른 기기가 받았거나 재시도면 그쪽을 따름
+        429, 5xx  → PENDING, nextAttemptAt = backoff(n.attempts++)   -- Retry-After 또는 30초 × 2^(시도 횟수 − 1), 최대 30분 (5.8)
     -- 별도 정리: SENDING인데 lockedUntil이 지난 행은 PENDING으로 되돌림
 ```
 

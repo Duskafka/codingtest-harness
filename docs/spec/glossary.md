@@ -37,6 +37,7 @@
 | GitHub 설치 | `GithubInstallation` | `installationId`. 상태: `ACTIVE`, `SUSPENDED`, `DELETED`. 코드 표기는 S04·S06의 `Github*`에 맞춰요 |
 | 연결 레포 | `LinkedRepository` | 이름이 아니라 `repoId`로 추적. 상태: `ACTIVE`, `SUSPENDED`(설치 정지 동안), `INACTIVE` |
 | 알림 | `Notification` | 종류와 `dedupeKey`는 5.8 표. 상태: `PENDING`, `SENDING`, `SENT`, `FAILED`, `SKIPPED`, `EXPIRED` |
+| 알림 채널 | `NotificationChannel` | `WEB_PUSH` (S13). 디스코드 채널은 S14가 더해요 |
 | 푸시 구독 | `PushSubscription` | `endpoint` UNIQUE |
 
 ## 단계 표시
