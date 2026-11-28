@@ -64,10 +64,10 @@ class PushSubscriptionController {
 	 * 같다. 구독 주소와 키는 주지 않는다. 화면이 '이 기기'를 알려면 등록 응답의 {@code id}를 저장해 쓴다.
 	 */
 	@GetMapping("/api/me/push-subscriptions")
-	PagedModel<SubscriptionSummary> mine(@AuthenticationPrincipal LoginUser loginUser,
+	PagedModel<SubscriptionItemResponse> mine(@AuthenticationPrincipal LoginUser loginUser,
 			@RequestParam(defaultValue = "0") @Min(0) int page,
 			@RequestParam(defaultValue = "20") @Min(1) @Max(MAX_PAGE_SIZE) int size) {
-		return new PagedModel<>(this.service.mine(loginUser.userId(), page, size));
+		return new PagedModel<>(this.service.mine(loginUser.userId(), page, size).map(SubscriptionItemResponse::from));
 	}
 
 	/** 구독을 해제한다. 남의 것이나 없는 것은 404. */
@@ -105,6 +105,24 @@ class PushSubscriptionController {
 	 * @param createdAt 처음 등록한 시각
 	 */
 	record SubscriptionResponse(long id, Instant createdAt) {
+	}
+
+	/**
+	 * 내 구독 목록의 한 줄. 구독 주소와 키는 없다.
+	 *
+	 * @param id 구독 ID (해제할 때 씀)
+	 * @param createdAt 처음 등록한 시각
+	 * @param lastSuccessAt 마지막으로 이 기기에 보내기에 성공한 시각. 없으면 {@code null}
+	 * @param userAgent 등록할 때의 User-Agent. 없으면 {@code null}
+	 */
+	record SubscriptionItemResponse(long id, Instant createdAt, @Nullable Instant lastSuccessAt,
+			@Nullable String userAgent) {
+
+		static SubscriptionItemResponse from(SubscriptionSummary summary) {
+			return new SubscriptionItemResponse(summary.id(), summary.createdAt(), summary.lastSuccessAt(),
+					summary.userAgent());
+		}
+
 	}
 
 }

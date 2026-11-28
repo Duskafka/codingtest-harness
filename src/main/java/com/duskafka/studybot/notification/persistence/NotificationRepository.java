@@ -49,6 +49,16 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 	int releaseExpiredLocks(@Param("now") Instant now);
 
 	/**
+	 * 같은 스터디·같은 사람에게 이 알림보다 나중에 만든 규칙 알림(RULE_CHANGED: 변경·취소)이 있는지. 있으면 이 알림은 옛 정보라 보내지 않는다.
+	 * 재시도로 늦게 나간 옛 알림이 새 알림 뒤에 도착해 틀린 정보가 마지막에 남지 않게 한다 (Topic이 같아 기기에서도 나중 것이 덮음).
+	 */
+	@Query(value = """
+			select exists (select 1 from studybot.notifications
+				where type = 'RULE_CHANGED' and study_id = :studyId and user_id = :userId and id > :id)
+			""", nativeQuery = true)
+	boolean existsNewerRuleNotice(@Param("studyId") long studyId, @Param("userId") long userId, @Param("id") long id);
+
+	/**
 	 * 발송 중 행을 끝낸다: 보냄(SENT), 실패(FAILED), 건너뜀(SKIPPED), 만료(EXPIRED).
 	 *
 	 * @param token 가져갈 때 정한 잠금 만료 시각

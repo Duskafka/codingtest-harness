@@ -147,7 +147,8 @@ public class NotificationDispatcher {
 
 	/**
 	 * 보내기 직전에 아직 보낼 까닭이 있는지 다시 확인한다 (5.8 '발송 직전 다시 확인'). 마감 전 알림은 그날 아직 '남음'인지(T16, 탈퇴 포함),
-	 * 사람에게 가는 그 밖의 알림은 받는 사람이 아직 멤버인지 본다. 받는 사람이 없는 알림(스터디 채널, S14)은 그대로 보낸다.
+	 * 사람에게 가는 그 밖의 알림은 받는 사람이 아직 멤버인지 본다. 규칙 알림은 같은 사람에게 더 새 규칙 알림이 있으면 옛 정보라 보내지 않는다
+	 * (예: 변경 알림이 재시도로 밀린 사이 취소됨. 에이전트 판단, S13 PR 판단 기록). 받는 사람이 없는 알림(스터디 채널, S14)은 그대로 보낸다.
 	 */
 	private boolean stillWanted(ClaimedNotification notification) {
 		Long userId = notification.userId();
@@ -155,7 +156,14 @@ public class NotificationDispatcher {
 			return userId != null && notification.studyDay() != null
 					&& this.reminderTargets.stillRemaining(notification.studyId(), userId, notification.studyDay());
 		}
-		return userId == null || this.studyAccess.isActiveMember(notification.studyId(), userId);
+		if (userId == null) {
+			return true;
+		}
+		if (NotificationType.RULE_CHANGED.name().equals(notification.type())
+				&& this.notifications.existsNewerRuleNotice(notification.studyId(), userId, notification.id())) {
+			return false;
+		}
+		return this.studyAccess.isActiveMember(notification.studyId(), userId);
 	}
 
 	private SendResult send(ClaimedNotification notification, Instant now) {
