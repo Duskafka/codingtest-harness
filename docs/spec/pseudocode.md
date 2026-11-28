@@ -135,7 +135,7 @@ every 5 seconds:                                      -- 발송
         r = send(n)                               -- 웹 푸시는 받는 사람의 구독(기기)마다 보내고 모아서 정함 (5.8 '기기 여럿')
         201       → SENT                          -- 한 기기라도 받음
         404, 410  → delete subscription, FAILED   -- 그 기기의 구독만 지움. 다른 기기가 받았거나 재시도면 그쪽을 따름
-        429, 5xx  → PENDING, nextAttemptAt = backoff(n.attempts++)   -- Retry-After 또는 30초 × 2^(n−1), 최대 30분 (5.8)
+        429, 5xx  → PENDING, nextAttemptAt = backoff(n.attempts++)   -- Retry-After 또는 30초 × 2^(시도 횟수 − 1), 최대 30분 (5.8)
     -- 별도 정리: SENDING인데 lockedUntil이 지난 행은 PENDING으로 되돌림
 ```
 

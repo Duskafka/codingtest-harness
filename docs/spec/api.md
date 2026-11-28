@@ -43,7 +43,7 @@
 | `GET /api/studies/{id}/share-card?type=today`    | 공유 카드 내용                           | 멤버      | P1   |
 | `GET /api/push/vapid-public-key`                 | 웹 푸시 공개키                           | 공개      | P1   |
 | `POST /api/me/push-subscriptions`                | 푸시 구독 등록                           | 로그인    | P1   |
-| `GET /api/me/push-subscriptions?page=&size=`    | 내 푸시 구독(기기) 목록                  | 로그인    | P1   |
+| `GET /api/me/push-subscriptions?page=&size=`     | 내 푸시 구독(기기) 목록                  | 로그인    | P1   |
 | `DELETE /api/me/push-subscriptions/{id}`         | 구독 해제                                | 본인      | P1   |
 | `PUT /api/studies/{id}/channels/discord`         | 디스코드 웹훅 등록·해제                  | 방장      | P1   |
 | `POST /api/studies/{id}/channels/discord/test`   | 테스트 게시                              | 방장      | P1   |

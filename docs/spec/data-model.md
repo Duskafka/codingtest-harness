@@ -147,7 +147,7 @@ erDiagram
     - `payload`는 웹 푸시로 보낼 JSON 그대로 `{type, title, body, url}`이에요. `title`은 스터디 이름, `url`은 누르면 열 화면 경로예요. 사람 이름·로그인명 같은 개인정보는 넣지 않아요 (5.8 '주의할 것', 9.8).
     - `created_at`은 만든 시각이에요. 지표(알림 전환율)와 장애 분석에 써요.
     - `locked_until`은 발송기가 행을 가져갈 때 정한 잠금 만료 시각(마이크로초로 자름)이에요. 이 값이 발송기 한 번의 소유 표시라, 결과(SENT·FAILED·SKIPPED·EXPIRED·재시도)는 상태가 `SENDING`이고 이 값이 가져갈 때와 같을 때만 남겨요. 잠금이 만료돼 다른 발송기가 다시 가져갔으면 남기지 않아요.
-    - `RULE_CHANGED`는 특정 날의 알림이 아니라 `study_day`가 비어 있고, 만료는 만든 뒤 24시간이에요.
+    - `RULE_CHANGED`는 특정 날의 알림이 아니라 `study_day`가 비어 있어요.
     - CHECK
         - `type`은 S13이 만드는 `REMINDER`·`SHARE_PROMPT`·`RULE_CHANGED`만이에요. 다른 종류는 그 종류를 만드는 단계가 새 마이그레이션으로 더해요.
         - `channel`은 `WEB_PUSH`만이에요. 다른 채널도 그 단계가 더해요.
@@ -156,7 +156,7 @@ erDiagram
         - 웹 푸시는 사람에게 보내니 `user_id`가 있어요.
         - `attempts >= 0`
 - `push_subscriptions`
-    - 기기(브라우저)마다 한 행이에요. `endpoint`는 푸시 서비스가 기기마다 주는 비밀 주소라 로그에 남기지 않고 API 응답에도 내보내지 않아요 (api.md 4.4 '웹 푸시 구독'). `p256dh`·`auth`는 브라우저가 준 base64url 문자열 그대로예요.
+    - 기기(브라우저)마다 한 행이에요. `endpoint`는 푸시 서비스가 기기마다 주는 비밀 주소라 API 응답에 내보내지 않아요 (api.md 4.4 '웹 푸시 구독'). `p256dh`·`auth`는 브라우저가 준 base64url 문자열 그대로예요.
     - 같은 `endpoint`를 다시 등록하면 새 행을 만들지 않아요. 지금 로그인한 사용자로 옮기고 키·`user_agent`를 바꾸고 `failure_count`를 0으로 돌려요. 같은 브라우저로 계정을 바꿔 로그인한 경우예요.
     - `failure_count`는 마지막 성공 뒤 이어진 실패 수예요. 받으면 `last_success_at`을 채우고 0으로 돌려요. 404·410을 받으면 그 행을 지워요 (5.8, T17).
     - CHECK: `endpoint`는 1~2048자, `user_agent`는 512자까지, `failure_count >= 0`
