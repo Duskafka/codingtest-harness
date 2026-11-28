@@ -217,6 +217,8 @@ public class WebPushSender implements NotificationSender {
 			case "REMINDER" -> "r";
 			case "SHARE_PROMPT" -> "s";
 			case "RULE_CHANGED" -> "c";
+			case "DAILY_RESULT" -> "j";
+			case "DISCORD_DISABLED" -> "x";
 			default -> "n";
 		};
 		String topic = prefix + notification.studyId();

@@ -72,6 +72,75 @@ public final class NotificationRows {
 			.single();
 	}
 
+	/**
+	 * 디스코드 채널 알림을 바로 넣는다 (생성기를 거치지 않음, S14). 받는 사람 없음, 발송 대기, 처음 시도 시각은 {@code nextAttemptAt}.
+	 *
+	 * @return 알림 ID
+	 */
+	public long insertDiscordPending(String type, long studyId, @Nullable LocalDate studyDay, String payload,
+			Instant nextAttemptAt, Instant expiresAt) {
+		return jdbc.sql("""
+				insert into studybot.notifications
+					(type, channel, study_id, user_id, study_day, dedupe_key, payload, status, attempts, next_attempt_at,
+					expires_at, created_at)
+				values (:type, 'DISCORD', :studyId, null, :studyDay, :dedupeKey, cast(:payload as jsonb), 'PENDING', 0,
+					:nextAttemptAt, :expiresAt, :nextAttemptAt)
+				returning id
+				""")
+			.param("type", type)
+			.param("studyId", studyId)
+			.param("studyDay", studyDay)
+			.param("dedupeKey", "TEST:" + type + ":" + studyId + ":" + UUID.randomUUID())
+			.param("payload", payload)
+			.param("nextAttemptAt", Timestamp.from(nextAttemptAt))
+			.param("expiresAt", Timestamp.from(expiresAt))
+			.query(Long.class)
+			.single();
+	}
+
+	/** 스터디의 디스코드 채널 설정 행 ({@code study_channels}, S14). 없으면 빈 값. */
+	public Optional<ChannelRow> channel(long studyId) {
+		return jdbc.sql("""
+				select study_id, discord_webhook_url_enc, discord_enabled, discord_last_error, discord_revision
+				from studybot.study_channels where study_id = :studyId
+				""")
+			.param("studyId", studyId)
+			.query((rs, rowNum) -> new ChannelRow(rs.getLong("study_id"), rs.getString("discord_webhook_url_enc"),
+					rs.getBoolean("discord_enabled"), rs.getString("discord_last_error"), rs.getLong("discord_revision")))
+			.optional();
+	}
+
+	/** 저장된 암호문을 바꾼다 (키 교체·다른 스터디로 옮긴 암호문 테스트). */
+	public void setChannelCiphertext(long studyId, String ciphertext) {
+		jdbc.sql("update studybot.study_channels set discord_webhook_url_enc = :enc where study_id = :studyId")
+			.param("enc", ciphertext)
+			.param("studyId", studyId)
+			.update();
+	}
+
+	/** 스터디의 방장 사용자 ID ({@code studies.owner_id}). */
+	public long ownerOf(long studyId) {
+		return jdbc.sql("select owner_id from studybot.studies where id = :id").param("id", studyId).query(Long.class).single();
+	}
+
+	/** 스터디 모드를 바꾼다 ({@code GROUP}·{@code SOLO}). */
+	public void setStudyMode(long studyId, String mode) {
+		jdbc.sql("update studybot.studies set mode = :mode where id = :id").param("mode", mode).param("id", studyId).update();
+	}
+
+	/** 스터디 이름을 바꾼다. */
+	public void setStudyName(long studyId, String name) {
+		jdbc.sql("update studybot.studies set name = :name where id = :id").param("name", name).param("id", studyId).update();
+	}
+
+	/** 사용자의 GitHub 로그인명. */
+	public String loginOf(long userId) {
+		return jdbc.sql("select github_login from studybot.users where id = :id")
+			.param("id", userId)
+			.query(String.class)
+			.single();
+	}
+
 	/** 발송 중으로 남은 행을 흉내 낸다 (발송 중에 서버가 죽음). */
 	public void markSending(long id, Instant lockedUntil) {
 		jdbc.sql("update studybot.notifications set status = 'SENDING', locked_until = :lockedUntil where id = :id")
@@ -174,6 +243,11 @@ public final class NotificationRows {
 			@Nullable LocalDate studyDay, String dedupeKey, String payload, String status, int attempts,
 			@Nullable Instant nextAttemptAt, @Nullable Instant lockedUntil, @Nullable Instant sentAt,
 			@Nullable Instant expiresAt, @Nullable String lastError, @Nullable Instant createdAt) {
+
+	}
+
+	public record ChannelRow(long studyId, @Nullable String ciphertext, boolean enabled, @Nullable String lastError,
+			long revision) {
 
 	}
 

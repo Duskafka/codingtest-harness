@@ -80,6 +80,21 @@ public final class TestApi {
 			.exchange();
 	}
 
+	/** 이 사용자로 로그인한 JSON PUT (CSRF 포함). */
+	public MvcTestResult putJson(long userId, String uri, String body, Object... uriVariables) {
+		return withCsrf(this.mvc.put().uri(uri, uriVariables)).with(as(userId))
+			.contentType(MediaType.APPLICATION_JSON)
+			.content(body)
+			.exchange();
+	}
+
+	/** 로그인하지 않은 JSON PUT (CSRF 포함). */
+	public MvcTestResult putJsonAnonymous(String uri, String body, Object... uriVariables) {
+		return withCsrf(this.mvc.put().uri(uri, uriVariables)).contentType(MediaType.APPLICATION_JSON)
+			.content(body)
+			.exchange();
+	}
+
 	/** 이 사용자로 로그인한 DELETE (CSRF 포함). */
 	public MvcTestResult delete(long userId, String uri, Object... uriVariables) {
 		return withCsrf(this.mvc.delete().uri(uri, uriVariables)).with(as(userId)).exchange();

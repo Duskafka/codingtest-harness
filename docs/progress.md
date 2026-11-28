@@ -2,6 +2,15 @@
 
 세션을 끝낼 때 맨 위에 더해요. 양식은 `docs/workflow.md` 7장에 있어요. 최신 기록이 위에 와요.
 
+## 2026-11-28 S14 디스코드·결과 알림·공유 카드 (세션 1/1)
+- 한 일: 만들 것 1~6. 결정 제안서 010(DAILY_RESULT = 같은 트랜잭션 리스너). V12(`study_channels`, notifications 종류·채널 CHECK). study `StudyDayJudged`(`markJudged`가 진행 지점을 올린 트랜잭션에서 발행)·`StudyProfiles`, progress `StudyDayBoards`, judgment는 `markJudged` 예외를 오류로 세고 그 스터디만 멈춤. notification `discord`(공식 주소만 T27, AES-256-GCM·기동 때 재암호화, JDK HttpClient, 429 Retry-After→본문 retry_after, 404는 리비전이 같을 때 끄고 방장 `DISCORD_DISABLED`, 임베드는 발송 때 DB에서), 채널 `PUT`·테스트 게시, `DISCORD_STATUS`, `result.DailyResultNotifier`, 공유 카드, `link.PublicLinks`, `card.Cards`
+- 상태: 빌드 통과 (테스트 914개). 구현 전 새 테스트 82개 중 79개 실패(통과 3개는 아무것도 안 해도 참: 쉬는 날 알림 없음, toString, 엔드포인트가 없어도 404인 T19). 조건 빼 보기 30개 모두 걸림. 처음 구현에서 기존 판정 테스트 2개가 실패해(리스너가 날짜 검사로 판정을 막음) 결과 수를 멤버 일만 읽게 고침. spec-reviewer '수정 필요' → 필수 2(010 'A의 세부'의 judgment 변경, 인계 기록)와 고려(`run()` 테스트) 반영, 나머지는 PR 판단 기록·스펙 변경 제안·열린 질문
+- 사람이 정한 것 (2026-11-28, 지시 "S14를 시작해. 브랜치명은 CLAUDE.md에 명시된 규칙처럼 해" 뒤 계획 단계 세션 선택지, 모두 Recommended): 브랜치 `feat/S14-discord-share`, DAILY_RESULT "같은 트랜잭션 리스너", 혼자 쓰기 "둘 다 거절"(디스코드·공유 카드 409), 벌금 금액 "S14는 늘 뺌", 디스코드 설정 조회 "PUT 응답에만 담고 제안"
+- 다음: PR 검토(판단 기록 '꼭 봐 주세요': 공유 카드·채널 응답, 암호화·키 교체, 임베드를 발송 때 만듦, `DISCORD_DISABLED`, 결과 알림 채널·만료·건너뛰는 날, judgment 변경, 그날 탈퇴한 멤버 표시) → 병합 → 결정 대장(010)과 받아들인 스펙 변경 제안을 docs PR로 → S15 또는 S16(OD-10)
+- 막힌 것: 사람 할 일 H-05(실제 디스코드 게시 확인). 기동에 필요한 운영 환경 변수 둘(`DISCORD_WEBHOOK_ENCRYPTION_KEY`, `STUDYBOT_PUBLIC_BASE_URL`)은 H 번호가 없음(PR 열린 질문 4)
+- 참고: S15는 `study_channels`도 스터디를 지울 때 함께 지워야 함(FK). `@IntegrationTest` 밖에서 앱을 띄우는 테스트는 디스코드 키(`DiscordTestKeys`)도 넣어야 뜸. 디스코드 테스트는 `DiscordStub`(WireMock), 결과 알림 테스트는 `DailyJudgmentBatch#judgeStudy`(`run()`은 2025년 날짜로). 이 컨테이너는 Gradle 캐시가 비어 Maven Central 429로 첫 빌드가 여러 번 실패해 백오프로 다시 돌림
+- PR: #37
+
 ## 2026-11-28 S13 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #35(병합)의 스펙 변경 제안 1~11을 문서에 반영. architecture 4.2(outbox 행을 넣는 통지는 같은 트랜잭션 리스너로 넣을 수 있음)·알려진 충돌 5번 다룸, data-model `notifications.created_at`·'알림 테이블 (S13)'(payload, 잠금 토큰, CHECK, 구독 재등록 이동·`failure_count`), api.md 4.4(`GET /api/me`에서 '알림 구독 상태'를 빼고 `GET /api/me/push-subscriptions` 행, '웹 푸시 구독' 요청·응답), security 9.7 푸시 도메인 규칙, 5.8(상태 그림 SKIPPED·EXPIRED는 SENDING에서, 표 SHARE_PROMPT 혼자 쓰기 없음·RULE_CHANGED 시점과 취소 키, 주의할 것 7줄), pseudocode '마감 전 알림'(탈퇴 제외, SOLO, 더 새 규칙 알림, 기기 여럿, 백오프), R2 한 마디, infra 9.6 VAPID 환경 변수 셋, H-04 메모, glossary 알림 채널
 - 상태: 빌드 확인 안 함 (문서만 바꿈, CI가 돎)
@@ -134,13 +143,7 @@
 - PR: #22
 
 ## 2026-11-24 S05 남은 일: 규칙 변경 API와 T11 (세션 2)
-- 한 일: 만들 것 4. `PUT /api/studies/{id}/rules`(`StudyRuleService`), 버전에 걸친 스터디 일 계산 `common.time.RuleVersionCalendar`(기준 시각이 바뀌는 새 기수 첫날 18~30시간), 상세 응답 `upcomingRules`, `StudyTimeline.currentRule`(버전이 둘이면 예외)을 날짜로 고르는 방식으로. 테이블 변경 없음. PR을 연 뒤: `basedOnRuleId` 기준 버전 검사(409), 버전 달력의 `isInGrace`·`judgeAt`(바뀐 뒤의 유예)
-- 상태: 빌드 통과 (테스트 553개). 구현 전 새 테스트 29개 중 28개 실패 확인. 조건 빼 보기 5개 모두 해당 테스트 실패. spec-reviewer '수정 필요' → 테스트 13개 더함(T11 열 항목 분류, 기수 이어 세기, 미리보기, 409), 그중 2개 실패 확인 뒤 고침. PR을 연 뒤 보강 테스트 11개 모두 실패 확인 뒤 구현, 조건 빼 보기 3개 모두 걸림
-- 사람이 정한 것 (2026-11-24, 세션 선택지, 모두 Recommended): 날 계산 "S05에서 스터디 일까지", 1기 시작 전 변경 "모두 1기 시작일부터", 상세 "현재 규칙 + 예정된 변경", 요청 "규칙 전체를 받음". spec-reviewer 뒤: 공개 미리보기 "예정 변경도 보여 줌", 시작 직전 기준 시각을 앞당겨 첫날이 이미 시작되면 "거절 (409)". PR을 연 뒤 장단점 비교로: PUT 기준 "기준 버전 ID를 받음", 유예가 바뀐 날 "바꾼 뒤의 유예"(PR #20 열린 질문 3), 구현 위치 "PR #21 달력에 더함"
-- 다음: PR 검토 → 병합 → 받아들인 스펙 변경 제안을 docs PR로(api.md `upcomingRules`·`basedOnRuleId`·규칙 `id`, R2 시작 전 변경, R9 '유예'를 'D+1 규칙의 유예'로 적는 문구 명확화(부록 D와 같아 규칙 변경은 아님), S09·S12·S13·S16 문서) → S09. S09 전에 PR #20 열린 질문 1(다음 기수 행 생성 시점)을 정하면 좋음
-- 막힌 것: 없음
-- 참고: S09·S12는 스터디 일·유예 구간·판정 시각을 `RuleVersionCalendar`로 센다(유예는 구간이 시작되는 날의 규칙). 알림 시각은 버전에 걸쳐 정하지 않았다(S13). 화면은 마지막 버전의 `id`를 `basedOnRuleId`로 보낸다. 세션 재시작 뒤 dockerd가 죽어 있으면 `CLAUDE_CODE_REMOTE=true bash scripts/cloud-session-setup.sh`
-- PR: #21
+- 요약: `PUT /api/studies/{id}/rules`(`basedOnRuleId` 409), `common.time.RuleVersionCalendar`(버전에 걸친 스터디 일, `isInGrace`·`judgeAt`), 상세 `upcomingRules`. 사람이 정함: "S05에서 스터디 일까지", "모두 1기 시작일부터", "현재 규칙 + 예정된 변경", "규칙 전체를 받음", "예정 변경도 보여 줌", "거절 (409)", "기준 버전 ID를 받음", "바꾼 뒤의 유예". 빌드 통과(553개). PR: #21
 
 ## 2026-11-24 OD-07·OD-08 결정 반영 (docs PR, 단계 진행 아님)
 - 요약: OD-07·OD-08을 결정 대장(확정), 스펙(R2·R9·R13, glossary `JudgmentResult`, 5.13, api `PUT /rules`, testing T11, product), 단계 문서(S05·S09·S12)에 반영. 사람이 정함: 다음 기수 "마지막 날 다음 날 바로", 기수 밖 날 "판정 대상에서 뺀", 규칙 변경 "일부는 다음 기수부터", 길이가 달라지는 하루 "새 기수 첫날". 세부 질문 8개는 PR 열린 질문. PR: #20

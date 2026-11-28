@@ -40,3 +40,7 @@ studybot:
   webpush:
     vapid:
       subject: "mailto:studybot-test@example.invalid"
+  # 화면 주소 (S14 공유 카드·디스코드 게시의 링크). 운영에서는 환경 변수로 받는다 (main application.yaml). 아래는 가짜 도메인이다.
+  # 디스코드 API 주소와 웹훅 URL 암호화 키는 테스트가 뜰 때 정한다 (DiscordTestConfiguration: WireMock, 테스트 안에서 만든 키).
+  app:
+    public-base-url: "https://studybot.example.invalid"
