@@ -9,7 +9,7 @@
 - 다음: PR 검토(판단 기록 '꼭 봐 주세요': 공유 카드·채널 응답, 암호화·키 교체, 임베드를 발송 때 만듦, `DISCORD_DISABLED`, 결과 알림 채널·만료·건너뛰는 날, judgment 변경, 그날 탈퇴한 멤버 표시) → 병합 → 결정 대장(010)과 받아들인 스펙 변경 제안을 docs PR로 → S15 또는 S16(OD-10)
 - 막힌 것: 사람 할 일 H-05(실제 디스코드 게시 확인). 기동에 필요한 운영 환경 변수 둘(`DISCORD_WEBHOOK_ENCRYPTION_KEY`, `STUDYBOT_PUBLIC_BASE_URL`)은 H 번호가 없음(PR 열린 질문 4)
 - 참고: S15는 `study_channels`도 스터디를 지울 때 함께 지워야 함(FK). `@IntegrationTest` 밖에서 앱을 띄우는 테스트는 디스코드 키(`DiscordTestKeys`)도 넣어야 뜸. 디스코드 테스트는 `DiscordStub`(WireMock), 결과 알림 테스트는 `DailyJudgmentBatch#judgeStudy`(`run()`은 2025년 날짜로). 이 컨테이너는 Gradle 캐시가 비어 Maven Central 429로 첫 빌드가 여러 번 실패해 백오프로 다시 돌림
-- PR: #PR_NUMBER
+- PR: #37
 
 ## 2026-11-28 S13 스펙 변경 제안 반영 (docs PR, 단계 진행 아님)
 - 한 일: PR #35(병합)의 스펙 변경 제안 1~11을 문서에 반영. architecture 4.2(outbox 행을 넣는 통지는 같은 트랜잭션 리스너로 넣을 수 있음)·알려진 충돌 5번 다룸, data-model `notifications.created_at`·'알림 테이블 (S13)'(payload, 잠금 토큰, CHECK, 구독 재등록 이동·`failure_count`), api.md 4.4(`GET /api/me`에서 '알림 구독 상태'를 빼고 `GET /api/me/push-subscriptions` 행, '웹 푸시 구독' 요청·응답), security 9.7 푸시 도메인 규칙, 5.8(상태 그림 SKIPPED·EXPIRED는 SENDING에서, 표 SHARE_PROMPT 혼자 쓰기 없음·RULE_CHANGED 시점과 취소 키, 주의할 것 7줄), pseudocode '마감 전 알림'(탈퇴 제외, SOLO, 더 새 규칙 알림, 기기 여럿, 백오프), R2 한 마디, infra 9.6 VAPID 환경 변수 셋, H-04 메모, glossary 알림 채널
