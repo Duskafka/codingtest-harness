@@ -9,7 +9,7 @@
 - 다음: 이 PR 병합 → 새 세션에서 S14(디스코드·결과 알림·공유 카드, 결정 게이트 없음, 첫 일은 `DAILY_RESULT` 방식 결정 제안서(알려진 충돌 2번, 사람이 정함 2026-11-28)). '한 세션에 단계 하나'라 S14는 이 세션에서 하지 않음
 - 막힌 것: 없음
 - 참고: 제안 목록 밖이라 넣지 않은 넷(5.8 흐름도·pseudocode의 '201'과 코드의 2xx, pseudocode `limit 100`과 코드 20, RULE_CHANGED 만료 24시간, 구독 주소를 등록 때만 검사)은 PR 열린 질문. 4.2 문구는 S14 결과 알림 방식을 미리 정하지 않게 '넣을 수 있어요'로 씀(PR 판단 기록). spec-reviewer '수정 필요' → 필수 2(24시간 만료, 등록 때만 검사를 스펙에서 빼고 열린 질문으로)와 고려 반영
-- PR: (이 PR)
+- PR: #36
 
 ## 2026-11-27 S13 알림 기반과 웹 푸시 (세션 1/1)
 - 한 일: 만들 것 1~7. 1(결정 제안서 009)은 docs PR #34. V11(`notifications`, `push_subscriptions`, S13 종류·채널만). `RuleVersionCalendar#reminderAt`(그날 규칙). study `ReminderDays`(지금 시각의 스터디 일, 진행 지점·알림 시각)·`StudyRulesChanged`(예정 규칙이 달라지거나 취소될 때 같은 트랜잭션에서 발행). progress `ReminderTargets`(현황과 같은 '남음' 계산 + 탈퇴한 멤버 제외, 발송 직전 재확인). 규칙 변경은 예정 구간 내용이 같으면 알리지 않고, 예정 변경을 취소하면 알림(`:cancelled` 키). 내 구독 목록 `GET /api/me/push-subscriptions`. notification `outbox`(dedupe_key, payload `{type,title,body,url}`), `reminder`(1분·ShedLock, 스터디마다 트랜잭션, SOLO는 공유 유도 없음 R15), `rule.RuleChangeNotifier`(같은 트랜잭션 리스너), `dispatch`(5초·SKIP LOCKED, 20개·잠금 2분, 잠금 만료 시각이 토큰, 백오프 30초×2^(n−1)·최대 30분, Retry-After), `webpush`(zerodep으로 VAPID·aes128gcm만, JDK HttpClient로 보냄, VAPID 키 기동 검사, 허용 도메인), 구독 API 4개(공개키·등록·목록·해제), 지표, 스케줄러 스레드 4개
